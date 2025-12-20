@@ -1,0 +1,665 @@
+import React, { useEffect, useState } from 'react';
+import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData } from '../types';
+import { postToGAS, getCurrentCoachId } from '../services/api';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp } from 'lucide-react';
+import { InstructorSetupModal } from './InstructorSetupModal';
+import PackageManagement from './PackageManagement';
+import GroupClassSchedule from './GroupClassSchedule';
+import AttendanceCheck from './AttendanceCheck';
+import StatsDashboard from './StatsDashboard';
+import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange } from '../lib/supabase/database';
+
+interface DashboardProps {
+  user: User;
+  onNavigateToReservation: () => void;
+  onLogout: () => void;
+  onNavigateToProfile?: () => void;
+}
+
+type TabType = 'reservations' | 'users' | 'settings' | 'packages' | 'group-classes' | 'attendance' | 'stats';
+
+export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservation, onLogout, onNavigateToProfile }) => {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  
+  // Instructor States
+  const [activeTab, setActiveTab] = useState<TabType>('stats');
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [setupData, setSetupData] = useState<{ adminEmail: string, instructorId: string } | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(true);
+  
+  // Instructor - User Mgmt
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  
+  // Instructor - Settings
+  const [settings, setSettings] = useState<AvailabilityData | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const coachId = getCurrentCoachId();
+  // Check if user is instructor based on user.userType
+  const isCoach = user.userType === 'instructor';
+
+  // Cache Key
+  const CACHE_KEY = `dashboard_data_${user.email}_${coachId || 'default'}`;
+
+  // Share URL Calculation
+  const shareUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}${window.location.pathname}?coach=${user.email}`
+    : '';
+
+  const fetchDashboard = async () => {
+    // [Optimization] Load from cache first for instant feedback
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+       try {
+         const parsed = JSON.parse(cached);
+         setData(parsed);
+         if (!isCoach) setLoading(false); // Only assume cached is enough for students momentarily
+       } catch(e) { /* ignore corrupt cache */ }
+    }
+
+    if (!data && !cached) setLoading(true); // Only show spinner if absolutely nothing to show
+
+    try {
+      const action = isCoach ? 'getCoachDashboard' : 'getRemainingSessions';
+      const result = await postToGAS<DashboardData>({ 
+        action: action, 
+        email: user.email 
+      });
+      
+      setData(result);
+      // [Optimization] Save to cache
+      localStorage.setItem(CACHE_KEY, JSON.stringify(result));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+    
+    if (isCoach) {
+        checkInstructorStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const checkInstructorStatus = async () => {
+      try {
+          const result = await postToGAS<CalendarCheckResult>({
+              action: 'checkCalendarConnection'
+          });
+          
+          setCalendarConnected(result.isConnected);
+          if (!result.isConnected) {
+              setSetupData({ adminEmail: result.adminEmail, instructorId: result.instructorId });
+              // 최초 로드 시엔 모달을 바로 띄우지 않고 배너로 안내하거나, 필요 시 띄움
+              // setShowSetupModal(true); 
+          }
+      } catch (e) {
+          console.error("Failed to check calendar status", e);
+      }
+  };
+
+  // --- Handlers ---
+
+  const handleCancel = async (reservationId: string, date: string, time: string) => {
+    const message = isCoach 
+        ? `수강생의 ${date} ${time} 예약을 취소하시겠습니까?`
+        : `${date} ${time} 예약을 취소하시겠습니까?\n취소 시 수강권이 환불됩니다.`;
+
+    if (!window.confirm(message)) return;
+
+    setCancelingId(reservationId);
+    try {
+      await postToGAS<{ remaining: number }>({
+        action: 'cancelReservation',
+        email: user.email, 
+        reservationId: reservationId
+      });
+      alert('예약이 정상적으로 취소되었습니다.');
+      fetchDashboard();
+    } catch (error: any) {
+      alert(error.message || '예약 취소에 실패했습니다.');
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
+  const fetchUsers = async () => {
+      setUsersLoading(true);
+      try {
+          const students = await getAllStudents();
+          // Convert DB format to User format
+          const formattedUsers: User[] = students.map(s => ({
+            id: s.id,
+            email: s.email,
+            name: s.name,
+            picture: s.picture,
+            userType: s.user_type,
+            remaining: 0, // TODO: calculate from packages
+            isProfileComplete: true
+          } as User));
+          setUsers(formattedUsers);
+      } catch (e) {
+        console.error('Failed to load users:', e);
+        alert('사용자 목록 로드 실패');
+      }
+      finally { setUsersLoading(false); }
+  };
+
+  const fetchSettings = async () => {
+      setSettingsLoading(true);
+      try {
+          const settingsData = await getInstructorSettings(user.id);
+
+          // Convert Supabase settings format to AvailabilityData format
+          const workingHours = settingsData?.business_hours || {
+              '0': { start: '09:00', end: '18:00', isWorking: false }, // Sunday
+              '1': { start: '09:00', end: '18:00', isWorking: true },  // Monday
+              '2': { start: '09:00', end: '18:00', isWorking: true },
+              '3': { start: '09:00', end: '18:00', isWorking: true },
+              '4': { start: '09:00', end: '18:00', isWorking: true },
+              '5': { start: '09:00', end: '18:00', isWorking: true },
+              '6': { start: '09:00', end: '18:00', isWorking: false }, // Saturday
+          };
+
+          // Get current week's reservations for busy ranges
+          const now = new Date();
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+          const reservations = await getReservationsByDateRange(
+              user.id,
+              startOfWeek.toISOString(),
+              endOfWeek.toISOString()
+          );
+
+          const busyRanges = reservations.map(r => ({
+              start: r.start_time,
+              end: r.end_time
+          }));
+
+          setSettings({ workingHours, busyRanges });
+      } catch (e) {
+          console.error('Failed to load settings:', e);
+          alert('설정 로드 실패');
+      }
+      finally { setSettingsLoading(false); }
+  };
+
+  const updateUserCredit = async (targetEmail: string, currentTotal: number, delta: number) => {
+      if (!confirm(`${targetEmail}님의 수강권을 변경하시겠습니까?`)) return;
+      try {
+          const res = await postToGAS<{user: User}>({ 
+              action: 'updateUserCredits', 
+              userEmail: targetEmail, 
+              newTotal: currentTotal + delta 
+          });
+          setUsers(prev => prev.map(u => u.email === targetEmail ? { ...u, total: res.user.total, remaining: res.user.remaining } : u));
+      } catch (e) { alert('수정 실패'); }
+  };
+
+  const saveSettings = async () => {
+      if (!settings) return;
+      setSavingSettings(true);
+      try {
+          await upsertInstructorSettings(user.id, {
+              business_hours: settings.workingHours
+          });
+          alert('설정이 저장되었습니다.');
+      } catch (e) {
+          console.error('Failed to save settings:', e);
+          alert('저장 실패');
+      }
+      finally { setSavingSettings(false); }
+  };
+
+  const toggleWorkingDay = (dayIndex: string) => {
+      if (!settings) return;
+      const updated = { ...settings.workingHours };
+      updated[dayIndex].isWorking = !updated[dayIndex].isWorking;
+      setSettings({ ...settings, workingHours: updated });
+  };
+
+  const updateWorkingTime = (dayIndex: string, field: 'start' | 'end', value: string) => {
+      if (!settings) return;
+      const updated = { ...settings.workingHours };
+      updated[dayIndex] = { ...updated[dayIndex], [field]: value };
+      setSettings({ ...settings, workingHours: updated });
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        alert(`링크가 복사되었습니다!\n\n이 링크를 수강생에게 전달하세요.`);
+    });
+  };
+
+  // --- Sub Views ---
+
+  const renderCoachReservations = () => (
+    <div className="space-y-3">
+        {loading && !data ? (
+        <div className="text-center py-8 text-slate-400 text-sm">데이터를 불러오는 중...</div>
+        ) : data?.reservations && data.reservations.length > 0 ? (
+        data.reservations.map((res, idx) => {
+            const isUpcoming = res.status === '확정됨';
+            const isCanceling = cancelingId === res.reservationId;
+            return (
+            <div key={idx} className={`flex flex-col p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-3`}>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
+                            {res.studentName ? res.studentName.charAt(0) : 'S'}
+                        </div>
+                        <div>
+                            <p className={`text-sm font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                                {res.studentName || res.studentEmail}
+                            </p>
+                            <div className="flex items-center text-xs text-slate-500 mt-0.5">
+                                <span className="font-medium mr-2">{res.date}</span>
+                                <span>{res.time}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                            {isUpcoming && (
+                            <button 
+                                onClick={() => handleCancel(res.reservationId, res.date, res.time)}
+                                disabled={isCanceling}
+                                className="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 rounded-lg transition-colors shadow-sm"
+                            >
+                                {isCanceling ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+                            </button>
+                            )}
+                    </div>
+                </div>
+                    {isUpcoming && res.meetLink && (
+                    <a href={res.meetLink} target="_blank" rel="noreferrer" className="text-xs flex items-center justify-center w-full py-2 bg-orange-50 text-orange-600 rounded-lg font-medium hover:bg-orange-100 transition-colors">
+                        <Video size={14} className="mr-1.5"/> 미트 입장
+                    </a>
+                )}
+            </div>
+            );
+        })
+        ) : (
+        <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-xl text-slate-400 text-sm">
+            예약 내역이 없습니다.
+        </div>
+        )}
+    </div>
+  );
+
+  const renderCoachUsers = () => (
+      <div className="space-y-3">
+          {usersLoading ? (
+               <div className="text-center py-8 text-slate-400 text-sm">사용자 목록 로딩 중...</div>
+          ) : users.map((u, idx) => (
+              <div key={idx} className="bg-white border border-slate-100 p-4 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
+                          {u.name.charAt(0)}
+                      </div>
+                      <div>
+                          <p className="font-bold text-slate-800 text-sm">{u.name}</p>
+                          <p className="text-xs text-slate-400">{u.email}</p>
+                      </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                      <div className="text-right mr-2">
+                          <p className="text-xs text-slate-400">잔여 / 전체</p>
+                          <p className="text-sm font-bold text-slate-800">{u.remaining} / {u.total}</p>
+                      </div>
+                      <div className="flex flex-col space-y-1">
+                          <button onClick={() => updateUserCredit(u.email, u.total || 0, 1)} className="p-1 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-500 rounded">
+                              <PlusCircle size={16} />
+                          </button>
+                          <button onClick={() => updateUserCredit(u.email, u.total || 0, -1)} className="p-1 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded">
+                              <MinusCircle size={16} />
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          ))}
+      </div>
+  );
+
+  const renderCoachSettings = () => {
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      if (settingsLoading || !settings) return <div className="text-center py-8 text-slate-400">설정 로딩 중...</div>;
+
+      return (
+          <div className="space-y-4">
+              <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                  {Object.keys(settings.workingHours).map((key) => {
+                      const dayIdx = parseInt(key);
+                      const wh = settings.workingHours[key];
+                      return (
+                          <div key={key} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-none">
+                              <div className="flex items-center space-x-3 w-24">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={wh.isWorking} 
+                                    onChange={() => toggleWorkingDay(key)}
+                                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400"
+                                  />
+                                  <span className={`font-bold ${wh.isWorking ? 'text-slate-800' : 'text-slate-400'}`}>{days[dayIdx]}요일</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                  <input 
+                                    type="time" 
+                                    value={wh.start} 
+                                    disabled={!wh.isWorking}
+                                    onChange={(e) => updateWorkingTime(key, 'start', e.target.value)}
+                                    className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
+                                  />
+                                  <span className="text-slate-400">-</span>
+                                  <input 
+                                    type="time" 
+                                    value={wh.end}
+                                    disabled={!wh.isWorking}
+                                    onChange={(e) => updateWorkingTime(key, 'end', e.target.value)}
+                                    className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
+                                  />
+                              </div>
+                          </div>
+                      );
+                  })}
+              </div>
+              <button 
+                  onClick={saveSettings} 
+                  disabled={savingSettings}
+                  className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center"
+              >
+                  {savingSettings ? <Loader2 className="animate-spin mr-2"/> : <CheckCircle2 className="mr-2"/>}
+                  설정 저장하기
+              </button>
+          </div>
+      );
+  };
+
+  const Header = () => (
+    <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          {user.picture ? (
+            <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full border border-slate-200" />
+          ) : (
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${isCoach ? 'bg-orange-100 text-orange-500' : 'bg-orange-100 text-orange-500'}`}>
+              {user.name.charAt(0)}
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 leading-tight">{user.name}</h2>
+                {isCoach && (
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase">Coach</span>
+                )}
+            </div>
+            <p className="text-xs text-slate-500">{user.email}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+            {isCoach && onNavigateToProfile && (
+                <button onClick={onNavigateToProfile} className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full">
+                    <Settings size={18} />
+                </button>
+            )}
+            <button onClick={onLogout} className="p-2 text-slate-400 hover:text-slate-600 transition-colors bg-white border border-slate-200 rounded-full">
+                <LogOut size={18} />
+            </button>
+        </div>
+    </div>
+  );
+
+  // --- COACH VIEW RENDER ---
+  if (isCoach) {
+      return (
+        <div className="min-h-screen bg-slate-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            {showSetupModal && setupData && (
+                <InstructorSetupModal adminEmail={setupData.adminEmail} instructorId={setupData.instructorId} onClose={() => setShowSetupModal(false)} />
+            )}
+
+            <Header />
+            
+            {/* Share Link Banner - Redesigned */}
+            <div className="bg-white border border-orange-100 rounded-2xl p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                            <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center mr-3">
+                                <Share2 size={16} />
+                            </span>
+                            수강생 예약 전용 링크
+                        </h3>
+                        <p className="text-slate-500 text-sm mt-1 ml-11 break-keep">
+                            수강생에게 아래 주소를 전달하세요. 별도 검색 없이 즉시 예약할 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+                
+                <div className="mt-4 flex items-center gap-2">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 font-mono truncate select-all">
+                       {shareUrl}
+                    </div>
+                    <button 
+                        onClick={copyLink}
+                        className="flex-shrink-0 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center shadow-lg"
+                    >
+                        <Copy size={16} className="mr-2"/>
+                        주소 복사
+                    </button>
+                </div>
+            </div>
+
+            {!calendarConnected && (
+                <div onClick={() => setShowSetupModal(true)} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors">
+                    <div className="flex items-center space-x-3 text-red-700">
+                        <AlertTriangle size={20} />
+                        <div>
+                            <p className="font-bold text-sm">캘린더 연동 필요</p>
+                            <p className="text-xs opacity-80">예약을 위해 권한 설정이 필요합니다.</p>
+                        </div>
+                    </div>
+                    <Settings size={18} className="text-red-400" />
+                </div>
+            )}
+
+            {/* Coach Tabs */}
+            <div className="overflow-x-auto">
+                <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl min-w-max">
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <TrendingUp size={14} className="inline mr-1" />
+                        통계
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('reservations')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'reservations' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Calendar size={14} className="inline mr-1" />
+                        예약
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('group-classes')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'group-classes' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Users size={14} className="inline mr-1" />
+                        그룹수업
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('attendance')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'attendance' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <CheckCircle2 size={14} className="inline mr-1" />
+                        출석
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('users'); fetchUsers(); }}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        회원
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('packages')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'packages' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Package size={14} className="inline mr-1" />
+                        수강권
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab('settings'); fetchSettings(); }}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Settings size={14} className="inline mr-1" />
+                        설정
+                    </button>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="min-h-[300px]">
+                {activeTab === 'stats' && <StatsDashboard instructorEmail={user.email} />}
+                {activeTab === 'reservations' && (
+                    <>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-md font-bold text-slate-800 flex items-center">
+                                <Calendar size={18} className="mr-2 text-orange-500"/> 전체 예약
+                            </h3>
+                            <button onClick={fetchDashboard} className="text-slate-400 hover:text-orange-500 transition-colors">
+                                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                            </button>
+                        </div>
+                        {renderCoachReservations()}
+                    </>
+                )}
+                {activeTab === 'group-classes' && <GroupClassSchedule instructorEmail={user.email} />}
+                {activeTab === 'attendance' && <AttendanceCheck instructorEmail={user.email} />}
+                {activeTab === 'users' && renderCoachUsers()}
+                {activeTab === 'packages' && <PackageManagement instructorEmail={user.email} />}
+                {activeTab === 'settings' && renderCoachSettings()}
+            </div>
+          </div>
+        </div>
+      );
+  }
+
+  // --- STUDENT VIEW RENDER ---
+  const remaining = data?.remaining ?? user.remaining;
+  const hasCredits = remaining > 0;
+  const now = new Date();
+
+  // 강사는 언제든지 취소 가능, 학생은 1시간 전까지만
+  const isCancelable = (date: string, time: string, status: string) => {
+    if (status !== '확정됨') return false;
+    const sessionDate = new Date(`${date}T${time}:00`);
+    const diffMs = sessionDate.getTime() - now.getTime();
+    const oneHourMs = 60 * 60 * 1000;
+    return diffMs > oneHourMs;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <Header />
+
+      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+        <p className="text-slate-400 text-sm font-medium uppercase tracking-wider mb-1">잔여 수강권</p>
+        <div className="flex items-end items-baseline">
+            <span className="text-5xl font-bold tracking-tighter">{remaining ?? '-'}</span>
+            <span className="text-xl ml-2 text-slate-400">회</span>
+        </div>
+      </div>
+
+      <button
+        onClick={onNavigateToReservation}
+        disabled={!hasCredits || loading}
+        className={`w-full py-4 px-6 rounded-2xl flex items-center justify-between group transition-all transform hover:scale-[1.02] active:scale-[0.98] ${
+          hasCredits 
+            ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200 shadow-xl' 
+            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+        }`}
+      >
+        <span className="font-semibold text-lg">{hasCredits ? '새 예약하기' : '수강권 소진됨'}</span>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${hasCredits ? 'bg-white/20' : 'bg-slate-300'}`}>
+          <Plus size={20} />
+        </div>
+      </button>
+
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-md font-bold text-slate-800">나의 예약</h3>
+          <button onClick={fetchDashboard} className="text-slate-400 hover:text-orange-500 transition-colors">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+        
+        <div className="space-y-3">
+          {loading && !data ? (
+             <div className="text-center py-4 text-slate-400 text-sm">내역을 불러오는 중...</div>
+          ) : data?.reservations && data.reservations.length > 0 ? (
+            data.reservations.map((res, idx) => {
+              const cancelable = isCancelable(res.date, res.time, res.status);
+              const isCanceling = cancelingId === res.reservationId;
+
+              return (
+                <div key={idx} className="flex flex-col p-4 rounded-xl border border-slate-100 bg-white shadow-sm gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        res.status === '확정됨' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                        <Calendar size={18} />
+                        </div>
+                        <div>
+                        <p className={`text-sm font-semibold ${res.status === '취소됨' ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                            {res.date} <span className="text-slate-500 font-normal">| {res.instructorName || '코치'}</span>
+                        </p>
+                        <p className="text-xs text-slate-500">{res.time}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            res.status === '확정됨' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                        {res.status}
+                        </span>
+                        
+                        {cancelable && (
+                        <button 
+                            onClick={() => handleCancel(res.reservationId, res.date, res.time)}
+                            disabled={isCanceling}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            {isCanceling ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={18} />}
+                        </button>
+                        )}
+                    </div>
+                  </div>
+                  {res.status === '확정됨' && res.meetLink && (
+                      <a href={res.meetLink} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full py-2.5 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-100">
+                          <Video size={16} className="mr-2" /> 화상 회의 입장
+                      </a>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl text-slate-400 text-sm">예약 내역이 없습니다.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

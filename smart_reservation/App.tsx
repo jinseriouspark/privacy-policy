@@ -1,0 +1,204 @@
+import React, { useState, useEffect } from 'react';
+import { User, Instructor, ViewState, UserType } from './types';
+import Layout from './components/Layout';
+import LandingPage from './components/LandingPage';
+import Login from './components/Login';
+import { Dashboard } from './components/Dashboard';
+import Reservation from './components/Reservation';
+import InstructorProfile from './components/InstructorProfile';
+import StudioSetup from './components/StudioSetup';
+import ErrorBoundary from './components/ErrorBoundary';
+import { getCurrentCoachId } from './services/api';
+import { AlertTriangle } from 'lucide-react';
+import { signOut } from './lib/supabase/auth';
+import { supabase } from './lib/supabase/client';
+import { getUserByEmail } from './lib/supabase/database';
+
+const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentView, setCurrentView] = useState<ViewState>(ViewState.LANDING);
+  const [loading, setLoading] = useState(true);
+  
+  // URL에서 강사 ID를 가져와 가상의 Instructor 객체 생성 (예약 시에만 필요)
+  const coachId = getCurrentCoachId();
+  const currentInstructor: Instructor | null = coachId ? {
+      id: coachId,
+      name: coachId.split('@')[0] + ' 코치님', // 이메일 앞부분을 이름으로 임시 사용
+      bio: 'Professional Career Coach',
+      avatarUrl: ''
+  } : null;
+
+  // Check session on app load
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        // Check if this is a public booking page (coach parameter in URL)
+        if (coachId) {
+          setCurrentView(ViewState.RESERVATION);
+          setLoading(false);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const email = session.user.email!;
+          const existingUser = await getUserByEmail(email);
+
+          if (existingUser && existingUser.user_type) {
+            setCurrentUser({
+              id: existingUser.id,
+              email: existingUser.email,
+              name: existingUser.name,
+              picture: existingUser.picture,
+              userType: existingUser.user_type as UserType,
+              username: existingUser.username,
+              bio: existingUser.bio,
+              isProfileComplete: true,
+              remaining: 0
+            } as User);
+            setCurrentView(ViewState.DASHBOARD);
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+
+    // 강사이고 프로필 미완성 시 스튜디오 설정으로
+    if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
+      setCurrentView(ViewState.STUDIO_SETUP);
+    } else {
+      setCurrentView(ViewState.DASHBOARD);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(); // Supabase 세션 삭제
+      setCurrentUser(null);
+      setCurrentView(ViewState.LANDING);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-slate-500">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+    switch (currentView) {
+      case ViewState.LANDING:
+        return (
+          <LandingPage
+            onLoginSuccess={handleLogin}
+            onShowLogin={() => setCurrentView(ViewState.LOGIN)}
+          />
+        );
+
+      case ViewState.LOGIN:
+        return <Login onLogin={handleLogin} />;
+
+      case ViewState.STUDIO_SETUP:
+        if (!currentUser) return null;
+        return (
+          <StudioSetup
+            user={currentUser}
+            onComplete={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              setCurrentView(ViewState.DASHBOARD);
+            }}
+          />
+        );
+
+      case ViewState.DASHBOARD:
+        if (!currentUser) return null;
+        return (
+          <Dashboard
+            user={currentUser}
+            // 강사 선택 단계 없이 바로 예약 화면으로 이동 (단일 강사 모드)
+            onNavigateToReservation={() => setCurrentView(ViewState.RESERVATION)}
+            onNavigateToProfile={() => setCurrentView(ViewState.PROFILE)}
+            onLogout={handleLogout}
+          />
+        );
+
+      // INSTRUCTOR_SELECT 뷰는 SaaS 모드에서 제거됨 (URL로 이미 결정됨)
+
+      case ViewState.RESERVATION:
+        // Public booking page - instructor is required, but user can be null (guest booking)
+        if (!currentInstructor) {
+          return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+              <div className="text-center">
+                <p className="text-slate-600 mb-4">잘못된 접근입니다.</p>
+                <p className="text-sm text-slate-400">URL에 강사 정보(?coach=이메일)가 필요합니다.</p>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <Reservation
+            user={currentUser}
+            instructor={currentInstructor}
+            onBack={() => setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING)}
+            onSuccess={() => {
+              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
+            }}
+          />
+        );
+
+      case ViewState.PROFILE:
+        if (!currentUser || currentUser.userType !== UserType.INSTRUCTOR) return null;
+        return (
+          <InstructorProfile
+            user={currentUser}
+            onUpdate={(updatedUser) => {
+              setCurrentUser(updatedUser);
+            }}
+            onBack={() => setCurrentView(ViewState.DASHBOARD)}
+            onLogout={handleLogout}
+          />
+        );
+
+      default:
+        return <Login onLogin={handleLogin} />;
+    }
+  };
+
+  // Landing page renders without Layout (full-screen marketing site)
+  if (currentView === ViewState.LANDING) {
+    return (
+      <ErrorBoundary>
+        {renderContent()}
+      </ErrorBoundary>
+    );
+  }
+
+  // All other views are wrapped in Layout
+  return (
+    <ErrorBoundary>
+      <Layout title="예약매니아">
+        {renderContent()}
+      </Layout>
+    </ErrorBoundary>
+  );
+};
+
+export default App;
