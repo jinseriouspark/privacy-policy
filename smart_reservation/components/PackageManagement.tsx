@@ -268,7 +268,7 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
           </div>
           <div>
             <p className="text-xs text-slate-500">가격</p>
-            <p className="font-bold text-slate-900">{pkg.price.toLocaleString()}원</p>
+            <p className="font-bold text-slate-900">{(pkg.price || 0).toLocaleString()}원</p>
           </div>
         </div>
       </div>

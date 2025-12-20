@@ -175,10 +175,10 @@ const PricingPage: React.FC<PricingPageProps> = ({ onSelectPlan, onClose }) => {
                       <>
                         <div className="flex items-baseline gap-2">
                           <span className="text-slate-400 line-through text-lg">
-                            ₩{price.toLocaleString()}
+                            ₩{(price || 0).toLocaleString()}
                           </span>
                           <span className="text-3xl font-bold text-slate-900">
-                            ₩{discountedPrice?.toLocaleString()}
+                            ₩{(discountedPrice || 0).toLocaleString()}
                           </span>
                         </div>
                         <span className="text-slate-500 text-sm">{getPriceLabel(plan)}</span>
