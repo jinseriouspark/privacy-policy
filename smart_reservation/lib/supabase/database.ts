@@ -92,10 +92,14 @@ export async function createCoaching(data: {
   duration: number;
   price?: number;
   is_active?: boolean;
+  type?: 'private' | 'group';
 }) {
   const { data: coaching, error } = await supabase
     .from('coachings')
-    .insert(data)
+    .insert({
+      ...data,
+      type: data.type || 'private' // Default to 'private' if not specified
+    })
     .select()
     .single();
 
@@ -114,6 +118,7 @@ export async function updateCoaching(
     duration?: number;
     price?: number;
     is_active?: boolean;
+    type?: 'private' | 'group';
   }
 ) {
   const { data: coaching, error } = await supabase
