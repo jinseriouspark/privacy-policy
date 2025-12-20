@@ -7,7 +7,7 @@ import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
-import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange } from '../lib/supabase/database';
+import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation } from '../lib/supabase/database';
 
 interface DashboardProps {
   user: User;
@@ -64,17 +64,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     if (!data && !cached) setLoading(true); // Only show spinner if absolutely nothing to show
 
     try {
-      const action = isCoach ? 'getCoachDashboard' : 'getRemainingSessions';
-      const result = await postToGAS<DashboardData>({ 
-        action: action, 
-        email: user.email 
-      });
-      
+      // Use Supabase for data loading
+      const reservations = await getReservations(user.id, isCoach ? 'instructor' : 'student');
+
+      // Convert Supabase format to DashboardData format
+      const formattedReservations = reservations.map((r: any) => ({
+        reservationId: r.id,
+        date: new Date(r.start_time).toISOString().split('T')[0],
+        time: new Date(r.start_time).toTimeString().split(':').slice(0, 2).join(':'),
+        status: r.status === 'confirmed' ? '확정됨' : r.status === 'cancelled' ? '취소됨' : '대기중',
+        instructorName: r.instructor?.name || 'Unknown',
+        meetLink: r.meet_link || ''
+      }));
+
+      const result: DashboardData = {
+        remaining: 0, // TODO: Calculate from packages
+        reservations: formattedReservations
+      };
+
       setData(result);
       // [Optimization] Save to cache
       localStorage.setItem(CACHE_KEY, JSON.stringify(result));
     } catch (error) {
-      console.error(error);
+      console.error('Failed to load dashboard:', error);
     } finally {
       setLoading(false);
     }
@@ -117,14 +129,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
     setCancelingId(reservationId);
     try {
-      await postToGAS<{ remaining: number }>({
-        action: 'cancelReservation',
-        email: user.email, 
-        reservationId: reservationId
-      });
+      await cancelReservation(reservationId);
       alert('예약이 정상적으로 취소되었습니다.');
       fetchDashboard();
     } catch (error: any) {
+      console.error('Failed to cancel reservation:', error);
       alert(error.message || '예약 취소에 실패했습니다.');
     } finally {
       setCancelingId(null);

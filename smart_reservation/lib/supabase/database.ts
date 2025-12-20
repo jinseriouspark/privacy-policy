@@ -276,6 +276,21 @@ export async function createReservation(data: {
 }
 
 /**
+ * 예약 취소
+ */
+export async function cancelReservation(reservationId: string) {
+  const { data, error } = await supabase
+    .from('reservations')
+    .update({ status: 'cancelled' })
+    .eq('id', reservationId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
  * 사용자의 예약 목록 조회
  */
 export async function getReservations(userId: string, userType: 'instructor' | 'student') {
