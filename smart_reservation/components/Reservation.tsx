@@ -341,11 +341,25 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
           </p>
           <button
             onClick={async () => {
-              // Save current URL to return after login
-              sessionStorage.setItem('returnUrl', window.location.href);
+              // Trigger Google login with current URL as redirect
+              const { supabase } = await import('../lib/supabase/client');
+              const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                  redirectTo: window.location.href, // Redirect back to this exact page
+                  queryParams: {
+                    access_type: 'offline',
+                    prompt: 'select_account',
+                  },
+                  scopes: 'email profile openid https://www.googleapis.com/auth/calendar',
+                  skipBrowserRedirect: false
+                }
+              });
 
-              // Trigger Google login
-              await signInWithGoogle();
+              if (error) {
+                console.error('Login error:', error);
+                setError('로그인에 실패했습니다. 다시 시도해주세요.');
+              }
             }}
             className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-all flex items-center justify-center mx-auto space-x-2"
           >

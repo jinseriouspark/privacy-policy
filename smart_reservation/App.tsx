@@ -51,19 +51,12 @@ const App: React.FC = () => {
               remaining: 0
             } as User);
 
-            // Check if there's a return URL (from reservation page)
-            const returnUrl = sessionStorage.getItem('returnUrl');
-            if (returnUrl) {
-              sessionStorage.removeItem('returnUrl');
-              // If return URL has coach param, go to reservation
-              if (returnUrl.includes('coach=')) {
-                setCurrentView(ViewState.RESERVATION);
-                setLoading(false);
-                return;
-              }
+            // If URL has coach param, show reservation page
+            if (coachId) {
+              setCurrentView(ViewState.RESERVATION);
+            } else {
+              setCurrentView(ViewState.DASHBOARD);
             }
-
-            setCurrentView(ViewState.DASHBOARD);
           }
         } else {
           // Not logged in - check if this is a public booking page
