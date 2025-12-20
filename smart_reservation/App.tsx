@@ -182,8 +182,10 @@ const App: React.FC = () => {
     }
   };
 
-  // Landing page renders without Layout (full-screen marketing site)
-  if (currentView === ViewState.LANDING) {
+  // Full-screen views without Layout (Landing, Dashboard, Profile)
+  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE];
+
+  if (fullScreenViews.includes(currentView)) {
     return (
       <ErrorBoundary>
         {renderContent()}
@@ -191,7 +193,7 @@ const App: React.FC = () => {
     );
   }
 
-  // All other views are wrapped in Layout
+  // Other views wrapped in Layout (Login, Reservation, etc.)
   return (
     <ErrorBoundary>
       <Layout title="예약매니아">

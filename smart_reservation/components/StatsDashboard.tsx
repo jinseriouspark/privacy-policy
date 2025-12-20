@@ -111,7 +111,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail }) => {
       </div>
 
       {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <DollarSign size={24} className="opacity-80" />
