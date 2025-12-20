@@ -372,11 +372,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   );
 
   const handleCreateCalendar = async () => {
-    if (!confirm('Google Calendar에 "코칭 예약" 캘린더를 자동으로 생성하시겠습니까?')) return;
+    const calendarName = prompt('생성할 캘린더 이름을 입력하세요:', '코칭 예약');
+    if (!calendarName) return;
 
     setSettingsLoading(true);
     try {
-      const calendar = await createCoachingCalendar('코칭 예약');
+      const calendar = await createCoachingCalendar(calendarName);
 
       // Save calendar ID to settings
       await upsertInstructorSettings(user.id, {

@@ -13,14 +13,20 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [calendarName, setCalendarName] = useState('코칭 예약');
 
   const handleCreateCalendar = async () => {
+    if (!calendarName.trim()) {
+      setError('캘린더 이름을 입력해주세요.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       // Google Calendar에 새 캘린더 생성
-      const calendar = await createCoachingCalendar('코칭 예약');
+      const calendar = await createCoachingCalendar(calendarName);
 
       // Supabase에 캘린더 ID 저장
       await upsertInstructorSettings(instructorId, {
@@ -66,6 +72,23 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
           ) : (
             <div className="space-y-6">
 
+                {/* 캘린더 이름 입력 */}
+                <div className="space-y-3">
+                    <label className="block">
+                        <span className="text-sm font-bold text-slate-900 mb-2 block">캘린더 이름</span>
+                        <input
+                            type="text"
+                            value={calendarName}
+                            onChange={(e) => setCalendarName(e.target.value)}
+                            placeholder="예: 코칭 예약, 레슨 일정 등"
+                            className="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl focus:border-orange-500 focus:outline-none transition-colors text-slate-900"
+                        />
+                    </label>
+                    <p className="text-xs text-slate-500">
+                        💡 Google Calendar에 생성될 캘린더의 이름입니다
+                    </p>
+                </div>
+
                 {/* 설명 */}
                 <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-2xl border border-orange-200">
                     <h3 className="font-bold text-slate-900 text-lg mb-3 flex items-center">
@@ -75,7 +98,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
                     <div className="text-sm text-slate-700 space-y-2">
                         <p className="flex items-start">
                             <span className="text-orange-600 font-bold mr-2">✓</span>
-                            <span>Google Calendar에 "코칭 예약" 캘린더가 자동 생성됩니다</span>
+                            <span>입력한 이름으로 Google Calendar에 캘린더가 자동 생성됩니다</span>
                         </p>
                         <p className="flex items-start">
                             <span className="text-orange-600 font-bold mr-2">✓</span>
