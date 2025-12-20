@@ -519,3 +519,56 @@ export async function deleteGroupSession(sessionId: string) {
 
   if (error) throw error;
 }
+
+/**
+ * 출석 체크를 위한 예약 목록 조회
+ */
+export async function getAttendanceList(
+  instructorId: string,
+  filter: 'all' | 'today' | 'pending'
+) {
+  let query = supabase
+    .from('reservations')
+    .select(`
+      *,
+      student:student_id(*),
+      coaching:coaching_id(*)
+    `)
+    .eq('instructor_id', instructorId)
+    .in('status', ['confirmed', 'pending'])
+    .order('start_time', { ascending: false });
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (filter === 'today') {
+    const todayStart = `${today}T00:00:00Z`;
+    const todayEnd = `${today}T23:59:59Z`;
+    query = query.gte('start_time', todayStart).lte('start_time', todayEnd);
+  } else if (filter === 'pending') {
+    query = query.is('attendance_status', null);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 출석 상태 업데이트
+ */
+export async function updateAttendance(
+  reservationId: string,
+  attendanceStatus: 'attended' | 'absent' | 'late'
+) {
+  const { data, error } = await supabase
+    .from('reservations')
+    .update({ attendance_status: attendanceStatus })
+    .eq('id', reservationId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

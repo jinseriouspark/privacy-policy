@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Reservation } from '../types';
-import { postToGAS } from '../services/api';
+import { getAttendanceList, updateAttendance } from '../lib/supabase/database';
 import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Search } from 'lucide-react';
 
 interface AttendanceCheckProps {
   instructorEmail: string;
+  instructorId?: string;
 }
 
-const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail }) => {
+const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, instructorId }) => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'today' | 'pending'>('today');
@@ -18,14 +19,26 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail }) =>
   }, [filter]);
 
   const fetchReservations = async () => {
+    if (!instructorId) return;
     setLoading(true);
     try {
-      const result = await postToGAS<Reservation[]>({
-        action: 'getAttendanceList',
-        instructorEmail,
-        filter
-      });
-      setReservations(result);
+      const result = await getAttendanceList(instructorId, filter);
+
+      // Convert Supabase format to Reservation format
+      const formatted = result.map((r: any) => ({
+        reservationId: r.id,
+        date: new Date(r.start_time).toISOString().split('T')[0],
+        time: new Date(r.start_time).toTimeString().split(':').slice(0, 2).join(':'),
+        status: r.status === 'confirmed' ? '확정됨' : r.status === 'cancelled' ? '취소됨' : '대기중',
+        studentName: r.student?.name || '',
+        studentEmail: r.student?.email || '',
+        classType: r.coaching?.type || 'private',
+        attendanceStatus: r.attendance_status || 'pending',
+        instructorName: '',
+        meetLink: r.meet_link || ''
+      }));
+
+      setReservations(formatted);
     } catch (err) {
       console.error(err);
     } finally {
@@ -33,14 +46,9 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail }) =>
     }
   };
 
-  const handleAttendance = async (reservationId: string, status: 'attended' | 'absent' | 'late') => {
+  const handleAttendance = async (reservationId: string, status: 'attended' | 'absent' | 'late' | 'pending') => {
     try {
-      await postToGAS({
-        action: 'updateAttendance',
-        instructorEmail,
-        reservationId,
-        attendanceStatus: status
-      });
+      await updateAttendance(reservationId, status as any);
 
       setReservations(reservations.map(r =>
         r.reservationId === reservationId
