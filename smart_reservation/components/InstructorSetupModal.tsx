@@ -92,9 +92,21 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
                     <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">
                         <p className="font-bold mb-1">⚠️ 오류 발생</p>
                         <p>{error}</p>
-                        <p className="text-xs text-slate-600 mt-2">
-                            * 다시 로그인이 필요할 수 있습니다.
-                        </p>
+                        {error.includes('insufficient') || error.includes('scopes') ? (
+                            <div className="mt-3 p-3 bg-white rounded-lg border border-red-300">
+                                <p className="font-bold text-slate-900 mb-2">🔑 권한 재설정이 필요합니다</p>
+                                <ol className="text-xs text-slate-700 space-y-1 list-decimal list-inside">
+                                    <li>우측 상단 프로필에서 <b>로그아웃</b></li>
+                                    <li>다시 <b>Google로 로그인</b></li>
+                                    <li>캘린더 권한 요청 시 <b>허용</b> 클릭</li>
+                                    <li>이 화면에서 다시 <b>생성하기</b> 버튼 클릭</li>
+                                </ol>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-slate-600 mt-2">
+                                * 다시 로그인이 필요할 수 있습니다.
+                            </p>
+                        )}
                     </div>
                 )}
 
