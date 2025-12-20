@@ -105,15 +105,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   const checkInstructorStatus = async () => {
       try {
-          const result = await postToGAS<CalendarCheckResult>({
-              action: 'checkCalendarConnection'
-          });
-          
-          setCalendarConnected(result.isConnected);
-          if (!result.isConnected) {
-              setSetupData({ adminEmail: result.adminEmail, instructorId: result.instructorId });
-              // 최초 로드 시엔 모달을 바로 띄우지 않고 배너로 안내하거나, 필요 시 띄움
-              // setShowSetupModal(true); 
+          // Supabase에서 캘린더 연동 상태 확인
+          const settings = await getInstructorSettings(user.id);
+          const isConnected = !!settings?.calendar_id;
+
+          setCalendarConnected(isConnected);
+          if (!isConnected) {
+              setSetupData({
+                  adminEmail: user.email || '',
+                  instructorId: user.id
+              });
           }
       } catch (e) {
           console.error("Failed to check calendar status", e);
