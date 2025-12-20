@@ -32,13 +32,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Check if this is a public booking page (coach parameter in URL)
-        if (coachId) {
-          setCurrentView(ViewState.RESERVATION);
-          setLoading(false);
-          return;
-        }
-
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
@@ -57,7 +50,25 @@ const App: React.FC = () => {
               isProfileComplete: true,
               remaining: 0
             } as User);
+
+            // Check if there's a return URL (from reservation page)
+            const returnUrl = sessionStorage.getItem('returnUrl');
+            if (returnUrl) {
+              sessionStorage.removeItem('returnUrl');
+              // If return URL has coach param, go to reservation
+              if (returnUrl.includes('coach=')) {
+                setCurrentView(ViewState.RESERVATION);
+                setLoading(false);
+                return;
+              }
+            }
+
             setCurrentView(ViewState.DASHBOARD);
+          }
+        } else {
+          // Not logged in - check if this is a public booking page
+          if (coachId) {
+            setCurrentView(ViewState.RESERVATION);
           }
         }
       } catch (error) {

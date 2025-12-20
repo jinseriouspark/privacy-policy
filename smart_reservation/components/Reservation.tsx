@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, AvailabilityData } from '../types';
 import { getInstructorAvailability, createReservation } from '../lib/supabase/database';
+import { signInWithGoogle } from '../lib/supabase/auth';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink } from 'lucide-react';
 
 interface ReservationProps {
@@ -339,9 +340,12 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
             예약을 진행하려면 Google 계정으로 로그인해주세요
           </p>
           <button
-            onClick={() => {
-              // Redirect to Google login
-              window.location.href = `${window.location.origin}`;
+            onClick={async () => {
+              // Save current URL to return after login
+              sessionStorage.setItem('returnUrl', window.location.href);
+
+              // Trigger Google login
+              await signInWithGoogle();
             }}
             className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold hover:bg-orange-50 transition-all flex items-center justify-center mx-auto space-x-2"
           >
