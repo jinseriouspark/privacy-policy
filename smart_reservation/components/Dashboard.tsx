@@ -154,6 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             picture: s.picture,
             userType: s.user_type,
             remaining: 0, // TODO: calculate from packages
+            total: 0, // TODO: calculate from packages
             isProfileComplete: true
           } as User));
           setUsers(formattedUsers);
