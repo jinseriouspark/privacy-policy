@@ -268,23 +268,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             return (
             <div key={idx} className={`flex flex-col p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-3`}>
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 flex-1">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
                             {res.studentName ? res.studentName.charAt(0) : 'S'}
                         </div>
-                        <div>
-                            <p className={`text-sm font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                        <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'} truncate`}>
                                 {res.studentName || res.studentEmail}
                             </p>
-                            <div className="flex items-center text-xs text-slate-500 mt-0.5">
-                                <span className="font-medium mr-2">{res.date}</span>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                                <span className="font-medium">{res.date}</span>
                                 <span>{res.time}</span>
+                                {res.packageName && (
+                                    <>
+                                        <span className="text-slate-300">•</span>
+                                        <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full font-medium truncate">
+                                            {res.packageName}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
                             {isUpcoming && (
-                            <button 
+                            <button
                                 onClick={() => handleCancel(res.reservationId, res.date, res.time)}
                                 disabled={isCanceling}
                                 className="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 rounded-lg transition-colors shadow-sm"
