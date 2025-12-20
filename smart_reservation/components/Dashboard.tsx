@@ -422,7 +422,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   if (isCoach) {
       return (
         <div className="min-h-screen bg-slate-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
             {showSetupModal && setupData && (
                 <InstructorSetupModal adminEmail={setupData.adminEmail} instructorId={setupData.instructorId} onClose={() => setShowSetupModal(false)} />
             )}
@@ -569,7 +569,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
         <Header />
 
       <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
