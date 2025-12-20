@@ -403,10 +403,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   const handleUserEditSave = async () => {
     if (!editingUser) return;
-    // Reload packages
+    // Reload packages for the modal
     try {
       const packages = await getStudentPackages(editingUser.id, user.id);
       setUserPackages(packages);
+
+      // Also reload the user list to update the active package display
+      await fetchUsers();
     } catch (e) {
       console.error('Failed to reload packages:', e);
     }
