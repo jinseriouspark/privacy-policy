@@ -155,17 +155,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       setUsersLoading(true);
       try {
           const students = await getAllStudents();
-          // Convert DB format to User format
-          const formattedUsers: User[] = students.map(s => ({
-            id: s.id,
-            email: s.email,
-            name: s.name,
-            picture: s.picture,
-            userType: s.user_type,
-            remaining: 0, // TODO: calculate from packages
-            total: 0, // TODO: calculate from packages
-            isProfileComplete: true
-          } as User));
+
+          // Load packages for each student
+          const formattedUsersPromises = students.map(async (s) => {
+            const packages = await getStudentPackages(s.id, user.id);
+
+            // Get active package (most recent with remaining sessions)
+            const activePackage = packages
+              .filter(p => p.remaining_sessions > 0 && (!p.expires_at || new Date(p.expires_at) > new Date()))
+              .sort((a, b) => new Date(b.start_date || b.created_at).getTime() - new Date(a.start_date || a.created_at).getTime())[0];
+
+            return {
+              id: s.id,
+              email: s.email,
+              name: s.name,
+              picture: s.picture,
+              userType: s.user_type,
+              remaining: 0,
+              total: 0,
+              isProfileComplete: true,
+              activePackage: activePackage ? {
+                name: activePackage.name,
+                startDate: activePackage.start_date,
+                expiresAt: activePackage.expires_at,
+                remaining: activePackage.remaining_sessions,
+                total: activePackage.total_sessions
+              } : null
+            } as User & { activePackage: any };
+          });
+
+          const formattedUsers = await Promise.all(formattedUsersPromises);
           setUsers(formattedUsers);
       } catch (e) {
         console.error('Failed to load users:', e);
@@ -397,28 +416,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       <div className="space-y-3">
           {usersLoading ? (
                <div className="text-center py-8 text-slate-400 text-sm">사용자 목록 로딩 중...</div>
-          ) : users.map((u, idx) => (
-              <div key={idx} className="bg-white border border-slate-100 p-4 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold">
-                          {u.name.charAt(0)}
+          ) : users.map((u: any, idx) => {
+            const pkg = u.activePackage;
+            const expiresAt = pkg?.expiresAt ? new Date(pkg.expiresAt) : null;
+            const isExpiringSoon = expiresAt && expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000; // 7 days
+
+            return (
+              <div key={idx} className="bg-white border border-slate-100 p-4 rounded-xl">
+                  <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1">
+                          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-base flex-shrink-0">
+                              {u.name.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                              <p className="font-bold text-slate-900 text-base">{u.name}</p>
+                              <p className="text-xs text-slate-400 mb-2">{u.email}</p>
+
+                              {pkg ? (
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
+                                      {pkg.name}
+                                    </span>
+                                    <span className="px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs font-medium">
+                                      잔여 {pkg.remaining}/{pkg.total}회
+                                    </span>
+                                  </div>
+                                  {expiresAt && (
+                                    <p className={`text-xs ${isExpiringSoon ? 'text-red-600 font-medium' : 'text-slate-500'}`}>
+                                      만료: {expiresAt.toLocaleDateString()}
+                                      {isExpiringSoon && ' ⚠️ 곧 만료'}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-400 italic">활성 수강권 없음</p>
+                              )}
+                          </div>
                       </div>
-                      <div>
-                          <p className="font-bold text-slate-800 text-sm">{u.name}</p>
-                          <p className="text-xs text-slate-400">{u.email}</p>
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                          <button
+                            onClick={() => openUserEditor(u)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
+                          >
+                            <Edit size={14} />
+                            <span>편집</span>
+                          </button>
                       </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => openUserEditor(u)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
-                      >
-                        <Edit size={14} />
-                        <span>편집</span>
-                      </button>
                   </div>
               </div>
-          ))}
+            );
+          })}
       </div>
   );
 

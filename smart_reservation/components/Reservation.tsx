@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, AvailabilityData } from '../types';
-import { getInstructorAvailability, createReservation } from '../lib/supabase/database';
+import { getInstructorAvailability, createReservation, getStudentPackages } from '../lib/supabase/database';
 import { signInWithGoogle } from '../lib/supabase/auth';
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink, Package } from 'lucide-react';
 
 interface ReservationProps {
   user: User | null; // Allow null for guest booking
@@ -19,10 +19,12 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
     return new Date(now.setDate(diff));
   });
 
-  const [selectedDateStr, setSelectedDateStr] = useState<string>(""); 
+  const [selectedDateStr, setSelectedDateStr] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+
   const [availability, setAvailability] = useState<AvailabilityData | null>(null);
+  const [userPackages, setUserPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
