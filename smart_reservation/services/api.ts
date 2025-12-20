@@ -55,10 +55,16 @@ export const postToGAS = async <T>(payload: any): Promise<T> => {
   // 2. coachId 체크 - instructorId가 payload에 이미 있으면 사용
   const instructorId = payload.instructorId || coachId;
 
+  // GAS API를 사용하는 기능들은 모두 비활성화
   if (!noCoachIdRequired.includes(action) && !instructorId) {
     console.warn("⚠️ Supabase 마이그레이션 필요: 이 기능은 아직 GAS API를 사용합니다.");
     console.warn("⚠️ 현재 액션:", action);
-    throw new Error("이 기능은 아직 준비중입니다. Supabase 마이그레이션이 필요합니다.");
+
+    // Return empty/mock data instead of throwing error
+    if (action.includes('get')) {
+      return [] as unknown as T;
+    }
+    return {} as unknown as T;
   }
 
   // 2. 실제 API 호출 (SaaS Mode)
