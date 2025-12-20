@@ -8,6 +8,7 @@ import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
 import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation } from '../lib/supabase/database';
+import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 
 interface DashboardProps {
   user: User;
@@ -340,50 +341,101 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       </div>
   );
 
+  const handleCreateCalendar = async () => {
+    if (!confirm('Google Calendar에 "코칭 예약" 캘린더를 자동으로 생성하시겠습니까?')) return;
+
+    setSettingsLoading(true);
+    try {
+      const calendar = await createCoachingCalendar('코칭 예약');
+
+      // Save calendar ID to settings
+      await upsertInstructorSettings(user.id, {
+        calendar_id: calendar.id
+      });
+
+      alert(`✅ 캘린더가 생성되었습니다!\n\n캘린더 이름: ${calendar.name}\n캘린더 ID: ${calendar.id}\n\n이제 예약 시 자동으로 이 캘린더에 일정이 추가됩니다.`);
+
+      // Refresh settings
+      await fetchSettings();
+    } catch (error: any) {
+      console.error('캘린더 생성 오류:', error);
+      alert(`캘린더 생성 실패: ${error.message}\n\n다시 로그인이 필요할 수 있습니다.`);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   const renderCoachSettings = () => {
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       if (settingsLoading || !settings) return <div className="text-center py-8 text-slate-400">설정 로딩 중...</div>;
 
       return (
-          <div className="space-y-4">
-              <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
-                  {Object.keys(settings.workingHours).map((key) => {
-                      const dayIdx = parseInt(key);
-                      const wh = settings.workingHours[key];
-                      return (
-                          <div key={key} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-none">
-                              <div className="flex items-center space-x-3 w-24">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={wh.isWorking} 
-                                    onChange={() => toggleWorkingDay(key)}
-                                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400"
-                                  />
-                                  <span className={`font-bold ${wh.isWorking ? 'text-slate-800' : 'text-slate-400'}`}>{days[dayIdx]}요일</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                  <input 
-                                    type="time" 
-                                    value={wh.start} 
-                                    disabled={!wh.isWorking}
-                                    onChange={(e) => updateWorkingTime(key, 'start', e.target.value)}
-                                    className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
-                                  />
-                                  <span className="text-slate-400">-</span>
-                                  <input 
-                                    type="time" 
-                                    value={wh.end}
-                                    disabled={!wh.isWorking}
-                                    onChange={(e) => updateWorkingTime(key, 'end', e.target.value)}
-                                    className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
-                                  />
-                              </div>
-                          </div>
-                      );
-                  })}
+          <div className="space-y-6">
+              {/* Google Calendar 연동 섹션 */}
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center">
+                      <Calendar size={20} className="mr-2 text-orange-600" />
+                      Google Calendar 자동 연동
+                  </h3>
+                  <p className="text-sm text-slate-600 mb-4">
+                      예약이 확정되면 자동으로 Google Calendar에 일정이 추가됩니다.
+                  </p>
+                  <button
+                      onClick={handleCreateCalendar}
+                      disabled={settingsLoading}
+                      className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all flex items-center justify-center shadow-md"
+                  >
+                      {settingsLoading ? <Loader2 className="animate-spin mr-2"/> : <Plus className="mr-2"/>}
+                      코칭 전용 캘린더 자동 생성
+                  </button>
+                  <p className="text-xs text-slate-500 mt-3">
+                      ⓘ 버튼을 클릭하면 Google Calendar에 "코칭 예약" 캘린더가 자동으로 생성되고, 예약 시 Meet 링크가 자동 생성됩니다.
+                  </p>
               </div>
-              <button 
-                  onClick={saveSettings} 
+
+              {/* 영업시간 설정 */}
+              <div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-3">영업시간 설정</h3>
+                  <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                      {Object.keys(settings.workingHours).map((key) => {
+                          const dayIdx = parseInt(key);
+                          const wh = settings.workingHours[key];
+                          return (
+                              <div key={key} className="flex items-center justify-between p-4 border-b border-slate-50 last:border-none">
+                                  <div className="flex items-center space-x-3 w-24">
+                                      <input
+                                        type="checkbox"
+                                        checked={wh.isWorking}
+                                        onChange={() => toggleWorkingDay(key)}
+                                        className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400"
+                                      />
+                                      <span className={`font-bold ${wh.isWorking ? 'text-slate-800' : 'text-slate-400'}`}>{days[dayIdx]}요일</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                      <input
+                                        type="time"
+                                        value={wh.start}
+                                        disabled={!wh.isWorking}
+                                        onChange={(e) => updateWorkingTime(key, 'start', e.target.value)}
+                                        className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
+                                      />
+                                      <span className="text-slate-400">-</span>
+                                      <input
+                                        type="time"
+                                        value={wh.end}
+                                        disabled={!wh.isWorking}
+                                        onChange={(e) => updateWorkingTime(key, 'end', e.target.value)}
+                                        className="bg-white text-slate-900 border border-slate-200 rounded px-2 py-1 text-sm w-24 disabled:bg-slate-50 disabled:text-slate-300"
+                                      />
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+              </div>
+
+              <button
+                  onClick={saveSettings}
                   disabled={savingSettings}
                   className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center"
               >

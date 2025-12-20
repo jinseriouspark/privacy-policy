@@ -12,7 +12,8 @@ export async function signInWithGoogle() {
         access_type: 'offline',
         prompt: 'select_account',
       },
-      scopes: 'email profile openid',
+      // Google Calendar API 권한 추가
+      scopes: 'email profile openid https://www.googleapis.com/auth/calendar',
       skipBrowserRedirect: false
     }
   });
