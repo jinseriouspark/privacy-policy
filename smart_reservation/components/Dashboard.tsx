@@ -75,6 +75,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
         time: new Date(r.start_time).toTimeString().split(':').slice(0, 2).join(':'),
         status: r.status === 'confirmed' ? '확정됨' : r.status === 'cancelled' ? '취소됨' : '대기중',
         instructorName: r.instructor?.name || 'Unknown',
+        studentName: r.student?.name || '',
+        studentEmail: r.student?.email || '',
+        packageName: r.package?.name || '',
         meetLink: r.meet_link || ''
       }));
 

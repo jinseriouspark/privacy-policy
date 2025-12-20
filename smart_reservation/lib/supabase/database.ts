@@ -307,7 +307,8 @@ export async function getReservations(userId: string, userType: 'instructor' | '
       *,
       coaching:coaching_id(*),
       student:student_id(*),
-      instructor:instructor_id(*)
+      instructor:instructor_id(*),
+      package:package_id(*)
     `)
     .eq(column, userId)
     .order('start_time', { ascending: true });
