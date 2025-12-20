@@ -1,13 +1,8 @@
--- Add type column to coachings table if it doesn't exist
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'coachings' AND column_name = 'type'
-  ) THEN
-    ALTER TABLE coachings ADD COLUMN type TEXT DEFAULT 'private' CHECK (type IN ('private', 'group'));
-  END IF;
-END $$;
+-- Drop existing type column and constraint if they exist
+ALTER TABLE coachings DROP COLUMN IF EXISTS type CASCADE;
 
--- Update existing rows to have 'private' as default
-UPDATE coachings SET type = 'private' WHERE type IS NULL;
+-- Add type column with proper constraint
+ALTER TABLE coachings ADD COLUMN type TEXT NOT NULL DEFAULT 'private';
+
+-- Add constraint
+ALTER TABLE coachings ADD CONSTRAINT coachings_type_check CHECK (type IN ('private', 'group'));
