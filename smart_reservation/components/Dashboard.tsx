@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData } from '../types';
 import { postToGAS, getCurrentCoachId } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
+import { UserEditModal } from './UserEditModal';
 import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
-import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation } from '../lib/supabase/database';
+import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages } from '../lib/supabase/database';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 
 interface DashboardProps {
@@ -33,6 +34,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // Instructor - User Mgmt
   const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userPackages, setUserPackages] = useState<any[]>([]);
   
   // Instructor - Settings
   const [settings, setSettings] = useState<AvailabilityData | null>(null);
@@ -365,6 +368,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     </div>
   );
 
+  const openUserEditor = async (u: User) => {
+    setEditingUser(u);
+    // Load user's packages
+    try {
+      const packages = await getStudentPackages(u.id, user.id);
+      setUserPackages(packages);
+    } catch (e) {
+      console.error('Failed to load packages:', e);
+      setUserPackages([]);
+    }
+  };
+
+  const handleUserEditSave = async () => {
+    if (!editingUser) return;
+    // Reload packages
+    try {
+      const packages = await getStudentPackages(editingUser.id, user.id);
+      setUserPackages(packages);
+    } catch (e) {
+      console.error('Failed to reload packages:', e);
+    }
+  };
+
   const renderCoachUsers = () => (
       <div className="space-y-3">
           {usersLoading ? (
@@ -381,18 +407,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                       </div>
                   </div>
                   <div className="flex items-center space-x-3">
-                      <div className="text-right mr-2">
-                          <p className="text-xs text-slate-400">잔여 / 전체</p>
-                          <p className="text-sm font-bold text-slate-800">{u.remaining || 0} / {u.total || 0}</p>
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                          <button onClick={() => updateUserCredit(u.email, u.total || 0, 1)} className="p-1 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-500 rounded">
-                              <PlusCircle size={16} />
-                          </button>
-                          <button onClick={() => updateUserCredit(u.email, u.total || 0, -1)} className="p-1 bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded">
-                              <MinusCircle size={16} />
-                          </button>
-                      </div>
+                      <button
+                        onClick={() => openUserEditor(u)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
+                      >
+                        <Edit size={14} />
+                        <span>편집</span>
+                      </button>
                   </div>
               </div>
           ))}
@@ -684,9 +705,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
-        <Header />
+    <>
+      {/* User Edit Modal */}
+      {editingUser && (
+        <UserEditModal
+          user={editingUser}
+          instructorId={user.id}
+          packages={userPackages}
+          onClose={() => setEditingUser(null)}
+          onSave={handleUserEditSave}
+        />
+      )}
+
+      <div className="min-h-screen bg-slate-50">
+        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
+          <Header />
 
       <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
@@ -776,7 +809,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           )}
         </div>
       </div>
-    </div>
-    </div>
+      </div>
+      </div>
+    </>
   );
 };

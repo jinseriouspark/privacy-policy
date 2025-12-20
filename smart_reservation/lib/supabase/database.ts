@@ -346,6 +346,83 @@ export async function getPackages(instructorId: string) {
 }
 
 /**
+ * 특정 학생의 패키지 목록 조회 (강사별)
+ */
+export async function getStudentPackages(studentId: string, instructorId: string) {
+  const { data, error } = await supabase
+    .from('packages')
+    .select(`
+      *,
+      coaching:coaching_id(*)
+    `)
+    .eq('student_id', studentId)
+    .eq('instructor_id', instructorId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 패키지 생성
+ */
+export async function createPackage(data: {
+  student_id: string;
+  instructor_id: string;
+  coaching_id?: string;
+  name?: string;
+  total_sessions: number;
+  remaining_sessions: number;
+  start_date?: string;
+  expires_at?: string;
+}) {
+  const { data: pkg, error } = await supabase
+    .from('packages')
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return pkg;
+}
+
+/**
+ * 패키지 업데이트
+ */
+export async function updatePackage(
+  packageId: string,
+  updates: {
+    total_sessions?: number;
+    remaining_sessions?: number;
+    start_date?: string;
+    expires_at?: string;
+    name?: string;
+  }
+) {
+  const { data, error } = await supabase
+    .from('packages')
+    .update(updates)
+    .eq('id', packageId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 패키지 삭제
+ */
+export async function deletePackage(packageId: string) {
+  const { error } = await supabase
+    .from('packages')
+    .delete()
+    .eq('id', packageId);
+
+  if (error) throw error;
+}
+
+/**
  * 강사의 설정 조회
  */
 export async function getInstructorSettings(instructorId: string) {
