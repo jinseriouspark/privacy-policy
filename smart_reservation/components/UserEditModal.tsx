@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save, Calendar, Package as PackageIcon } from 'lucide-react';
-import { createPackage, updatePackage, deletePackage, getCoachings } from '../lib/supabase/database';
-import { User } from '../types';
+import { createPackage, updatePackage, deletePackage, getCoachings, getClassPackages } from '../lib/supabase/database';
+import { User, ClassPackage } from '../types';
 
 interface UserEditModalProps {
   user: User;
@@ -20,11 +20,13 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 }) => {
   const [packages, setPackages] = useState(initialPackages);
   const [coachings, setCoachings] = useState<any[]>([]);
+  const [classPackages, setClassPackages] = useState<ClassPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // New package form
   const [newPackage, setNewPackage] = useState({
+    class_package_id: '', // ClassPackage 템플릿 ID
     coaching_id: '',
     name: '',
     total_sessions: 10,
@@ -35,6 +37,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 
   useEffect(() => {
     loadCoachings();
+    loadClassPackages();
   }, []);
 
   useEffect(() => {
@@ -51,15 +54,39 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     }
   };
 
+  const loadClassPackages = async () => {
+    try {
+      const data = await getClassPackages(instructorId);
+      setClassPackages(data || []);
+    } catch (e) {
+      console.error('Failed to load class packages:', e);
+      setClassPackages([]);
+    }
+  };
+
   const calculateExpiryDate = (startDate: string, days: number) => {
     const start = new Date(startDate);
     start.setDate(start.getDate() + days);
     return start.toISOString();
   };
 
+  const handleClassPackageSelect = (classPackageId: string) => {
+    const selected = classPackages.find(cp => cp.id === classPackageId);
+    if (selected) {
+      setNewPackage({
+        ...newPackage,
+        class_package_id: classPackageId,
+        name: selected.name,
+        total_sessions: selected.credits,
+        remaining_sessions: selected.credits,
+        validity_days: selected.validDays
+      });
+    }
+  };
+
   const handleAddPackage = async () => {
-    if (!newPackage.coaching_id && !newPackage.name) {
-      alert('수강권 이름 또는 코칭을 선택해주세요.');
+    if (!newPackage.name) {
+      alert('수강권 이름을 입력해주세요.');
       return;
     }
 
@@ -82,6 +109,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 
       // Reset form
       setNewPackage({
+        class_package_id: '',
         coaching_id: '',
         name: '',
         total_sessions: 10,
@@ -239,7 +267,29 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
               <h4 className="font-bold text-slate-900">새 수강권 추가</h4>
 
               <div className="space-y-3">
+                {/* ClassPackage Template Selection */}
                 <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    수강권 템플릿 (빠른 선택)
+                  </label>
+                  <select
+                    value={newPackage.class_package_id}
+                    onChange={(e) => handleClassPackageSelect(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-orange-300 bg-orange-50 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-medium text-slate-900"
+                  >
+                    <option value="">직접 입력하기</option>
+                    {classPackages.map(cp => (
+                      <option key={cp.id} value={cp.id}>
+                        {cp.name} ({cp.credits}회 / {cp.validDays}일)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    💡 수강권 탭에서 미리 만든 템플릿을 선택하면 자동으로 입력됩니다
+                  </p>
+                </div>
+
+                <div className="border-t border-slate-200 pt-3">
                   <label className="block text-sm font-medium text-slate-700 mb-1">수강권 이름</label>
                   <input
                     type="text"
@@ -251,7 +301,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">코칭 선택 (선택사항)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">코칭 연결 (선택사항)</label>
                   <select
                     value={newPackage.coaching_id}
                     onChange={(e) => setNewPackage({ ...newPackage, coaching_id: e.target.value })}
