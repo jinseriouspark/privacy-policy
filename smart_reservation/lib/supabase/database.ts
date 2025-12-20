@@ -432,3 +432,90 @@ export async function getInstructorAvailability(
 
   return { workingHours, busyRanges };
 }
+
+/**
+ * 그룹 수업 세션 조회
+ */
+export async function getGroupSessions(instructorId: string) {
+  const { data, error } = await supabase
+    .from('group_classes')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 그룹 수업 세션 생성
+ */
+export async function createGroupSession(instructorId: string, sessionData: {
+  title: string;
+  date: string;
+  time: string;
+  type: string;
+  maxCapacity: number;
+  status: string;
+}) {
+  const { data, error } = await supabase
+    .from('group_classes')
+    .insert({
+      instructor_id: instructorId,
+      title: sessionData.title,
+      date: sessionData.date,
+      time: sessionData.time,
+      type: sessionData.type,
+      max_capacity: sessionData.maxCapacity,
+      current_count: 0,
+      status: sessionData.status
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 그룹 수업 세션 업데이트
+ */
+export async function updateGroupSession(sessionId: string, sessionData: {
+  title?: string;
+  date?: string;
+  time?: string;
+  type?: string;
+  maxCapacity?: number;
+  status?: string;
+}) {
+  const updateData: any = {};
+  if (sessionData.title !== undefined) updateData.title = sessionData.title;
+  if (sessionData.date !== undefined) updateData.date = sessionData.date;
+  if (sessionData.time !== undefined) updateData.time = sessionData.time;
+  if (sessionData.type !== undefined) updateData.type = sessionData.type;
+  if (sessionData.maxCapacity !== undefined) updateData.max_capacity = sessionData.maxCapacity;
+  if (sessionData.status !== undefined) updateData.status = sessionData.status;
+
+  const { data, error } = await supabase
+    .from('group_classes')
+    .update(updateData)
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 그룹 수업 세션 삭제
+ */
+export async function deleteGroupSession(sessionId: string) {
+  const { error } = await supabase
+    .from('group_classes')
+    .delete()
+    .eq('id', sessionId);
+
+  if (error) throw error;
+}

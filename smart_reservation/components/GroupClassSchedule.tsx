@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClassSession, ClassType } from '../types';
-import { postToGAS } from '../services/api';
+import { getGroupSessions, createGroupSession, updateGroupSession, deleteGroupSession } from '../lib/supabase/database';
 import { Calendar as CalendarIcon, Plus, Edit2, Trash2, Users, Clock, Loader2, X, Save } from 'lucide-react';
 
 interface GroupClassScheduleProps {
@@ -28,14 +28,22 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
   }, []);
 
   const fetchSessions = async () => {
+    if (!instructorId) return;
     setLoading(true);
     try {
-      const result = await postToGAS<ClassSession[]>({
-        action: 'getGroupSessions',
-        instructorEmail,
-        instructorId
-      });
-      setSessions(result);
+      const result = await getGroupSessions(instructorId);
+      // Convert Supabase format to ClassSession format
+      const formatted = result.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        date: r.date,
+        time: r.time,
+        type: r.type,
+        maxCapacity: r.max_capacity,
+        currentCount: r.current_count,
+        status: r.status
+      }));
+      setSessions(formatted);
     } catch (err) {
       console.error(err);
     } finally {
@@ -63,24 +71,49 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
   };
 
   const handleSave = async () => {
-    if (!formData.title || !formData.date || !formData.time) {
+    if (!formData.title || !formData.date || !formData.time || !instructorId) {
       alert('모든 필수 항목을 입력해주세요.');
       return;
     }
 
     try {
-      const result = await postToGAS<ClassSession>({
-        action: editingId ? 'updateGroupSession' : 'createGroupSession',
-        instructorEmail,
-        instructorId,
-        sessionId: editingId,
-        sessionData: formData
-      });
+      let result;
+      if (editingId) {
+        result = await updateGroupSession(editingId, {
+          title: formData.title,
+          date: formData.date,
+          time: formData.time,
+          type: formData.type,
+          maxCapacity: formData.maxCapacity,
+          status: formData.status
+        });
+      } else {
+        result = await createGroupSession(instructorId, {
+          title: formData.title!,
+          date: formData.date!,
+          time: formData.time!,
+          type: formData.type || ClassType.GROUP,
+          maxCapacity: formData.maxCapacity || 6,
+          status: formData.status || 'scheduled'
+        });
+      }
+
+      // Convert Supabase format to ClassSession format
+      const formatted = {
+        id: result.id,
+        title: result.title,
+        date: result.date,
+        time: result.time,
+        type: result.type,
+        maxCapacity: result.max_capacity,
+        currentCount: result.current_count,
+        status: result.status
+      };
 
       if (editingId) {
-        setSessions(sessions.map(s => s.id === editingId ? result : s));
+        setSessions(sessions.map(s => s.id === editingId ? formatted : s));
       } else {
-        setSessions([...sessions, result]);
+        setSessions([...sessions, formatted]);
       }
 
       setEditingId(null);
@@ -95,12 +128,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
     if (!confirm('정말 삭제하시겠습니까? 예약된 회원이 있다면 알림이 발송됩니다.')) return;
 
     try {
-      await postToGAS({
-        action: 'deleteGroupSession',
-        instructorEmail,
-        instructorId,
-        sessionId: id
-      });
+      await deleteGroupSession(id);
       setSessions(sessions.filter(s => s.id !== id));
     } catch (err: any) {
       alert(err.message || '삭제에 실패했습니다.');
