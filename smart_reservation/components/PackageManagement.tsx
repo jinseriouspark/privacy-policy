@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClassPackage, ClassType } from '../types';
-import { postToGAS } from '../services/api';
+import { getClassPackages, createClassPackage, updateClassPackage, deleteClassPackage } from '../lib/supabase/database';
 import { Package, Plus, Edit2, Trash2, Save, X, Loader2, DollarSign, Calendar, Users } from 'lucide-react';
 
 interface PackageManagementProps {
@@ -29,16 +29,13 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
   }, []);
 
   const fetchPackages = async () => {
+    if (!instructorId) return;
     setLoading(true);
     try {
-      const result = await postToGAS<ClassPackage[]>({
-        action: 'getPackages',
-        instructorEmail,
-        instructorId
-      });
+      const result = await getClassPackages(instructorId);
       setPackages(result);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch packages:', err);
     } finally {
       setLoading(false);
     }
@@ -62,23 +59,18 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.price) {
+    if (!formData.name || !formData.price || !instructorId) {
       alert('수강권 이름과 가격을 입력해주세요.');
       return;
     }
 
     try {
-      const result = await postToGAS<ClassPackage>({
-        action: editingId ? 'updatePackage' : 'createPackage',
-        instructorEmail,
-        instructorId,
-        packageId: editingId,
-        packageData: formData
-      });
-
+      let result;
       if (editingId) {
+        result = await updateClassPackage(editingId, formData);
         setPackages(packages.map(p => p.id === editingId ? result : p));
       } else {
+        result = await createClassPackage(instructorId, formData as any);
         setPackages([...packages, result]);
       }
 
@@ -86,6 +78,7 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
       setIsCreating(false);
       setFormData({});
     } catch (err: any) {
+      console.error('Failed to save package:', err);
       alert(err.message || '저장에 실패했습니다.');
     }
   };
@@ -94,14 +87,10 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
     if (!confirm('정말 삭제하시겠습니까?')) return;
 
     try {
-      await postToGAS({
-        action: 'deletePackage',
-        instructorEmail,
-        instructorId,
-        packageId: id
-      });
+      await deleteClassPackage(id);
       setPackages(packages.filter(p => p.id !== id));
     } catch (err: any) {
+      console.error('Failed to delete package:', err);
       alert(err.message || '삭제에 실패했습니다.');
     }
   };

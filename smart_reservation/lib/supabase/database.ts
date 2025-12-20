@@ -140,6 +140,120 @@ export async function deleteCoaching(coachingId: string) {
 }
 
 /**
+ * ClassPackage 형식으로 코칭 조회 (PackageManagement용)
+ */
+export async function getClassPackages(instructorId: string) {
+  const { data, error } = await supabase
+    .from('coachings')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  // Convert to ClassPackage format
+  return (data || []).map(coaching => ({
+    id: coaching.id,
+    name: coaching.title,
+    type: coaching.type || 'individual',
+    credits: coaching.credits || 0,
+    validDays: coaching.valid_days || 0,
+    price: coaching.price || 0,
+    isActive: coaching.is_active
+  }));
+}
+
+/**
+ * ClassPackage 생성
+ */
+export async function createClassPackage(instructorId: string, packageData: {
+  name: string;
+  type: string;
+  credits: number;
+  validDays: number;
+  price: number;
+  isActive: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('coachings')
+    .insert({
+      instructor_id: instructorId,
+      title: packageData.name,
+      type: packageData.type,
+      credits: packageData.credits,
+      valid_days: packageData.validDays,
+      price: packageData.price,
+      is_active: packageData.isActive,
+      duration: 60, // Default duration
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    name: data.title,
+    type: data.type,
+    credits: data.credits,
+    validDays: data.valid_days,
+    price: data.price,
+    isActive: data.is_active
+  };
+}
+
+/**
+ * ClassPackage 업데이트
+ */
+export async function updateClassPackage(packageId: string, packageData: {
+  name?: string;
+  type?: string;
+  credits?: number;
+  validDays?: number;
+  price?: number;
+  isActive?: boolean;
+}) {
+  const updateData: any = {};
+  if (packageData.name !== undefined) updateData.title = packageData.name;
+  if (packageData.type !== undefined) updateData.type = packageData.type;
+  if (packageData.credits !== undefined) updateData.credits = packageData.credits;
+  if (packageData.validDays !== undefined) updateData.valid_days = packageData.validDays;
+  if (packageData.price !== undefined) updateData.price = packageData.price;
+  if (packageData.isActive !== undefined) updateData.is_active = packageData.isActive;
+
+  const { data, error } = await supabase
+    .from('coachings')
+    .update(updateData)
+    .eq('id', packageId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    name: data.title,
+    type: data.type,
+    credits: data.credits,
+    validDays: data.valid_days,
+    price: data.price,
+    isActive: data.is_active
+  };
+}
+
+/**
+ * ClassPackage 삭제
+ */
+export async function deleteClassPackage(packageId: string) {
+  const { error } = await supabase
+    .from('coachings')
+    .delete()
+    .eq('id', packageId);
+
+  if (error) throw error;
+}
+
+/**
  * 예약 생성
  */
 export async function createReservation(data: {
