@@ -325,42 +325,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 </div>
 
                 {/* Right Side - Details */}
-                <div className="flex-1 flex flex-col gap-3">
-                    {/* Student Info & Package Info */}
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
-                                {res.studentName ? res.studentName.charAt(0) : 'S'}
-                            </div>
-                            <div>
-                                <p className={`text-base font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-                                    {res.studentName || res.studentEmail}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    {res.packageName && (
-                                        <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
-                                            {res.packageName}
-                                        </span>
-                                    )}
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                        res.packageType === 'group'
-                                            ? 'bg-purple-50 text-purple-600'
-                                            : 'bg-blue-50 text-blue-600'
-                                    }`}>
-                                        {res.packageType === 'group' ? '그룹' : '개인'}
+                <div className="flex-1 flex flex-col gap-2">
+                    {/* Student Info - Single Line */}
+                    <div className="flex items-center gap-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
+                            {res.studentName ? res.studentName.charAt(0) : 'S'}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                            <span className={`font-bold text-sm ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                                {res.studentName || res.studentEmail}
+                            </span>
+                            <span className="text-slate-300">•</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                res.packageType === 'group'
+                                    ? 'bg-purple-50 text-purple-600'
+                                    : 'bg-blue-50 text-blue-600'
+                            }`}>
+                                {res.packageType === 'group' ? '그룹' : '개인'}
+                            </span>
+                            {res.packageName && (
+                                <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold truncate">
+                                        {res.packageName}
                                     </span>
-                                    {res.totalCredits > 0 && (
-                                        <>
-                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
-                                                총 {res.totalCredits}회
-                                            </span>
-                                            <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-xs font-medium">
-                                                잔여 {res.remainingCredits}회
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
