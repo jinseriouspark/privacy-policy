@@ -528,7 +528,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
             {/* Content Area */}
             <div className="min-h-[300px]">
-                {activeTab === 'stats' && <StatsDashboard instructorEmail={user.email} />}
+                {activeTab === 'stats' && <StatsDashboard instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'reservations' && (
                     <>
                         <div className="flex items-center justify-between mb-4">
@@ -542,10 +542,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         {renderCoachReservations()}
                     </>
                 )}
-                {activeTab === 'group-classes' && <GroupClassSchedule instructorEmail={user.email} />}
-                {activeTab === 'attendance' && <AttendanceCheck instructorEmail={user.email} />}
+                {activeTab === 'group-classes' && <GroupClassSchedule instructorEmail={user.email} instructorId={user.id} />}
+                {activeTab === 'attendance' && <AttendanceCheck instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'users' && renderCoachUsers()}
-                {activeTab === 'packages' && <PackageManagement instructorEmail={user.email} />}
+                {activeTab === 'packages' && <PackageManagement instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'settings' && renderCoachSettings()}
             </div>
           </div>

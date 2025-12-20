@@ -5,9 +5,10 @@ import { Calendar as CalendarIcon, Plus, Edit2, Trash2, Users, Clock, Loader2, X
 
 interface GroupClassScheduleProps {
   instructorEmail: string;
+  instructorId?: string;
 }
 
-const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail }) => {
+const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail, instructorId }) => {
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -31,7 +32,8 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
     try {
       const result = await postToGAS<ClassSession[]>({
         action: 'getGroupSessions',
-        instructorEmail
+        instructorEmail,
+        instructorId
       });
       setSessions(result);
     } catch (err) {
@@ -70,6 +72,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
       const result = await postToGAS<ClassSession>({
         action: editingId ? 'updateGroupSession' : 'createGroupSession',
         instructorEmail,
+        instructorId,
         sessionId: editingId,
         sessionData: formData
       });
@@ -95,6 +98,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
       await postToGAS({
         action: 'deleteGroupSession',
         instructorEmail,
+        instructorId,
         sessionId: id
       });
       setSessions(sessions.filter(s => s.id !== id));

@@ -5,9 +5,10 @@ import { Package, Plus, Edit2, Trash2, Save, X, Loader2, DollarSign, Calendar, U
 
 interface PackageManagementProps {
   instructorEmail: string;
+  instructorId?: string;
 }
 
-const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail }) => {
+const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, instructorId }) => {
   const [packages, setPackages] = useState<ClassPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,7 +33,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail }
     try {
       const result = await postToGAS<ClassPackage[]>({
         action: 'getPackages',
-        instructorEmail
+        instructorEmail,
+        instructorId
       });
       setPackages(result);
     } catch (err) {
@@ -69,6 +71,7 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail }
       const result = await postToGAS<ClassPackage>({
         action: editingId ? 'updatePackage' : 'createPackage',
         instructorEmail,
+        instructorId,
         packageId: editingId,
         packageData: formData
       });
@@ -94,6 +97,7 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail }
       await postToGAS({
         action: 'deletePackage',
         instructorEmail,
+        instructorId,
         packageId: id
       });
       setPackages(packages.filter(p => p.id !== id));
