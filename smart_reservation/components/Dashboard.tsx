@@ -369,10 +369,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   );
 
   const openUserEditor = async (u: User) => {
+    console.log('Opening editor for user:', u);
     setEditingUser(u);
     // Load user's packages
     try {
       const packages = await getStudentPackages(u.id, user.id);
+      console.log('Loaded packages:', packages);
       setUserPackages(packages);
     } catch (e) {
       console.error('Failed to load packages:', e);
@@ -562,13 +564,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // --- COACH VIEW RENDER ---
   if (isCoach) {
       return (
-        <div className="min-h-screen bg-slate-50">
-          <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
-            {showSetupModal && setupData && (
-                <InstructorSetupModal adminEmail={setupData.adminEmail} instructorId={setupData.instructorId} onClose={() => setShowSetupModal(false)} />
-            )}
+        <>
+          {/* User Edit Modal */}
+          {editingUser && (
+            <UserEditModal
+              user={editingUser}
+              instructorId={user.id}
+              packages={userPackages}
+              onClose={() => setEditingUser(null)}
+              onSave={handleUserEditSave}
+            />
+          )}
 
-            <Header />
+          <div className="min-h-screen bg-slate-50">
+            <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
+              {showSetupModal && setupData && (
+                  <InstructorSetupModal adminEmail={setupData.adminEmail} instructorId={setupData.instructorId} onClose={() => setShowSetupModal(false)} />
+              )}
+
+              <Header />
             
             {/* Share Link Banner */}
             <div className="bg-white border border-orange-100 rounded-2xl p-6 shadow-sm">
@@ -687,6 +701,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             </div>
           </div>
         </div>
+        </>
       );
   }
 
@@ -705,21 +720,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   };
 
   return (
-    <>
-      {/* User Edit Modal */}
-      {editingUser && (
-        <UserEditModal
-          user={editingUser}
-          instructorId={user.id}
-          packages={userPackages}
-          onClose={() => setEditingUser(null)}
-          onSave={handleUserEditSave}
-        />
-      )}
-
-      <div className="min-h-screen bg-slate-50">
-        <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
-          <Header />
+    <div className="min-h-screen bg-slate-50">
+      <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
+        <Header />
 
       <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
@@ -809,8 +812,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           )}
         </div>
       </div>
-      </div>
-      </div>
-    </>
+    </div>
+    </div>
   );
 };
