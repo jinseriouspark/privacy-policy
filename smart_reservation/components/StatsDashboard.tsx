@@ -153,26 +153,53 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
         {!stats.popularTimeSlots || stats.popularTimeSlots.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-8">데이터가 없습니다</p>
         ) : (
-          <div className="space-y-3">
-            {stats.popularTimeSlots.slice(0, 5).map((slot, index) => {
-              const maxCount = Math.max(...stats.popularTimeSlots.map(s => s.count));
-              const percentage = (slot.count / maxCount) * 100;
+          <div className="space-y-6">
+            {/* Chart Container */}
+            <div className="relative h-64 flex items-end justify-between gap-2 px-4">
+              {stats.popularTimeSlots.slice(0, 10).map((slot, index) => {
+                const maxCount = Math.max(...stats.popularTimeSlots.map(s => s.count));
+                const heightPercentage = (slot.count / maxCount) * 100;
 
-              return (
-                <div key={index} className="flex items-center space-x-4">
-                  <div className="w-16 text-sm font-medium text-slate-700">{slot.time}</div>
-                  <div className="flex-1 bg-slate-100 rounded-full h-8 relative overflow-hidden">
-                    <div
-                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-orange-400 to-orange-400 transition-all duration-500 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    />
-                    <span className="absolute inset-0 flex items-center justify-end pr-3 text-xs font-bold text-slate-700">
-                      {slot.count}회
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end group">
+                    {/* Bar */}
+                    <div className="w-full flex flex-col items-center justify-end" style={{ height: '240px' }}>
+                      {/* Count Label */}
+                      <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                          {slot.count}회
+                        </span>
+                      </div>
+                      {/* Bar */}
+                      <div
+                        className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500 hover:from-orange-600 hover:to-orange-500 relative"
+                        style={{ height: `${heightPercentage}%`, minHeight: slot.count > 0 ? '8px' : '0px' }}
+                      >
+                        {/* Subtle top highlight */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/30 rounded-t-lg"></div>
+                      </div>
+                    </div>
+                    {/* X-axis Label */}
+                    <div className="mt-2 text-xs font-medium text-slate-600 whitespace-nowrap">
+                      {slot.time}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Y-axis Reference Lines */}
+            <div className="relative -mt-6 px-4 pointer-events-none">
+              <div className="absolute inset-x-0 top-0 flex flex-col justify-between" style={{ height: '240px' }}>
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="border-t border-slate-100 relative">
+                    <span className="absolute -left-8 -top-2 text-xs text-slate-400">
+                      {Math.round((Math.max(...stats.popularTimeSlots.map(s => s.count)) * (4 - i)) / 4)}
                     </span>
                   </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
