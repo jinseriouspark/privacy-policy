@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData } from '../types';
 import { postToGAS, getCurrentCoachId } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, QrCode, Download } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
@@ -254,33 +253,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     });
   };
 
-  const downloadQRCode = () => {
-    const svg = document.getElementById('qr-code-svg');
-    if (!svg) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
-
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${user.name || 'coach'}-예약-QR코드.png`;
-        link.click();
-        URL.revokeObjectURL(url);
-      });
-    };
-
-    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-  };
 
   // --- Sub Views ---
 
@@ -355,7 +327,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                   <div className="flex items-center space-x-3">
                       <div className="text-right mr-2">
                           <p className="text-xs text-slate-400">잔여 / 전체</p>
-                          <p className="text-sm font-bold text-slate-800">{u.remaining} / {u.total}</p>
+                          <p className="text-sm font-bold text-slate-800">{u.remaining || 0} / {u.total || 0}</p>
                       </div>
                       <div className="flex flex-col space-y-1">
                           <button onClick={() => updateUserCredit(u.email, u.total || 0, 1)} className="p-1 bg-slate-50 hover:bg-orange-50 text-slate-400 hover:text-orange-500 rounded">
@@ -521,58 +493,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
             <Header />
             
-            {/* Share Link Banner with QR Code */}
+            {/* Share Link Banner */}
             <div className="bg-white border border-orange-100 rounded-2xl p-6 shadow-sm">
-                <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Left: Text & Link */}
-                    <div className="flex-1">
-                        <h3 className="text-lg font-bold text-slate-900 flex items-center mb-2">
-                            <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center mr-3">
-                                <Share2 size={16} />
-                            </span>
-                            수강생 예약 전용 링크
-                        </h3>
-                        <p className="text-slate-500 text-sm mb-4 ml-11 break-keep">
-                            수강생에게 링크 또는 QR 코드를 전달하세요.
-                        </p>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center mb-2">
+                    <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center mr-3">
+                        <Share2 size={16} />
+                    </span>
+                    수강생 예약 전용 링크
+                </h3>
+                <p className="text-slate-500 text-sm mb-4 ml-11 break-keep">
+                    수강생에게 링크를 전달하세요.
+                </p>
 
-                        <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                            <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 font-mono truncate select-all">
-                               {shareUrl}
-                            </div>
-                            <button
-                                onClick={copyLink}
-                                className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center shadow-lg"
-                            >
-                                <Copy size={16} className="mr-2"/>
-                                주소 복사
-                            </button>
-                        </div>
+                <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 font-mono truncate select-all">
+                       {shareUrl}
                     </div>
-
-                    {/* Right: QR Code */}
-                    <div className="flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-white border-2 border-orange-200 rounded-xl p-6">
-                        <div className="bg-white p-4 rounded-xl shadow-md mb-3">
-                            <QRCodeSVG
-                                id="qr-code-svg"
-                                value={shareUrl}
-                                size={160}
-                                level="H"
-                                includeMargin={true}
-                                fgColor="#ea580c"
-                            />
-                        </div>
-                        <button
-                            onClick={downloadQRCode}
-                            className="px-4 py-2 bg-orange-600 text-white rounded-lg font-semibold text-sm hover:bg-orange-700 transition-colors flex items-center shadow-md"
-                        >
-                            <Download size={14} className="mr-1.5"/>
-                            QR 다운로드
-                        </button>
-                        <p className="text-xs text-slate-500 mt-2 text-center">
-                            수강생이 스캔하여<br/>바로 예약할 수 있어요
-                        </p>
-                    </div>
+                    <button
+                        onClick={copyLink}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center shadow-lg"
+                    >
+                        <Copy size={16} className="mr-2"/>
+                        주소 복사
+                    </button>
                 </div>
             </div>
 
