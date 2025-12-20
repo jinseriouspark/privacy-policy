@@ -18,20 +18,32 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.LANDING);
   const [loading, setLoading] = useState(true);
-  
-  // URL에서 강사 ID를 가져와 가상의 Instructor 객체 생성 (예약 시에만 필요)
+  const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null);
+
+  // URL에서 강사 이메일 가져오기
   const coachId = getCurrentCoachId();
-  const currentInstructor: Instructor | null = coachId ? {
-      id: coachId,
-      name: coachId.split('@')[0] + ' 코치님', // 이메일 앞부분을 이름으로 임시 사용
-      bio: 'Professional Career Coach',
-      avatarUrl: ''
-  } : null;
 
   // Check session on app load
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // If there's a coach email in URL, fetch instructor info
+        if (coachId) {
+          try {
+            const instructorUser = await getUserByEmail(coachId);
+            if (instructorUser) {
+              setCurrentInstructor({
+                id: instructorUser.id,
+                name: instructorUser.name,
+                bio: instructorUser.bio || 'Professional Coach',
+                avatarUrl: instructorUser.picture || ''
+              });
+            }
+          } catch (e) {
+            console.error('Failed to fetch instructor:', e);
+          }
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
@@ -72,7 +84,7 @@ const App: React.FC = () => {
     };
 
     checkSession();
-  }, []);
+  }, [coachId]);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
