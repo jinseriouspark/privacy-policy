@@ -78,6 +78,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
         studentName: r.student?.name || '',
         studentEmail: r.student?.email || '',
         packageName: r.package?.name || '',
+        packageType: r.coaching?.type || 'private', // 개인/그룹
+        totalCredits: r.package?.sessions || 0, // 총 수강권
+        remainingCredits: 0, // TODO: Calculate from user's package purchases
         meetLink: r.meet_link || ''
       }));
 
@@ -269,47 +272,88 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             const isUpcoming = res.status === '확정됨';
             const isCanceling = cancelingId === res.reservationId;
             return (
-            <div key={idx} className={`flex flex-col p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-3`}>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
-                            {res.studentName ? res.studentName.charAt(0) : 'S'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'} truncate`}>
-                                {res.studentName || res.studentEmail}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                                <span className="font-medium">{res.date}</span>
-                                <span>{res.time}</span>
-                                {res.packageName && (
-                                    <>
-                                        <span className="text-slate-300">•</span>
-                                        <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full font-medium truncate">
+            <div key={idx} className={`flex p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-4`}>
+                {/* Left Side - Action Buttons */}
+                <div className="flex flex-col gap-2 items-center justify-center">
+                    {isUpcoming && res.meetLink && (
+                        <a
+                            href={res.meetLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex flex-col items-center justify-center px-3 py-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg text-xs font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm min-w-[70px]"
+                        >
+                            <Video size={18} className="mb-1" />
+                            <span>입장</span>
+                        </a>
+                    )}
+                    {isUpcoming && (
+                        <button
+                            onClick={() => handleCancel(res.reservationId, res.date, res.time)}
+                            disabled={isCanceling}
+                            className="flex flex-col items-center justify-center px-3 py-2 bg-white border border-slate-200 text-slate-600 hover:text-red-500 hover:border-red-300 hover:bg-red-50 rounded-lg transition-all text-xs font-medium min-w-[70px]"
+                        >
+                            {isCanceling ? (
+                                <Loader2 size={18} className="animate-spin mb-1" />
+                            ) : (
+                                <XCircle size={18} className="mb-1" />
+                            )}
+                            <span>{isCanceling ? '취소중' : '삭제'}</span>
+                        </button>
+                    )}
+                </div>
+
+                {/* Right Side - Details */}
+                <div className="flex-1 flex flex-col gap-3">
+                    {/* Student Info & Package Info */}
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-base ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
+                                {res.studentName ? res.studentName.charAt(0) : 'S'}
+                            </div>
+                            <div>
+                                <p className={`text-base font-bold ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
+                                    {res.studentName || res.studentEmail}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    {res.packageName && (
+                                        <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold">
                                             {res.packageName}
                                         </span>
-                                    </>
-                                )}
+                                    )}
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        res.packageType === 'group'
+                                            ? 'bg-purple-50 text-purple-600'
+                                            : 'bg-blue-50 text-blue-600'
+                                    }`}>
+                                        {res.packageType === 'group' ? '그룹' : '개인'}
+                                    </span>
+                                    {res.totalCredits > 0 && (
+                                        <>
+                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
+                                                총 {res.totalCredits}회
+                                            </span>
+                                            <span className="px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-xs font-medium">
+                                                잔여 {res.remainingCredits}회
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                            {isUpcoming && (
-                            <button
-                                onClick={() => handleCancel(res.reservationId, res.date, res.time)}
-                                disabled={isCanceling}
-                                className="p-1.5 bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 rounded-lg transition-colors shadow-sm"
-                            >
-                                {isCanceling ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
-                            </button>
-                            )}
+
+                    {/* Date & Time */}
+                    <div className="flex items-center gap-3 text-sm text-slate-600 border-t border-slate-100 pt-2">
+                        <div className="flex items-center gap-1.5">
+                            <Calendar size={14} className="text-slate-400" />
+                            <span className="font-medium">{res.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Clock size={14} className="text-slate-400" />
+                            <span className="font-medium">{res.time}</span>
+                        </div>
                     </div>
                 </div>
-                    {isUpcoming && res.meetLink && (
-                    <a href={res.meetLink} target="_blank" rel="noreferrer" className="text-xs flex items-center justify-center w-full py-2 bg-orange-50 text-orange-600 rounded-lg font-medium hover:bg-orange-100 transition-colors">
-                        <Video size={14} className="mr-1.5"/> 미트 입장
-                    </a>
-                )}
             </div>
             );
         })
