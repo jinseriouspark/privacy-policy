@@ -661,5 +661,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
         </div>
       </div>
     </div>
+    </div>
   );
 };
