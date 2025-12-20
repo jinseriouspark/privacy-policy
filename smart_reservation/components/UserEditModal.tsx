@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save, Calendar, Package as PackageIcon } from 'lucide-react';
-import { createPackage, updatePackage, deletePackage, getPackages as getCoachings } from '../lib/supabase/database';
+import { createPackage, updatePackage, deletePackage, getCoachings } from '../lib/supabase/database';
 import { User } from '../types';
 
 interface UserEditModalProps {
@@ -44,9 +44,10 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   const loadCoachings = async () => {
     try {
       const data = await getCoachings(instructorId);
-      setCoachings(data);
+      setCoachings(data || []);
     } catch (e) {
       console.error('Failed to load coachings:', e);
+      setCoachings([]);
     }
   };
 
