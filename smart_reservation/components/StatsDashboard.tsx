@@ -110,7 +110,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
 
       {/* Main Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <DollarSign size={24} className="opacity-80" />
             <span className="text-xs font-medium opacity-80 uppercase">매출</span>
@@ -119,7 +119,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
           <p className="text-sm opacity-80">전체: {(stats.totalRevenue || 0).toLocaleString()}원</p>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <Users size={24} className="opacity-80" />
             <span className="text-xs font-medium opacity-80 uppercase">회원</span>
@@ -128,7 +128,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
           <p className="text-sm opacity-80">전체: {stats.totalStudents || 0}명</p>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <Calendar size={24} className="opacity-80" />
             <span className="text-xs font-medium opacity-80 uppercase">예약</span>
@@ -137,7 +137,7 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
           <p className="text-sm opacity-80">이번 {period === 'week' ? '주' : period === 'month' ? '달' : '해'}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <Award size={24} className="opacity-80" />
             <span className="text-xs font-medium opacity-80 uppercase">출석률</span>
