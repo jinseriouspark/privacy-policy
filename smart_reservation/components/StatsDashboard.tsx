@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { postToGAS } from '../services/api';
+import { getInstructorStats } from '../lib/supabase/database';
 import { TrendingUp, Users, DollarSign, Calendar, Award, Loader2 } from 'lucide-react';
 
 interface StatsData {
@@ -34,14 +34,10 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
   }, [period]);
 
   const fetchStats = async () => {
+    if (!instructorId) return;
     setLoading(true);
     try {
-      const result = await postToGAS<StatsData>({
-        action: 'getStats',
-        instructorEmail,
-        instructorId,
-        period
-      });
+      const result = await getInstructorStats(instructorId, period);
       setStats(result);
     } catch (err) {
       console.error(err);

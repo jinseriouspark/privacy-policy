@@ -572,3 +572,101 @@ export async function updateAttendance(
   if (error) throw error;
   return data;
 }
+
+/**
+ * 강사 통계 데이터 조회
+ */
+export async function getInstructorStats(
+  instructorId: string,
+  period: 'week' | 'month' | 'year'
+) {
+  const now = new Date();
+  let startDate: Date;
+
+  switch (period) {
+    case 'week':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'month':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case 'year':
+      startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+  }
+
+  const startDateStr = startDate.toISOString();
+
+  // Get reservations for the period
+  const { data: reservations, error: reservationsError } = await supabase
+    .from('reservations')
+    .select(`
+      *,
+      coaching:coaching_id(price),
+      student:student_id(*)
+    `)
+    .eq('instructor_id', instructorId)
+    .gte('start_time', startDateStr)
+    .in('status', ['confirmed', 'completed']);
+
+  if (reservationsError) throw reservationsError;
+
+  // Get all students (unique)
+  const { data: allStudents, error: studentsError } = await supabase
+    .from('reservations')
+    .select('student_id')
+    .eq('instructor_id', instructorId)
+    .in('status', ['confirmed', 'completed']);
+
+  if (studentsError) throw studentsError;
+
+  const uniqueStudentIds = new Set(allStudents?.map(r => r.student_id) || []);
+  const totalStudents = uniqueStudentIds.size;
+
+  // Calculate revenue
+  const totalRevenue = (reservations || []).reduce((sum, r) => {
+    return sum + (r.coaching?.price || 0);
+  }, 0);
+
+  const monthlyRevenue = totalRevenue; // For the selected period
+
+  // Count active students (students with reservations in the period)
+  const activeStudentIds = new Set(reservations?.map(r => r.student_id) || []);
+  const activeStudents = activeStudentIds.size;
+
+  // Total reservations
+  const totalReservations = reservations?.length || 0;
+
+  // Calculate attendance rate
+  const attendedCount = (reservations || []).filter(
+    r => r.attendance_status === 'attended'
+  ).length;
+  const attendanceRate = totalReservations > 0
+    ? (attendedCount / totalReservations) * 100
+    : 0;
+
+  // Popular time slots
+  const timeSlotCounts: { [key: string]: number } = {};
+  (reservations || []).forEach(r => {
+    const time = new Date(r.start_time).toTimeString().split(':').slice(0, 2).join(':');
+    timeSlotCounts[time] = (timeSlotCounts[time] || 0) + 1;
+  });
+
+  const popularTimeSlots = Object.entries(timeSlotCounts)
+    .map(([time, count]) => ({ time, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Recent transactions (mock data for now - would need a transactions table)
+  const recentTransactions: any[] = [];
+
+  return {
+    totalRevenue,
+    monthlyRevenue,
+    totalStudents,
+    activeStudents,
+    totalReservations,
+    attendanceRate,
+    popularTimeSlots,
+    recentTransactions
+  };
+}
