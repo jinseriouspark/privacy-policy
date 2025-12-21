@@ -12,7 +12,7 @@ import { getCurrentCoachId } from './services/api';
 import { AlertTriangle } from 'lucide-react';
 import { signOut } from './lib/supabase/auth';
 import { supabase } from './lib/supabase/client';
-import { getUserByEmail } from './lib/supabase/database';
+import { getUserByEmail, acceptInvitation, getInvitationByCode } from './lib/supabase/database';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -27,6 +27,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // Check for invitation code in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteCode = urlParams.get('invite');
+
         // If there's a coach email in URL, fetch instructor info
         if (coachId) {
           try {
@@ -51,6 +55,21 @@ const App: React.FC = () => {
           const existingUser = await getUserByEmail(email);
 
           if (existingUser && existingUser.user_type) {
+            // Check if there's an invitation code to accept
+            if (inviteCode) {
+              try {
+                await acceptInvitation(inviteCode, existingUser.id, email);
+                alert('강사와 연결되었습니다! 이제 예약이 가능합니다.');
+                // Remove invite param from URL
+                window.history.replaceState({}, '', window.location.pathname);
+              } catch (e: any) {
+                console.error('Failed to accept invitation:', e);
+                if (e.message) {
+                  alert(e.message);
+                }
+              }
+            }
+
             setCurrentUser({
               id: existingUser.id,
               email: existingUser.email,
@@ -71,8 +90,8 @@ const App: React.FC = () => {
             }
           }
         } else {
-          // Not logged in - check if this is a public booking page
-          if (coachId) {
+          // Not logged in - check if this is a public booking page or invite link
+          if (coachId || inviteCode) {
             setCurrentView(ViewState.RESERVATION);
           }
         }

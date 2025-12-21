@@ -758,3 +758,154 @@ export async function getInstructorStats(
     recentTransactions
   };
 }
+
+/**
+ * ==========================================
+ * INVITATION FUNCTIONS (학생 초대 시스템)
+ * ==========================================
+ */
+
+/**
+ * 초대 코드 생성 (6자리 랜덤 코드)
+ */
+function generateInvitationCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 헷갈리는 문자 제외
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
+ * 학생 초대하기
+ */
+export async function createInvitation(instructorId: string, studentEmail: string) {
+  // 이미 초대한 적 있는지 확인
+  const { data: existing } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .eq('email', studentEmail)
+    .eq('status', 'pending')
+    .single();
+
+  if (existing) {
+    // 기존 초대가 있으면 코드 반환
+    return existing;
+  }
+
+  // 새 초대 코드 생성
+  const invitationCode = generateInvitationCode();
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .insert({
+      instructor_id: instructorId,
+      email: studentEmail,
+      invitation_code: invitationCode,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7일
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 초대 코드로 초대 정보 조회
+ */
+export async function getInvitationByCode(invitationCode: string) {
+  const { data, error } = await supabase
+    .from('invitations')
+    .select(`
+      *,
+      instructor:instructor_id(*)
+    `)
+    .eq('invitation_code', invitationCode)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 초대 수락 (학생-강사 연결)
+ */
+export async function acceptInvitation(invitationCode: string, studentId: string, studentEmail: string) {
+  // 초대 정보 조회
+  const invitation = await getInvitationByCode(invitationCode);
+
+  if (!invitation) {
+    throw new Error('유효하지 않은 초대 코드입니다.');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new Error('이미 사용된 초대 코드입니다.');
+  }
+
+  if (new Date(invitation.expires_at) < new Date()) {
+    throw new Error('초대 코드가 만료되었습니다.');
+  }
+
+  if (invitation.email.toLowerCase() !== studentEmail.toLowerCase()) {
+    throw new Error('초대된 이메일과 로그인 이메일이 일치하지 않습니다.');
+  }
+
+  // 학생-강사 관계 생성
+  const { error: relationError } = await supabase
+    .from('student_instructors')
+    .insert({
+      student_id: studentId,
+      instructor_id: invitation.instructor_id
+    });
+
+  if (relationError && relationError.code !== '23505') { // 중복 에러 무시
+    throw relationError;
+  }
+
+  // 초대 상태 업데이트
+  const { error: updateError } = await supabase
+    .from('invitations')
+    .update({
+      status: 'accepted',
+      accepted_at: new Date().toISOString()
+    })
+    .eq('id', invitation.id);
+
+  if (updateError) throw updateError;
+
+  return invitation.instructor;
+}
+
+/**
+ * 강사의 초대 목록 조회
+ */
+export async function getInstructorInvitations(instructorId: string) {
+  const { data, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 학생의 강사 목록 조회
+ */
+export async function getStudentInstructors(studentId: string) {
+  const { data, error } = await supabase
+    .from('student_instructors')
+    .select(`
+      *,
+      instructor:instructor_id(*)
+    `)
+    .eq('student_id', studentId);
+
+  if (error) throw error;
+  return data || [];
+}

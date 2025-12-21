@@ -4,6 +4,7 @@ import { postToGAS, getCurrentCoachId } from '../services/api';
 import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
+import { StudentInviteModal } from './StudentInviteModal';
 import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
@@ -36,6 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [usersLoading, setUsersLoading] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userPackages, setUserPackages] = useState<any[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   
   // Instructor - Settings
   const [settings, setSettings] = useState<AvailabilityData | null>(null);
@@ -406,7 +408,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   };
 
   const renderCoachUsers = () => (
-      <div className="space-y-3">
+      <div className="space-y-4">
+          {/* 학생 초대 버튼 */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg"
+            >
+              <Users size={18} />
+              학생 초대하기
+            </button>
+          </div>
+
           {usersLoading ? (
                <div className="text-center py-8 text-slate-400 text-sm">사용자 목록 로딩 중...</div>
           ) : users.map((u: any, idx) => {
@@ -614,6 +627,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               packages={userPackages}
               onClose={() => setEditingUser(null)}
               onSave={handleUserEditSave}
+            />
+          )}
+
+          {/* Student Invite Modal */}
+          {showInviteModal && (
+            <StudentInviteModal
+              instructorId={user.id}
+              instructorUsername={user.username || ''}
+              onClose={() => setShowInviteModal(false)}
+              onSuccess={() => {
+                fetchUsers();
+                setShowInviteModal(false);
+              }}
             />
           )}
 
