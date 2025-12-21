@@ -1,0 +1,418 @@
+
+import { UserRole, User, ScheduleItem, VideoContent, AppConfig } from '../types';
+import { driveService } from './googleDrive';
+
+// 1. Google Apps Script Web App URL (from .env)
+const SCRIPT_URL: string = import.meta.env.VITE_SCRIPT_URL;
+
+// 2. Google Client ID (from .env)
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '207152218307-5bab17pik3kiosq3jvdo8fiilp373bmn.apps.googleusercontent.com';
+
+export const googleAuthService = {
+  signIn: async (role: UserRole): Promise<User> => {
+    // ---------------------------------------------------------
+    // MOCK LOGIN FOR TESTING (Toggle this block for testing/production)
+    // ---------------------------------------------------------
+    /*
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (role === 'monk') {
+          resolve({
+            name: '정수스님',
+            email: 'monk@jeongsu.org',
+            photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Monk',
+            streak: 108,
+            role: 'monk',
+            trackingIds: [],
+            dharmaName: '정수'
+          });
+        } else {
+          resolve({
+            name: '김보살',
+            email: 'bosal@example.com',
+            photoUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+            streak: 12,
+            role: 'believer',
+            trackingIds: ['1', '2', '3', '7'] // Mock saved IDs
+          });
+        }
+      }, 500);
+    });
+    */
+    // ---------------------------------------------------------
+
+    return new Promise((resolve, reject) => {
+      if (!window.google) return reject("Google SDK not loaded");
+
+      // Drive API는 스님만 필요 (스님 계정 하나의 드라이브만 연동)
+      const scopes = role === 'monk'
+        ? 'email profile openid https://www.googleapis.com/auth/drive.readonly'
+        : 'email profile openid';
+
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: scopes,
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            try {
+              // Save access token for Drive API (스님만)
+              if (role === 'monk') {
+                driveService.setAccessToken(tokenResponse.access_token);
+                console.log('✅ Drive API access token saved (monk only)');
+              }
+
+              // 1. Get Google Profile
+              const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+              });
+              const userInfo = await userInfoResponse.json();
+
+              const tempUser: User = {
+                name: userInfo.name,
+                email: userInfo.email,
+                photoUrl: userInfo.picture,
+                streak: 1,
+                role: role,
+                trackingIds: []
+              };
+
+              // 2. SYNC with DB immediately to get persistent data (trackingIds)
+              const syncedUser = await dbService.syncUser(tempUser);
+              resolve(syncedUser);
+
+            } catch (e) {
+              reject(e);
+            }
+          } else {
+            reject("No access token");
+          }
+        },
+        error_callback: (error: any) => {
+           if (error.type === 'popup_closed') {
+             // Ignore popup closed
+           } else {
+             reject(new Error(`Google Login Error: ${error.type}. Check console for details.`));
+             // Tip for redirect_uri_mismatch
+             if(error.type === 'invalid_request' || error.type === 'redirect_uri_mismatch') {
+               alert(`구글 로그인 설정 오류입니다.\nGoogle Cloud Console에 아래 주소를 등록해주세요:\n${window.location.origin}`);
+             }
+           }
+        }
+      });
+
+      client.requestAccessToken();
+    });
+  },
+
+  signOut: async () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
+  }
+};
+
+// --- DB Service ---
+
+// 로컬 모드 플래그 (Google Apps Script 없이 로컬스토리지만 사용)
+const USE_LOCAL_MODE = false; // ✅ Google Sheets에 저장 활성화
+
+const callScript = async (action: string, payload: any = {}) => {
+  console.log(`📡 API 요청: ${action}`, payload);
+
+  // 로컬 모드: 서버 없이 로컬스토리지만 사용
+  if (USE_LOCAL_MODE) {
+    console.log('💾 로컬 모드: 서버 대신 로컬스토리지 사용');
+    return { status: 'success', message: 'Local mode - data saved to localStorage' };
+  }
+
+  // 서버 모드 - POST 방식 사용
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action,
+        ...payload
+      }),
+      redirect: 'follow'
+    });
+
+    console.log(`📡 응답 상태: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const json = await response.json();
+    console.log(`📡 응답 데이터:`, json);
+
+    if (json.status === 'error') {
+       throw new Error(json.message || 'API returned error status');
+    }
+
+    return json;
+
+  } catch (error) {
+    console.error(`❌ API Call ${action} failed:`, error);
+    console.error('요청 URL:', SCRIPT_URL);
+    console.error('요청 페이로드:', { action, ...payload });
+    throw error;
+  }
+};
+
+export const dbService = {
+  getSettings: async (): Promise<AppConfig> => {
+    try {
+      const res = await callScript('GET_SETTINGS');
+      if (res.settings) {
+        localStorage.setItem('appConfig', JSON.stringify(res.settings));
+        return res.settings;
+      }
+    } catch (e) {
+      // Silently use cache if API fails
+    }
+    const cache = localStorage.getItem('appConfig');
+    return cache ? JSON.parse(cache) : {};
+  },
+  
+  updateSettings: async (settings: AppConfig) => {
+    const res = await callScript('UPDATE_SETTINGS', { settings });
+    localStorage.setItem('appConfig', JSON.stringify(settings));
+    return res;
+  },
+
+  getVideos: async (): Promise<VideoContent[]> => {
+    try {
+      const res = await callScript('GET_VIDEOS');
+      if(res.videos) {
+        localStorage.setItem('videos', JSON.stringify(res.videos));
+        return res.videos;
+      }
+    } catch (e) {
+      // Silently use cache if API fails
+    }
+    const cache = localStorage.getItem('videos');
+    return cache ? JSON.parse(cache) : [];
+  },
+
+  addVideo: async (video: Partial<VideoContent>) => {
+    return await callScript('ADD_VIDEO', { video });
+  },
+
+  updateVideoStatus: async (id: string, status: 'draft' | 'published') => {
+    const updates: any = { status };
+    if (status === 'published') {
+      updates.publishedAt = new Date().toISOString();
+    }
+    return await callScript('UPDATE_VIDEO', { id, updates });
+  },
+  
+  deleteVideo: async (id: string) => {
+    return await callScript('DELETE_VIDEO', { id });
+  },
+
+  getSchedules: async (email: string, useCache: boolean = true): Promise<ScheduleItem[]> => {
+    // 🚀 캐시 우선 사용 (빠른 초기 로딩)
+    if (useCache) {
+      const cache = localStorage.getItem(`schedules_${email}`);
+      if (cache) {
+        console.log('💾 캐시에서 일정 로드 (빠른 표시)');
+
+        // 백그라운드에서 서버 데이터 업데이트 (다음번 로딩을 위해)
+        setTimeout(() => {
+          dbService.getSchedules(email, false).catch(e =>
+            console.warn('백그라운드 업데이트 실패:', e)
+          );
+        }, 100);
+
+        return JSON.parse(cache);
+      }
+    }
+
+    // 서버에서 최신 데이터 가져오기
+    try {
+      const res = await callScript('GET_SCHEDULES');
+      const all = res.schedules || [];
+      console.log('📅 서버에서 일정 로드:', all.length, '개');
+
+      // Get all users to check who is a monk
+      const usersRes = await callScript('GET_USERS');
+      const monks = (usersRes.users || []).filter((u: any) => u.role === 'monk').map((u: any) => u.email);
+
+      // Include schedules that are:
+      // 1. Temple events (everyone can see)
+      // 2. Owned by this user
+      // 3. User is invited to this schedule
+      // 4. Owned by a monk (all monk schedules visible to everyone)
+      const filtered = all.filter((s: ScheduleItem) =>
+        s.type === 'temple' ||
+        s.ownerEmail === email ||
+        (s.invitedEmails && s.invitedEmails.includes(email)) ||
+        (s.ownerEmail && monks.includes(s.ownerEmail))
+      );
+
+      console.log('✅ 필터링된 일정:', filtered.length, '개');
+
+      // 캐시 업데이트
+      localStorage.setItem(`schedules_${email}`, JSON.stringify(filtered));
+      return filtered;
+    } catch (e) {
+      console.warn('일정 로드 실패, 캐시 사용:', e);
+      const cache = localStorage.getItem(`schedules_${email}`);
+      return cache ? JSON.parse(cache) : [];
+    }
+  },
+
+  addSchedule: async (schedule: Partial<ScheduleItem>, email: string) => {
+    return await callScript('ADD_SCHEDULE', { schedule: { ...schedule, ownerEmail: email } });
+  },
+
+  updateSchedule: async (schedule: Partial<ScheduleItem>) => {
+    return await callScript('UPDATE_SCHEDULE', { schedule });
+  },
+
+  deleteSchedule: async (id: string) => {
+    return await callScript('DELETE_SCHEDULE', { id });
+  },
+
+  rsvpEvent: async (scheduleId: string, userEmail: string, isJoining: boolean) => {
+    return await callScript('RSVP_EVENT', { scheduleId, userEmail, isJoining });
+  },
+
+  updateUserGoals: async (email: string, trackingIds: string[]) => {
+    console.log('🔄 UPDATE_GOALS 호출:', { email, trackingIds });
+    const result = await callScript('UPDATE_GOALS', { email, trackingIds });
+    console.log('📥 UPDATE_GOALS 응답:', result);
+    return result;
+  },
+  
+  syncUser: async (user: User) => {
+    try {
+      const res = await callScript('LOGIN', { user });
+      if (res && res.user) {
+        console.log('✅ 사용자 서버 동기화 성공:', res.user);
+        return res.user;
+      }
+    } catch (e) {
+      console.warn('⚠️ 서버 동기화 실패, 로컬 데이터 사용:', e);
+    }
+    // Fallback: 서버 동기화 실패 시 원본 user 반환
+    console.log('💾 로컬 사용자 데이터 사용:', user);
+    return user;
+  },
+
+  updateUserProfile: async (email: string, updates: any) => {
+    return await callScript('UPDATE_PROFILE', { email, updates });
+  },
+
+  updateNotificationSettings: async (email: string, settings: any) => {
+    return await callScript('UPDATE_NOTIFICATIONS', { email, settings });
+  },
+  
+  getPracticeLogs: async (email: string) => {
+    try {
+      const res = await callScript('GET_PRACTICE_LOGS', { email });
+      if(res.logs) {
+        localStorage.setItem(`logs_${email}`, JSON.stringify(res.logs));
+        return res.logs;
+      }
+    } catch (e) {
+       console.warn("Failed to fetch logs, using cache", e);
+    }
+    const cache = localStorage.getItem(`logs_${email}`);
+    return cache ? JSON.parse(cache) : [];
+  },
+  
+  savePracticeLog: async (log: any) => {
+    console.log('📡 API 호출: SAVE_PRACTICE', log);
+    try {
+      const result = await callScript('SAVE_PRACTICE', { log });
+      console.log('✅ Google Sheets 저장 성공:', result);
+
+      // 로컬 캐시에도 저장
+      const cacheKey = `logs_${log.email}`;
+      const cached = localStorage.getItem(cacheKey);
+      const logs = cached ? JSON.parse(cached) : [];
+      const updated = logs.filter((l: any) => l.id !== log.id);
+      updated.push(log);
+      localStorage.setItem(cacheKey, JSON.stringify(updated));
+      console.log('💾 로컬 캐시 업데이트 완료');
+
+      return result;
+    } catch (error) {
+      console.error('❌ Google Sheets 저장 실패:', error);
+      console.error('Apps Script가 배포되어 있는지 확인하세요!');
+      throw error;
+    }
+  },
+
+  getUsers: async () => {
+    try {
+      const res = await callScript('GET_USERS');
+      if (res.users) {
+        localStorage.setItem('users', JSON.stringify(res.users));
+        return res.users;
+      }
+    } catch (e) {
+      console.warn('사용자 목록 로드 실패:', e);
+    }
+    const cache = localStorage.getItem('users');
+    return cache ? JSON.parse(cache) : [];
+  },
+
+  // 🆕 수행 항목 관리
+  getPracticeItems: async () => {
+    try {
+      const res = await callScript('GET_PRACTICE_ITEMS');
+      if (res.items) {
+        localStorage.setItem('practiceItems', JSON.stringify(res.items));
+        return res.items;
+      }
+    } catch (e) {
+      console.warn('수행 항목 로드 실패, 기본값 사용:', e);
+    }
+
+    // 캐시 확인
+    const cache = localStorage.getItem('practiceItems');
+    if (cache) return JSON.parse(cache);
+
+    // 📦 Fallback: 기본 항목 (필수 2개 + 선택 23개 = 총 25개)
+    return [
+      // 필수 항목
+      { id: '1', category: '필수', question: '경전읽기', order: 1 },
+      { id: '2', category: '필수', question: '염불/참선', order: 2 },
+      // 정견·공관
+      { id: '3', category: '정견·공관', question: '나/사물에 대한 집착을 자각했는가?', order: 3 },
+      { id: '4', category: '정견·공관', question: '모든것이 인연따라 이루어 짐을 떠올렸는가?', order: 4 },
+      { id: '5', category: '정견·공관', question: '공을 허무가 아닌 관계로 체험했는가?', order: 5 },
+      // 보리심
+      { id: '6', category: '보리심', question: '하루 시작 하기 전 발원을 했는가?', order: 6 },
+      { id: '7', category: '보리심', question: '힘들 때도 발원을 상기했는가?', order: 7 },
+      { id: '8', category: '보리심', question: '성과를 내 것이라 집착하지 않았는가?', order: 8 },
+      // 육바라밀
+      { id: '9', category: '보시', question: '재물·말·지혜의 보시를 실천했는가?', order: 9 },
+      { id: '10', category: '지계', question: '타인에게 해를 끼치지 않았는가?', order: 10 },
+      { id: '11', category: '인욕', question: '분노 대신 알아차림을 유지했는가?', order: 11 },
+      { id: '12', category: '정진', question: '수행·학습·봉사를 게을리하지 않았는가?', order: 12 },
+      { id: '13', category: '선정', question: '좌선·호흡관을 실천했는가?', order: 13 },
+      { id: '14', category: '반야', question: '바라밀을 공관과 연결했는가?', order: 14 },
+      // 방편·자비
+      { id: '15', category: '방편·자비', question: '상대의 상황에 맞춰 말했는가?', order: 15 },
+      { id: '16', category: '방편·자비', question: '옳고 그름보다 이익을 우선했는가?', order: 16 },
+      { id: '17', category: '방편·자비', question: '행위 후 집착이 남지 않았는가?', order: 17 },
+      // 두 진리
+      { id: '18', category: '두 진리', question: '세속제에서 도덕·규범을 지켰는가?', order: 18 },
+      { id: '19', category: '두 진리', question: '승의제에서 무자성을 기억했는가?', order: 19 },
+      { id: '20', category: '두 진리', question: '두 진리를 균형 있게 적용했는가?', order: 20 },
+      // 무주열반
+      { id: '21', category: '무주열반', question: '열반에 집착하지 않았는가?', order: 21 },
+      { id: '22', category: '무주열반', question: '득실에 매이지 않았는가?', order: 22 },
+      { id: '23', category: '무주열반', question: '머물 곳 없음의 태도를 적용했는가?', order: 23 },
+      // 자기 성찰
+      { id: '24', category: '자기 성찰', question: '집착 패턴을 기록했는가?', order: 24 },
+      { id: '25', category: '자기 성찰', question: '마음비움과 자비가 서로를 보완했는가?', order: 25 }
+    ];
+  }
+};
