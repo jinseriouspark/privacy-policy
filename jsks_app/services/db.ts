@@ -184,6 +184,37 @@ export const dbService = {
     return { message: 'ok' };
   },
 
+  updateVideo: async (id: string, videoData: Partial<VideoContent>) => {
+    const updateData: any = {
+      title: videoData.title,
+      author: videoData.author,
+      description: videoData.description,
+      duration: videoData.duration,
+      youtube_id: videoData.youtubeId,
+      thumbnail_url: videoData.thumbnailUrl,
+      media_type: videoData.mediaType,
+      tags: videoData.tags,
+      drive_url: videoData.driveUrl,
+      drive_file_id: videoData.driveFileId,
+      text_content: videoData.textContent,
+    };
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    const { error } = await supabase
+      .from('videos')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    return { message: 'ok' };
+  },
+
   updateVideoStatus: async (id: string, status: 'draft' | 'published') => {
     const updates: any = { status };
     if (status === 'published') {

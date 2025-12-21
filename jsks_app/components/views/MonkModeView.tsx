@@ -18,6 +18,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   // Video Manager State
   const [videos, setVideos] = useState<VideoContent[]>([]);
   const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<VideoContent | null>(null);
   const [addMode, setAddMode] = useState<'drive' | 'youtube'>('drive');
   const [showDrivePickerForContent, setShowDrivePickerForContent] = useState(false);
   const [newVideo, setNewVideo] = useState({
@@ -108,6 +109,13 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   };
 
 
+  // 한국 시간으로 현재 시각 얻기
+  const getKoreanTime = () => {
+    const now = new Date();
+    const koreanTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+    return koreanTime.toISOString();
+  };
+
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -116,8 +124,8 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       author: newVideo.author,
       description: newVideo.description,
       duration: '00:00',
-      status: 'draft',
-      uploadedAt: new Date().toISOString(),
+      status: editingVideo ? editingVideo.status : 'draft',
+      uploadedAt: editingVideo ? editingVideo.uploadedAt : getKoreanTime(),
     };
 
     if (addMode === 'youtube') {
@@ -182,8 +190,17 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       }
     }
 
-    await dbService.addVideo(videoData);
-    alert('콘텐츠가 등록되었습니다.');
+    if (editingVideo) {
+      // 편집 모드
+      await dbService.updateVideo(editingVideo.id, videoData);
+      alert('콘텐츠가 수정되었습니다.');
+      setEditingVideo(null);
+    } else {
+      // 새로 추가
+      await dbService.addVideo(videoData);
+      alert('콘텐츠가 등록되었습니다.');
+    }
+
     setIsAddingVideo(false);
     setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
     fetchVideos();
@@ -212,6 +229,22 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       alert('대기 상태로 변경되었습니다.');
       fetchVideos();
     }
+  };
+
+  const handleEditVideo = (video: VideoContent) => {
+    setEditingVideo(video);
+    setNewVideo({
+      title: video.title,
+      author: video.author || '지월스님',
+      description: video.description || '',
+      driveUrl: video.driveUrl || '',
+      driveFileName: video.driveUrl ? '기존 파일' : '',
+      youtubeLink: video.youtubeId ? `https://www.youtube.com/watch?v=${video.youtubeId}` : '',
+      tags: (video.tags && video.tags[0]) || '전체'
+    });
+    setAddMode(video.mediaType === 'youtube' ? 'youtube' : 'drive');
+    setIsAddingVideo(true);
+    setActiveTab('videos');
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -321,7 +354,13 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
                     <div className="flex-1">
                       <h4 className="font-bold text-dark mb-1">{v.title}</h4>
                       <p className="text-sm text-gray-500 mb-2">{v.author} • {v.duration}</p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleEditVideo(v)}
+                          className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm hover:bg-blue-100"
+                        >
+                          편집
+                        </button>
                         <button
                           onClick={() => handlePublishContent(v.id)}
                           className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600"
@@ -358,7 +397,13 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
                   <div className="flex-1">
                     <h4 className="font-bold text-dark mb-1">{v.title}</h4>
                     <p className="text-sm text-gray-500 mb-2">{v.author} • {v.duration}</p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleEditVideo(v)}
+                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm hover:bg-blue-100"
+                      >
+                        편집
+                      </button>
                       <button
                         onClick={() => handleUnpublishContent(v.id)}
                         className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold text-sm hover:bg-gray-200"
@@ -385,7 +430,14 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   if (activeTab === 'videos') {
     return (
       <div className="px-6 pt-14 pb-10 animate-fade-in min-h-screen bg-[#F8F9FA]">
-        <Header title="오늘의법문 업로드" onBack={() => { setIsAddingVideo(false); setActiveTab('content-review'); }} />
+        <Header
+          title={editingVideo ? "콘텐츠 편집" : "오늘의법문 업로드"}
+          onBack={() => {
+            setIsAddingVideo(false);
+            setEditingVideo(null);
+            setActiveTab('content-review');
+          }}
+        />
         {isAddingVideo ? (
           <form onSubmit={handleAddVideo} className="bg-white p-6 rounded-[24px] shadow-card space-y-4">
             {addMode === 'youtube' ? (
@@ -478,8 +530,19 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="button" onClick={() => setIsAddingVideo(false)} className="flex-1 py-3 bg-gray-100 rounded-xl">취소</button>
-              <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl font-bold">등록</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingVideo(false);
+                  setEditingVideo(null);
+                }}
+                className="flex-1 py-3 bg-gray-100 rounded-xl"
+              >
+                취소
+              </button>
+              <button type="submit" className="flex-1 py-3 bg-primary text-white rounded-xl font-bold">
+                {editingVideo ? '수정 완료' : '등록'}
+              </button>
             </div>
           </form>
         ) : (
