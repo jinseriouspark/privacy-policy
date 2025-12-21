@@ -119,92 +119,112 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let videoData: Partial<VideoContent> = {
-      title: newVideo.title,
-      author: newVideo.author,
-      description: newVideo.description,
-      duration: '00:00',
-      status: editingVideo ? editingVideo.status : 'draft',
-      uploadedAt: editingVideo ? editingVideo.uploadedAt : getKoreanTime(),
-    };
-
-    if (addMode === 'youtube') {
-      // YouTube 링크 처리
-      if (!newVideo.youtubeLink || !newVideo.title) {
-        alert('제목과 YouTube 링크를 입력해주세요.');
-        return;
-      }
-
-      let videoId = '';
-      try {
-        const url = new URL(newVideo.youtubeLink);
-        if (url.hostname.includes('youtube.com')) videoId = url.searchParams.get('v') || '';
-        else if (url.hostname.includes('youtu.be')) videoId = url.pathname.slice(1);
-      } catch { /* ignore */ }
-
-      if (!videoId) {
-        alert('유효한 YouTube 링크를 입력해주세요.');
-        return;
-      }
-
-      videoData = {
-        ...videoData,
-        youtubeId: videoId,
-        thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        mediaType: 'youtube',
-        tags: [newVideo.tags]
+    try {
+      let videoData: Partial<VideoContent> = {
+        title: newVideo.title,
+        author: newVideo.author,
+        description: newVideo.description,
+        duration: editingVideo ? editingVideo.duration : '00:00',
+        status: editingVideo ? editingVideo.status : 'draft',
+        uploadedAt: editingVideo ? editingVideo.uploadedAt : getKoreanTime(),
       };
-    } else {
-      // 드라이브 파일 처리
-      if (!newVideo.title) {
-        alert('제목을 입력해주세요.');
-        return;
-      }
 
-      // 파일이 선택된 경우에만 파일 정보 추가
-      if (newVideo.driveUrl) {
-        let driveFileId = '';
+      if (addMode === 'youtube') {
+        // YouTube 링크 처리
+        if (!newVideo.youtubeLink || !newVideo.title) {
+          alert('제목과 YouTube 링크를 입력해주세요.');
+          return;
+        }
+
+        let videoId = '';
         try {
-          const url = new URL(newVideo.driveUrl);
-          const match = url.pathname.match(/\/d\/([^/]+)/);
-          if (match) driveFileId = match[1];
+          const url = new URL(newVideo.youtubeLink);
+          if (url.hostname.includes('youtube.com')) videoId = url.searchParams.get('v') || '';
+          else if (url.hostname.includes('youtu.be')) videoId = url.pathname.slice(1);
         } catch { /* ignore */ }
+
+        if (!videoId) {
+          alert('유효한 YouTube 링크를 입력해주세요.');
+          return;
+        }
 
         videoData = {
           ...videoData,
-          driveUrl: newVideo.driveUrl,
-          driveFileId: driveFileId || undefined,
-          mediaType: 'drive-video',
-          thumbnailUrl: 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Drive+File',
+          youtubeId: videoId,
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          mediaType: 'youtube',
           tags: [newVideo.tags]
         };
       } else {
-        // 파일 없이 텍스트만 등록
-        videoData = {
-          ...videoData,
-          mediaType: 'text-only',
-          thumbnailUrl: 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Text+Content',
-          tags: [newVideo.tags],
-          textContent: newVideo.description // description을 textContent로도 저장
-        };
+        // 드라이브 파일 처리
+        if (!newVideo.title) {
+          alert('제목을 입력해주세요.');
+          return;
+        }
+
+        // 편집 모드이고 파일 정보가 변경되지 않았으면 기존 정보 유지
+        if (editingVideo && newVideo.driveFileName === '기존 파일') {
+          videoData = {
+            ...videoData,
+            driveUrl: editingVideo.driveUrl,
+            driveFileId: editingVideo.driveFileId,
+            mediaType: editingVideo.mediaType,
+            thumbnailUrl: editingVideo.thumbnailUrl,
+            tags: [newVideo.tags],
+            textContent: newVideo.description
+          };
+        } else if (newVideo.driveUrl) {
+          // 새 파일이 선택된 경우
+          let driveFileId = '';
+          try {
+            const url = new URL(newVideo.driveUrl);
+            const match = url.pathname.match(/\/d\/([^/]+)/);
+            if (match) driveFileId = match[1];
+          } catch { /* ignore */ }
+
+          videoData = {
+            ...videoData,
+            driveUrl: newVideo.driveUrl,
+            driveFileId: driveFileId || undefined,
+            mediaType: 'drive-video',
+            thumbnailUrl: 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Drive+File',
+            tags: [newVideo.tags]
+          };
+        } else {
+          // 파일 없이 텍스트만 등록
+          videoData = {
+            ...videoData,
+            mediaType: editingVideo ? editingVideo.mediaType : 'text-only',
+            thumbnailUrl: editingVideo ? editingVideo.thumbnailUrl : 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Text+Content',
+            tags: [newVideo.tags],
+            textContent: newVideo.description
+          };
+        }
       }
-    }
 
-    if (editingVideo) {
-      // 편집 모드
-      await dbService.updateVideo(editingVideo.id, videoData);
-      alert('콘텐츠가 수정되었습니다.');
-      setEditingVideo(null);
-    } else {
-      // 새로 추가
-      await dbService.addVideo(videoData);
-      alert('콘텐츠가 등록되었습니다.');
-    }
+      if (editingVideo) {
+        // 편집 모드
+        console.log('🔄 비디오 수정 시작:', editingVideo.id, videoData);
+        await dbService.updateVideo(editingVideo.id, videoData);
+        console.log('✅ 비디오 수정 완료');
+        alert('콘텐츠가 수정되었습니다.');
+        setEditingVideo(null);
+      } else {
+        // 새로 추가
+        console.log('➕ 비디오 추가 시작:', videoData);
+        await dbService.addVideo(videoData);
+        console.log('✅ 비디오 추가 완료');
+        alert('콘텐츠가 등록되었습니다.');
+      }
 
-    setIsAddingVideo(false);
-    setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
-    fetchVideos();
-    setActiveTab('content-review');
+      setIsAddingVideo(false);
+      setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
+      await fetchVideos();
+      setActiveTab('content-review');
+    } catch (error) {
+      console.error('❌ 비디오 저장 실패:', error);
+      alert(`저장에 실패했습니다.\n\n에러: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
   };
 
   const handleDeleteVideo = async (id: string) => {
