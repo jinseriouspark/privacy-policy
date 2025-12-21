@@ -33,8 +33,13 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   // RSVP 버튼 표시 조건: 절 행사 && 참석 인원 설정이 있는 경우
   const showRSVPButton = isTempleEvent && currentUser;
 
-  // 삭제 버튼 표시 조건: 개인 행사 && 본인이 만든 경우
-  const canDelete = isPersonalEvent && currentUser && schedule.ownerEmail === currentUser.email;
+  // 삭제 버튼 표시 조건:
+  // 1) 개인 행사 && 본인이 만든 경우
+  // 2) 절 행사 && 스님 관리자인 경우
+  const canDelete = currentUser && (
+    (isPersonalEvent && schedule.ownerEmail === currentUser.email) ||
+    (isTempleEvent && currentUser.role === 'monk')
+  );
 
   const formatDateTime = (dateStr?: string, timeStr?: string) => {
     if (!dateStr) return '';
@@ -223,45 +228,46 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
           )}
         </div>
 
-        {/* RSVP Buttons (절 행사만, 로그인한 사용자만) */}
-        {showRSVPButton && !hasJoined && (
+        {/* Action Buttons */}
+        {(showRSVPButton || canDelete) && (
           <div className="sticky bottom-0 bg-white border-t border-gray-100 p-5">
-            <button
-              onClick={() => handleRSVP(true)}
-              disabled={isProcessing || isFull}
-              className="w-full py-3.5 bg-primary text-white rounded-[14px] font-bold text-[15px] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <CheckCircle size={18} />
-              {isFull ? '정원 마감' : '참석 신청하기'}
-            </button>
-          </div>
-        )}
+            <div className="space-y-2.5">
+              {/* RSVP 버튼 (절 행사, 일반 신도) */}
+              {showRSVPButton && !hasJoined && !canDelete && (
+                <button
+                  onClick={() => handleRSVP(true)}
+                  disabled={isProcessing || isFull}
+                  className="w-full py-3.5 bg-primary text-white rounded-[14px] font-bold text-[15px] hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <CheckCircle size={18} />
+                  {isFull ? '정원 마감' : '참석 신청하기'}
+                </button>
+              )}
 
-        {/* 참석 취소 버튼 */}
-        {showRSVPButton && hasJoined && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 p-5">
-            <button
-              onClick={() => handleRSVP(false)}
-              disabled={isProcessing}
-              className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-[14px] font-bold text-[15px] hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <XCircle size={18} />
-              참석 신청 취소하기
-            </button>
-          </div>
-        )}
+              {/* 참석 취소 버튼 (절 행사, 일반 신도) */}
+              {showRSVPButton && hasJoined && !canDelete && (
+                <button
+                  onClick={() => handleRSVP(false)}
+                  disabled={isProcessing}
+                  className="w-full py-3.5 bg-gray-100 text-gray-700 rounded-[14px] font-bold text-[15px] hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <XCircle size={18} />
+                  참석 신청 취소하기
+                </button>
+              )}
 
-        {/* 개인 행사 삭제 버튼 */}
-        {canDelete && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 p-5">
-            <button
-              onClick={handleDelete}
-              disabled={isProcessing}
-              className="w-full py-3.5 bg-red-500 text-white rounded-[14px] font-bold text-[15px] hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <Trash2 size={18} />
-              일정 삭제하기
-            </button>
+              {/* 삭제 버튼 (개인 행사 본인, 절 행사 스님) */}
+              {canDelete && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isProcessing}
+                  className="w-full py-3.5 bg-red-500 text-white rounded-[14px] font-bold text-[15px] hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  일정 삭제하기
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
