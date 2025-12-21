@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { User, AppConfig } from '../../types';
-import { Settings, Award, LogOut, CheckSquare, Edit2, Check, Flower2, LayoutGrid, Calendar } from 'lucide-react';
+import { Settings, Award, LogOut, CheckSquare, Edit2, Check, Flower2, LayoutGrid, Calendar, AlertCircle } from 'lucide-react';
 import { dbService } from '../../services/db';
+import { validateDharmaName, ValidationResult } from '../../utils/textValidator';
 
 interface ProfileViewProps {
   user: User | null;
@@ -21,6 +22,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onChangeCheck
   const [editName, setEditName] = useState('');
   const [isResting, setIsResting] = useState(false);
   const [showViewSelector, setShowViewSelector] = useState(false);
+  const [dharmaValidation, setDharmaValidation] = useState<ValidationResult | null>(null);
 
   // Get current preferred view
   const [preferredView, setPreferredView] = useState<ViewMode>(() => {
@@ -33,10 +35,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onChangeCheck
   // Initialize edit name when entering edit mode
   const startEditing = () => {
     setEditName(user.dharmaName || '');
+    setDharmaValidation(null);
     setIsEditingDharma(true);
   };
 
+  // 법명 입력 시 검증
+  const handleDharmaChange = (value: string) => {
+    setEditName(value);
+    if (value.length >= 1) {
+      const validation = validateDharmaName(value);
+      setDharmaValidation(validation);
+    } else {
+      setDharmaValidation(null);
+    }
+  };
+
   const handleSaveDharma = async () => {
+    // 저장 전 최종 검증
+    const validation = validateDharmaName(editName);
+    if (!validation.isValid) {
+      const confirmMsg = `다음 문제가 있습니다:\n${validation.warnings.join('\n')}\n\n그래도 저장하시겠습니까?`;
+      if (!confirm(confirmMsg)) return;
+    }
+
     setIsResting(true);
 
     await Promise.all([
@@ -49,6 +70,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onChangeCheck
     }
     setIsEditingDharma(false);
     setIsResting(false);
+    setDharmaValidation(null);
   };
 
   const handleViewChange = (mode: ViewMode) => {
@@ -99,30 +121,52 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onChangeCheck
       </div>
 
       {/* Dharma Name Section - Compact */}
-      <div className="bg-white p-4 rounded-[16px] shadow-sm mb-6 flex items-center justify-between">
-        <div className="flex-1">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">법명</h3>
-          {isEditingDharma ? (
-            <input
-              className="text-[14px] font-bold text-dark w-full border-b-2 border-primary focus:outline-none bg-transparent"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              placeholder="법명을 입력하세요"
-              autoFocus
-            />
-          ) : (
-            <span className="text-[14px] font-bold text-dark">{user.dharmaName || '법명을 설정해주세요'}</span>
-          )}
+      <div className="bg-white p-4 rounded-[16px] shadow-sm mb-6">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex-1">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">법명</h3>
+            {isEditingDharma ? (
+              <div className="relative">
+                <input
+                  className={`text-[14px] font-bold text-dark w-full border-b-2 focus:outline-none bg-transparent transition-colors ${
+                    dharmaValidation && !dharmaValidation.isValid
+                      ? 'border-yellow-400'
+                      : 'border-primary'
+                  }`}
+                  value={editName}
+                  onChange={(e) => handleDharmaChange(e.target.value)}
+                  placeholder="법명을 입력하세요"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <span className="text-[14px] font-bold text-dark">{user.dharmaName || '법명을 설정해주세요'}</span>
+            )}
+          </div>
+          <button
+            onClick={() => isEditingDharma ? handleSaveDharma() : startEditing()}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm flex-shrink-0
+              ${isEditingDharma
+                ? 'bg-primary text-white hover:bg-green-700'
+                : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+          >
+            {isEditingDharma ? <Check size={16} /> : <Edit2 size={16} />}
+          </button>
         </div>
-        <button
-          onClick={() => isEditingDharma ? handleSaveDharma() : startEditing()}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm
-            ${isEditingDharma
-              ? 'bg-primary text-white hover:bg-green-700'
-              : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
-        >
-          {isEditingDharma ? <Check size={16} /> : <Edit2 size={16} />}
-        </button>
+
+        {/* 법명 검증 경고 */}
+        {isEditingDharma && dharmaValidation && !dharmaValidation.isValid && (
+          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
+            <AlertCircle size={14} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <ul className="text-[10px] text-yellow-700 space-y-0.5">
+                {dharmaValidation.warnings.map((warning, idx) => (
+                  <li key={idx}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Menu List - Compact */}

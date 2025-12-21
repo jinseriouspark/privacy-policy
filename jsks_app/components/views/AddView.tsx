@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { dbService } from '../../services/db';
 import { User, AppConfig, ScheduleType } from '../../types';
-import { Lock, Globe, Flower2, ArrowLeft, Search, FolderOpen } from 'lucide-react';
+import { Lock, Globe, Flower2, ArrowLeft, Search, FolderOpen, AlertCircle, CheckCircle } from 'lucide-react';
 import DriveFilePicker from '../DriveFilePicker';
 import { getKoreanToday } from '../../utils/dateUtils';
+import { validateTitle, ValidationResult, autoCorrect } from '../../utils/textValidator';
 
 interface AddViewProps {
   onComplete: () => void;
@@ -39,6 +40,10 @@ const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig })
   const [attachmentName, setAttachmentName] = useState('');
   const [showDrivePicker, setShowDrivePicker] = useState(false);
   const isAdmin = currentUser?.role === 'monk' || currentUser?.role === 'developer';
+
+  // 오타 검증 상태
+  const [titleValidation, setTitleValidation] = useState<ValidationResult | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
 
   // 스님 드라이브 폴더 ID
   const MONK_DRIVE_FOLDER_ID = '1Iw3aFnn0cimoiD2WaTbuEQRcFflwdFkC';
@@ -82,6 +87,31 @@ const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig })
   const handleSelectDriveFile = (fileUrl: string, fileName: string) => {
     setAttachmentUrl(fileUrl);
     setAttachmentName(fileName);
+  };
+
+  // 제목 입력 시 오타 검증
+  const handleTitleChange = (value: string) => {
+    setFormData({...formData, title: value});
+
+    // 2자 이상일 때만 검증
+    if (value.length >= 2) {
+      const validation = validateTitle(value);
+      setTitleValidation(validation);
+      setShowValidation(!validation.isValid);
+    } else {
+      setTitleValidation(null);
+      setShowValidation(false);
+    }
+  };
+
+  // 자동 수정 적용
+  const handleAutoFix = () => {
+    if (titleValidation?.suggestions && titleValidation.suggestions.length > 0) {
+      const corrected = titleValidation.suggestions[0];
+      setFormData({...formData, title: corrected});
+      setTitleValidation(null);
+      setShowValidation(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,14 +176,70 @@ const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig })
           {/* Title Input */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-gray-500">이름</label>
-            <input
-              type="text"
-              placeholder="일정 이름을 입력하세요"
-              className="w-full p-4 text-lg bg-white border border-gray-200 rounded-[16px] focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary"
-              value={formData.title}
-              onChange={e => setFormData({...formData, title: e.target.value})}
-              required
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="일정 이름을 입력하세요"
+                className={`w-full p-4 text-lg bg-white border rounded-[16px] focus:outline-none focus:ring-1 transition-colors ${
+                  showValidation && titleValidation && !titleValidation.isValid
+                    ? 'border-yellow-400 focus:border-yellow-500 focus:ring-yellow-500'
+                    : 'border-gray-200 focus:border-secondary focus:ring-secondary'
+                }`}
+                value={formData.title}
+                onChange={e => handleTitleChange(e.target.value)}
+                required
+              />
+              {/* 검증 상태 아이콘 */}
+              {formData.title.length >= 2 && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {titleValidation?.isValid ? (
+                    <CheckCircle size={20} className="text-green-500" />
+                  ) : (
+                    <AlertCircle size={20} className="text-yellow-500" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 검증 경고 및 제안 */}
+            {showValidation && titleValidation && !titleValidation.isValid && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-2 mb-2">
+                  <AlertCircle size={16} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-yellow-800 mb-1">입력 확인</p>
+                    <ul className="text-xs text-yellow-700 space-y-1">
+                      {titleValidation.warnings.map((warning, idx) => (
+                        <li key={idx}>• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* 자동 수정 제안 */}
+                {titleValidation.suggestions && titleValidation.suggestions.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-yellow-200">
+                    <button
+                      type="button"
+                      onClick={handleAutoFix}
+                      className="w-full px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                    >
+                      <CheckCircle size={14} />
+                      자동 수정: "{titleValidation.suggestions[0]}"
+                    </button>
+                  </div>
+                )}
+
+                {/* 무시하기 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setShowValidation(false)}
+                  className="mt-2 text-xs text-yellow-600 hover:text-yellow-800 font-medium underline"
+                >
+                  무시하기
+                </button>
+              </div>
+            )}
           </div>
 
           {/* All Day Toggle */}
