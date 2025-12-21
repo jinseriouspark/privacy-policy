@@ -90,8 +90,38 @@ const allSpecialDates: Record<string, string> = {
   ...specialDates2026,
 };
 
+// 숨김 처리된 절기 데이터 관리
+export function getHiddenDates(): string[] {
+  const hidden = localStorage.getItem('hiddenSpecialDates');
+  return hidden ? JSON.parse(hidden) : [];
+}
+
+export function hideSpecialDate(dateKey: string) {
+  const hidden = getHiddenDates();
+  if (!hidden.includes(dateKey)) {
+    hidden.push(dateKey);
+    localStorage.setItem('hiddenSpecialDates', JSON.stringify(hidden));
+  }
+}
+
+export function showSpecialDate(dateKey: string) {
+  const hidden = getHiddenDates();
+  const filtered = hidden.filter(d => d !== dateKey);
+  localStorage.setItem('hiddenSpecialDates', JSON.stringify(filtered));
+}
+
+export function getAllSpecialDates(): Record<string, string> {
+  return { ...allSpecialDates };
+}
+
 // 특별한 날에서 음력 정보와 절기/행사 분리
 export function getSpecialDate(dateKey: string, isMonday: boolean): { lunarInfo?: string; event?: string } {
+  // 숨김 처리된 날짜 확인
+  const hidden = getHiddenDates();
+  if (hidden.includes(dateKey)) {
+    return {};
+  }
+
   const special = allSpecialDates[dateKey];
   if (!special) return {};
 

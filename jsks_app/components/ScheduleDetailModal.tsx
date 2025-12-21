@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, CalendarDays, MapPin, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { X, CalendarDays, MapPin, Users, CheckCircle, XCircle, Trash2, Edit2, Ban, ChevronDown, ChevronUp } from 'lucide-react';
 import { ScheduleItem, User } from '../types';
 import { dbService } from '../services/db';
 
@@ -18,6 +18,9 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   onUpdate
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [isEditingCapacity, setIsEditingCapacity] = useState(false);
+  const [newCapacity, setNewCapacity] = useState('');
 
   if (!schedule) return null;
 
@@ -96,6 +99,59 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     }
   };
 
+  const handleCancelEvent = async () => {
+    if (!schedule.id || isProcessing) return;
+
+    const confirmMsg = participants.length > 0
+      ? `참석 신청한 ${participants.length}명의 신청이 모두 취소됩니다.\n일정을 취소하시겠습니까?`
+      : '일정을 취소하시겠습니까?';
+
+    if (!confirm(confirmMsg)) return;
+
+    setIsProcessing(true);
+    try {
+      // 모든 참석자 제거
+      await dbService.cancelAllRSVP(schedule.id);
+      alert('일정이 취소되었습니다.');
+      await onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Cancel Event Error:', error);
+      alert('일정 취소에 실패했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdateCapacity = async () => {
+    if (!schedule.id || isProcessing) return;
+
+    const capacity = parseInt(newCapacity);
+    if (isNaN(capacity) || capacity < 0) {
+      alert('올바른 숫자를 입력해주세요.');
+      return;
+    }
+
+    if (capacity > 0 && capacity < participants.length) {
+      alert(`현재 참석 인원(${participants.length}명)보다 적은 정원으로 변경할 수 없습니다.`);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await dbService.updateEventCapacity(schedule.id, capacity);
+      alert('정원이 변경되었습니다.');
+      setIsEditingCapacity(false);
+      setNewCapacity('');
+      await onUpdate();
+    } catch (error) {
+      console.error('Update Capacity Error:', error);
+      alert('정원 변경에 실패했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
@@ -165,18 +221,105 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
               <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
                 <Users size={17} className="text-purple-600" />
               </div>
-              <div>
-                <p className="text-[12px] font-medium text-gray-500 mb-0.5">참석 인원</p>
-                <p className="text-[14px] font-bold text-dark">
-                  {isUnlimited ? (
-                    <span>누구나 참석 가능 <span className="text-gray-400 text-[13px]">({participants.length}명 참석 중)</span></span>
-                  ) : (
-                    <span>
-                      {participants.length} / {maxParticipants}명
-                      {isFull && <span className="ml-2 text-red-500 text-[13px]">(마감)</span>}
-                    </span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-0.5">
+                  <p className="text-[12px] font-medium text-gray-500">참석 인원</p>
+                  {currentUser?.role === 'monk' && participants.length > 0 && (
+                    <button
+                      onClick={() => setShowParticipants(!showParticipants)}
+                      className="text-[11px] text-primary font-bold flex items-center gap-1 hover:underline"
+                    >
+                      {showParticipants ? '숨기기' : '명단 보기'}
+                      {showParticipants ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
                   )}
-                </p>
+                </div>
+
+                {/* 정원 표시 및 수정 (스님 전용) */}
+                {currentUser?.role === 'monk' && !isEditingCapacity && (
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] font-bold text-dark">
+                      {isUnlimited ? (
+                        <span>누구나 참석 가능 <span className="text-gray-400 text-[13px]">({participants.length}명 참석 중)</span></span>
+                      ) : (
+                        <span>
+                          {participants.length} / {maxParticipants}명
+                          {isFull && <span className="ml-2 text-red-500 text-[13px]">(마감)</span>}
+                        </span>
+                      )}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setIsEditingCapacity(true);
+                        setNewCapacity(maxParticipants.toString());
+                      }}
+                      className="p-1.5 hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                      <Edit2 size={14} className="text-gray-400" />
+                    </button>
+                  </div>
+                )}
+
+                {/* 정원 수정 폼 (스님 전용) */}
+                {currentUser?.role === 'monk' && isEditingCapacity && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={newCapacity}
+                        onChange={(e) => setNewCapacity(e.target.value)}
+                        placeholder="0 = 무제한"
+                        className="flex-1 px-3 py-2 text-[13px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        min="0"
+                      />
+                      <button
+                        onClick={handleUpdateCapacity}
+                        disabled={isProcessing}
+                        className="px-3 py-2 bg-primary text-white text-[12px] font-bold rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingCapacity(false);
+                          setNewCapacity('');
+                        }}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 text-[12px] font-bold rounded-lg hover:bg-gray-200"
+                      >
+                        취소
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-500">현재 참석자: {participants.length}명 (이보다 적게 설정 불가)</p>
+                  </div>
+                )}
+
+                {/* 일반 사용자 뷰 */}
+                {currentUser?.role !== 'monk' && (
+                  <p className="text-[14px] font-bold text-dark">
+                    {isUnlimited ? (
+                      <span>누구나 참석 가능 <span className="text-gray-400 text-[13px]">({participants.length}명 참석 중)</span></span>
+                    ) : (
+                      <span>
+                        {participants.length} / {maxParticipants}명
+                        {isFull && <span className="ml-2 text-red-500 text-[13px]">(마감)</span>}
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                {/* 참석자 명단 (스님 전용) */}
+                {currentUser?.role === 'monk' && showParticipants && participants.length > 0 && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg max-h-40 overflow-y-auto">
+                    <p className="text-[11px] font-bold text-gray-600 mb-2">참석 신청자 ({participants.length}명)</p>
+                    <div className="space-y-1.5">
+                      {participants.map((email, idx) => (
+                        <div key={idx} className="text-[12px] text-gray-700 bg-white px-2.5 py-1.5 rounded border border-gray-100">
+                          {email}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -253,6 +396,18 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 >
                   <XCircle size={18} />
                   참석 신청 취소하기
+                </button>
+              )}
+
+              {/* 스님 전용: 일정 취소 버튼 (절 행사) */}
+              {isTempleEvent && currentUser?.role === 'monk' && participants.length > 0 && (
+                <button
+                  onClick={handleCancelEvent}
+                  disabled={isProcessing}
+                  className="w-full py-3.5 bg-orange-500 text-white rounded-[14px] font-bold text-[15px] hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Ban size={18} />
+                  일정 취소하기 (참석자 {participants.length}명 취소)
                 </button>
               )}
 

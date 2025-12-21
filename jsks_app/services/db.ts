@@ -395,6 +395,30 @@ export const dbService = {
     }
   },
 
+  // 일정 취소 (모든 참석자 제거)
+  cancelAllRSVP: async (scheduleId: string) => {
+    const { error } = await supabase
+      .from('event_rsvp')
+      .delete()
+      .eq('schedule_id', scheduleId);
+
+    if (error) throw error;
+    console.log('✅ 일정 취소 완료:', scheduleId);
+    return { message: 'ok' };
+  },
+
+  // 참석 정원 변경
+  updateEventCapacity: async (scheduleId: string, maxParticipants: number) => {
+    const { error } = await supabase
+      .from('schedules')
+      .update({ max_participants: maxParticipants })
+      .eq('id', scheduleId);
+
+    if (error) throw error;
+    console.log('✅ 정원 변경 완료:', scheduleId, maxParticipants);
+    return { message: 'ok' };
+  },
+
   // --- Users ---
   updateUserGoals: async (email: string, trackingIds: string[]) => {
     console.log('🔄 UPDATE_GOALS:', { email, trackingIds });

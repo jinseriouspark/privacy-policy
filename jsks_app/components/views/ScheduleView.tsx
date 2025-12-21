@@ -1,21 +1,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Calendar as CalendarIcon, Maximize2, Minimize2, ArrowLeft, Plus } from 'lucide-react';
-import { ScheduleItem } from '../../types';
+import { ScheduleItem, User } from '../../types';
 import { Lunar, Solar } from 'lunar-javascript';
-import { getSpecialDate } from '../../utils/specialDates';
+import { getSpecialDate, hideSpecialDate } from '../../utils/specialDates';
 
 interface ScheduleViewProps {
   schedules: ScheduleItem[];
+  currentUser?: User | null;
   onBack?: () => void;
   onScheduleClick?: (schedule: ScheduleItem) => void;
   onAddSchedule?: () => void;
 }
 
-const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onScheduleClick, onAddSchedule }) => {
+const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onBack, onScheduleClick, onAddSchedule }) => {
   const [baseDate, setBaseDate] = useState(new Date()); // The month being viewed
   const [selectedDate, setSelectedDate] = useState(new Date()); // The specific day selected
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month'); // Pinch-to-zoom state
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render when special date is hidden
 
   // --- Helper Functions ---
   const getYearMonth = (date: Date) => {
@@ -164,10 +167,43 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
     );
     const isRedDay = isSunday || isHoliday;
 
+    // 스님 전용: 절기 삭제 핸들러
+    const handleSpecialEventLongPress = (e: React.TouchEvent | React.MouseEvent, dateKey: string) => {
+      if (currentUser?.role !== 'monk' || !specialInfo.event) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (confirm(`"${specialInfo.event}" 표시를 숨기시겠습니까?\n(달력에서 더 이상 보이지 않습니다)`)) {
+        hideSpecialDate(dateKey);
+        setRefreshKey(prev => prev + 1); // Force re-render
+      }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent, dateKey: string) => {
+      if (currentUser?.role !== 'monk' || !specialInfo.event) return;
+
+      const timer = setTimeout(() => {
+        handleSpecialEventLongPress(e, dateKey);
+      }, 800); // 800ms long press
+
+      setLongPressTimer(timer);
+    };
+
+    const handleTouchEnd = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        setLongPressTimer(null);
+      }
+    };
+
     return (
       <div
-        key={dateKey}
+        key={`${dateKey}-${refreshKey}`}
         onClick={() => { setSelectedDate(dateObj); setBaseDate(dateObj); }}
+        onTouchStart={(e) => handleTouchStart(e, dateKey)}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         className={`
           h-[60px] p-1.5 border-r border-b border-gray-100 cursor-pointer transition-colors overflow-hidden
           ${isSelected ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}

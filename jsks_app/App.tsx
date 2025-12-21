@@ -370,7 +370,7 @@ const App: React.FC = () => {
         );
 
       case 'schedule':
-        return <ScheduleView schedules={schedules} onScheduleClick={setSelectedSchedule} onAddSchedule={() => setCurrentView('add')} />;
+        return <ScheduleView schedules={schedules} currentUser={user} onScheduleClick={setSelectedSchedule} onAddSchedule={() => setCurrentView('add')} />;
 
       case 'add':
         return <AddView onComplete={() => { setCurrentView('home'); if(user) loadSchedules(user.email, false); }} currentUser={user} appConfig={appConfig} />;
