@@ -695,7 +695,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         onClick={() => setActiveTab('group-classes')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'group-classes' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        <Users size={14} className="inline mr-1" />
+                        <span className="inline-block w-4 h-4 bg-purple-100 text-purple-600 rounded text-[10px] font-black leading-4 text-center mr-1">G</span>
                         그룹수업
                     </button>
                     <button
@@ -709,6 +709,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         onClick={() => { setActiveTab('users'); fetchUsers(); }}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
+                        <Users size={14} className="inline mr-1" />
                         회원
                     </button>
                     <button
