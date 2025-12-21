@@ -606,11 +606,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             {isCoach && (
               <button
                 onClick={copyLink}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors border border-slate-200"
+                className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
                 title="수강생 예약 링크 복사"
               >
                 <Share2 size={14} />
-                <span>링크 복사</span>
+                <span>수강생 전달 링크 복사</span>
               </button>
             )}
             {isCoach && onNavigateToProfile && (
