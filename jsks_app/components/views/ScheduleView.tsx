@@ -145,26 +145,28 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
         key={dateKey}
         onClick={() => { setSelectedDate(dateObj); setBaseDate(dateObj); }}
         className={`
-          h-[60px] p-2 border-r border-b border-gray-100 cursor-pointer transition-colors overflow-hidden relative
+          h-[60px] p-2 border-r border-b border-gray-100 cursor-pointer transition-colors overflow-hidden
           ${isSelected ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}
           ${dateObj.getDay() === 0 ? 'border-r-0' : ''}
         `}
       >
-        {/* Lunar date - top left, only on Monday */}
-        {lunarDate && (
-          <div className="absolute top-0.5 left-1 text-[8px] text-gray-400 font-medium">
-            {lunarDate}
+        {/* Date Number and Lunar Date - side by side */}
+        <div className="flex items-baseline gap-1 mb-0.5">
+          <div className={`
+            text-[14px] font-bold
+            ${isToday ? 'w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white' : ''}
+            ${!isToday && isSelected ? 'text-primary' : ''}
+            ${!isToday && !isSelected ? 'text-gray-700' : ''}
+          `}>
+            {day}
           </div>
-        )}
 
-        {/* Date Number */}
-        <div className={`
-          text-[14px] font-bold mb-0.5 ${lunarDate ? 'mt-2' : ''}
-          ${isToday ? 'w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white' : ''}
-          ${!isToday && isSelected ? 'text-primary' : ''}
-          ${!isToday && !isSelected ? 'text-gray-700' : ''}
-        `}>
-          {day}
+          {/* Lunar date - right side, same line */}
+          {lunarDate && (
+            <div className="text-[8px] text-gray-400 font-medium">
+              {lunarDate}
+            </div>
+          )}
         </div>
 
         {/* Event Count */}
