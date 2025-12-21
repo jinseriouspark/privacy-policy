@@ -143,8 +143,8 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
     if (!availability || !selectedDateStr) return [];
 
     const targetDate = new Date(selectedDateStr);
-    const dayIndex = targetDate.getDay(); 
-    
+    const dayIndex = targetDate.getDay();
+
     const settings = availability.workingHours[dayIndex];
     if (!settings || !settings.isWorking) return [];
 
@@ -155,23 +155,29 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
     for (let h = startH; h < endH; h++) {
       const timeLabel = `${h.toString().padStart(2, '0')}:00`;
       let status: 'available' | 'busy' | 'past' = 'available';
+      let type: 'private' | 'group' | null = null;
+      let coachingTitle: string | null = null;
 
       const slotDateTime = new Date(`${selectedDateStr}T${timeLabel}:00`);
       const now = new Date();
       if (slotDateTime < now) {
         status = 'past';
       } else {
-        const slotEndTime = new Date(slotDateTime.getTime() + 60 * 60 * 1000); 
-        const isBusy = availability.busyRanges.some(range => {
+        const slotEndTime = new Date(slotDateTime.getTime() + 60 * 60 * 1000);
+        const busyRange = availability.busyRanges.find(range => {
             const busyStart = new Date(range.start);
             const busyEnd = new Date(range.end);
             return busyStart < slotEndTime && busyEnd > slotDateTime;
         });
 
-        if (isBusy) status = 'busy';
+        if (busyRange) {
+          status = 'busy';
+          type = busyRange.type;
+          coachingTitle = busyRange.coachingTitle;
+        }
       }
 
-      slots.push({ time: timeLabel, status, hour: h });
+      slots.push({ time: timeLabel, status, hour: h, type, coachingTitle });
     }
     return slots;
   };
@@ -193,6 +199,7 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
           {groupSlots.map((slot) => {
              const isSelected = selectedTime === slot.time;
              const isDisabled = slot.status !== 'available';
+             const isGroup = slot.type === 'group';
              return (
                <button
                   key={slot.time}
@@ -200,15 +207,26 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
                   onClick={() => setSelectedTime(slot.time)}
                   className={`
                       py-3 px-2 rounded-xl text-sm font-bold border transition-all duration-200 relative
-                      ${isSelected 
-                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg ring-2 ring-orange-200 ring-offset-1' 
+                      ${isSelected
+                          ? 'bg-orange-500 border-orange-500 text-white shadow-lg ring-2 ring-orange-200 ring-offset-1'
                           : isDisabled
                               ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
                               : 'bg-white border-slate-200 text-slate-900 hover:border-orange-400 hover:text-orange-500 hover:shadow-sm'
                       }
                   `}
                >
-                  {slot.time}
+                  <div className="flex flex-col items-center gap-1">
+                    <span>{slot.time}</span>
+                    {slot.status === 'busy' && slot.type && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        isGroup
+                          ? 'bg-purple-100 text-purple-600'
+                          : 'bg-blue-100 text-blue-600'
+                      }`}>
+                        {isGroup ? '그룹' : '개인'}
+                      </span>
+                    )}
+                  </div>
                   {slot.status === 'busy' && (
                       <span className="absolute top-0 right-0 w-2 h-2 bg-red-400 rounded-full -mt-1 -mr-1 ring-2 ring-white"></span>
                   )}

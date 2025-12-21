@@ -470,7 +470,10 @@ export async function getReservationsByDateRange(
 ) {
   const { data, error } = await supabase
     .from('reservations')
-    .select('*')
+    .select(`
+      *,
+      coaching:coaching_id(*)
+    `)
     .eq('instructor_id', instructorId)
     .gte('start_time', startDate)
     .lte('end_time', endDate)
@@ -510,7 +513,9 @@ export async function getInstructorAvailability(
 
   const busyRanges = reservations.map(r => ({
     start: r.start_time,
-    end: r.end_time
+    end: r.end_time,
+    type: r.coaching?.type || 'private',
+    coachingTitle: r.coaching?.title || '수업'
   }));
 
   return { workingHours, busyRanges };
