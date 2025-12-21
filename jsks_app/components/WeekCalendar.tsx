@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { DayData, ScheduleItem } from '../types';
 import { APP_STRINGS } from '../constants';
 import { Lunar, Solar } from 'lunar-javascript';
+import { getSpecialDate } from '../utils/specialDates';
 
 interface WeekCalendarProps {
   days: DayData[];
@@ -61,12 +62,17 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
       const isPracticeComplete = log && log.progress === 100;
 
       // Get lunar date (only for Monday - index 0)
-      let lunarDate = '';
-      if (i === 0) { // Monday
+      const isMonday = i === 0;
+      let autoLunarDate = '';
+      if (isMonday) {
         const solar = Solar.fromDate(date);
         const lunar = solar.getLunar();
-        lunarDate = `${lunar.getMonth()}.${lunar.getDay()}`;
+        autoLunarDate = `${lunar.getMonth()}.${lunar.getDay()}`;
       }
+
+      // Get special date info
+      const specialInfo = getSpecialDate(dateStr, isMonday);
+      const displayLunar = autoLunarDate || specialInfo.lunarInfo;
 
       result.push({
         dayLabel: weekDays[i],
@@ -74,7 +80,8 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
         status: status,
         isToday: isToday,
         hasSchedule: isPracticeComplete, // 수행 완료 시 점 표시
-        lunarDate: lunarDate
+        lunarDate: displayLunar,
+        specialEvent: specialInfo.event
       });
     }
     return result;
@@ -101,27 +108,34 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
             {/* Day Number Box */}
             <div
               className={`
-                w-full aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative
+                w-full aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-1
                 ${day.isToday
                   ? 'bg-dark text-white shadow-lg'
                   : 'bg-white border border-gray-100 text-gray-400 hover:border-gray-300'}
               `}
             >
-              {/* Lunar date - only on Monday */}
+              {/* Row 1: Lunar date */}
               {day.lunarDate && (
-                <div className={`text-[9px] font-medium mb-0.5 ${day.isToday ? 'text-white/70' : 'text-gray-400'}`}>
+                <div className={`text-[7px] font-medium leading-none mb-0.5 ${day.isToday ? 'text-white/70' : 'text-gray-400'}`}>
                   {day.lunarDate}
                 </div>
               )}
 
-              {/* Day number */}
+              {/* Row 2: Day number */}
               <span className={`text-[16px] font-bold leading-none ${day.isToday ? 'text-white' : 'text-dark'}`}>
                 {day.dayNumber}
               </span>
 
+              {/* Row 3: Special event/holiday */}
+              {day.specialEvent && (
+                <div className={`text-[6px] font-bold leading-tight mt-0.5 text-center truncate w-full ${day.isToday ? 'text-white/90' : 'text-secondary'}`}>
+                  {day.specialEvent}
+                </div>
+              )}
+
               {/* Schedule indicator - compact version */}
               {day.hasSchedule && (
-                <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${day.isToday ? 'bg-secondary' : 'bg-secondary'}`} />
+                <div className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${day.isToday ? 'bg-secondary' : 'bg-secondary'}`} />
               )}
             </div>
           </div>

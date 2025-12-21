@@ -6,6 +6,7 @@ export interface DayData {
   isToday: boolean;
   hasSchedule?: boolean;
   lunarDate?: string;
+  specialEvent?: string;
 }
 
 export type ScheduleType = 'temple' | 'personal' | 'practice';
