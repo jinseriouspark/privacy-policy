@@ -170,8 +170,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
             driveFileId: editingVideo.driveFileId,
             mediaType: editingVideo.mediaType,
             thumbnailUrl: editingVideo.thumbnailUrl,
-            tags: [newVideo.tags],
-            textContent: newVideo.description
+            tags: [newVideo.tags]
           };
         } else if (newVideo.driveUrl) {
           // 새 파일이 선택된 경우
@@ -196,8 +195,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
             ...videoData,
             mediaType: editingVideo ? editingVideo.mediaType : 'text-only',
             thumbnailUrl: editingVideo ? editingVideo.thumbnailUrl : 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Text+Content',
-            tags: [newVideo.tags],
-            textContent: newVideo.description
+            tags: [newVideo.tags]
           };
         }
       }

@@ -198,12 +198,11 @@ export const dbService = {
       tags: videoData.tags,
       drive_url: videoData.driveUrl,
       drive_file_id: videoData.driveFileId,
-      text_content: videoData.textContent,
     };
 
-    // Remove undefined values
+    // Remove undefined values and null values
     Object.keys(updateData).forEach(key => {
-      if (updateData[key] === undefined) {
+      if (updateData[key] === undefined || updateData[key] === null) {
         delete updateData[key];
       }
     });
