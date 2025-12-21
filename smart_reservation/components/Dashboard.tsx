@@ -583,26 +583,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   };
 
   const Header = () => (
-    <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
+    <div className="flex justify-between items-center gap-3">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
           {user.picture ? (
-            <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full border border-slate-200" />
+            <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full border border-slate-200 flex-shrink-0" />
           ) : (
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${isCoach ? 'bg-orange-100 text-orange-500' : 'bg-orange-100 text-orange-500'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${isCoach ? 'bg-orange-100 text-orange-500' : 'bg-orange-100 text-orange-500'}`}>
               {user.name.charAt(0)}
             </div>
           )}
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 leading-tight">{user.name}</h2>
+                <h2 className="text-lg font-bold text-slate-900 leading-tight truncate">{user.name}</h2>
                 {isCoach && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase">Coach</span>
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase flex-shrink-0">Coach</span>
                 )}
             </div>
-            <p className="text-xs text-slate-500">{user.email}</p>
+            <p className="text-xs text-slate-500 truncate">{user.email}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
+            {isCoach && (
+              <button
+                onClick={copyLink}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-colors border border-slate-200"
+                title="수강생 예약 링크 복사"
+              >
+                <Share2 size={14} />
+                <span>링크 복사</span>
+              </button>
+            )}
             {isCoach && onNavigateToProfile && (
                 <button onClick={onNavigateToProfile} className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full">
                     <Settings size={18} />
@@ -650,32 +660,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               )}
 
               <Header />
-            
-            {/* Share Link Banner */}
-            <div className="bg-white border border-orange-100 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center mb-2">
-                    <span className="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center mr-3">
-                        <Share2 size={16} />
-                    </span>
-                    수강생 예약 전용 링크
-                </h3>
-                <p className="text-slate-500 text-sm mb-4 ml-11 break-keep">
-                    수강생에게 링크를 전달하세요.
-                </p>
-
-                <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-600 font-mono truncate select-all">
-                       {shareUrl}
-                    </div>
-                    <button
-                        onClick={copyLink}
-                        className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors flex items-center justify-center shadow-lg"
-                    >
-                        <Copy size={16} className="mr-2"/>
-                        주소 복사
-                    </button>
-                </div>
-            </div>
 
             {!calendarConnected && (
                 <div onClick={() => setShowSetupModal(true)} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-red-100 transition-colors">
