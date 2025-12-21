@@ -26,6 +26,19 @@ export interface Instructor {
   avatarUrl: string;
 }
 
+export interface Coaching {
+  id: string;
+  instructor_id: string;
+  title: string;
+  slug: string;
+  type: ClassType;
+  description?: string;
+  google_calendar_id?: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
 export enum ClassType {
   PRIVATE = 'private',     // 개인 레슨 (1:1)
   GROUP = 'group'          // 그룹 수업

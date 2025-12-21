@@ -4,14 +4,16 @@ import { createInvitation } from '../lib/supabase/database';
 
 interface StudentInviteModalProps {
   instructorId: string;
-  instructorUsername: string;
+  coachingId: string;
+  coachingSlug: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
   instructorId,
-  instructorUsername,
+  coachingId,
+  coachingSlug,
   onClose,
   onSuccess
 }) => {
@@ -37,7 +39,7 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
     setError(null);
 
     try {
-      const invitation = await createInvitation(instructorId, email.toLowerCase());
+      const invitation = await createInvitation(coachingId, email.toLowerCase());
       setInvitationCode(invitation.invitation_code);
     } catch (e: any) {
       console.error(e);
@@ -49,7 +51,7 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
 
   const getInviteLink = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/${instructorUsername}?invite=${invitationCode}`;
+    return `${baseUrl}/${coachingSlug}?invite=${invitationCode}`;
   };
 
   const handleCopyLink = () => {

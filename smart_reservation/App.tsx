@@ -8,11 +8,11 @@ import Reservation from './components/Reservation';
 import InstructorProfile from './components/InstructorProfile';
 import StudioSetup from './components/StudioSetup';
 import ErrorBoundary from './components/ErrorBoundary';
-import { getCurrentCoachId } from './services/api';
+import { getCurrentProjectSlug } from './services/api';
 import { AlertTriangle } from 'lucide-react';
 import { signOut } from './lib/supabase/auth';
 import { supabase } from './lib/supabase/client';
-import { getUserByEmail, acceptInvitation, getInvitationByCode } from './lib/supabase/database';
+import { getUserByEmail, acceptInvitation, getInvitationByCode, getCoachingBySlug } from './lib/supabase/database';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -20,8 +20,8 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null);
 
-  // URL에서 강사 이메일 가져오기
-  const coachId = getCurrentCoachId();
+  // URL에서 강사 프로젝트 슬러그 가져오기
+  const coachingSlug = getCurrentProjectSlug();
 
   // Check session on app load
   useEffect(() => {
@@ -31,20 +31,20 @@ const App: React.FC = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
 
-        // If there's a coach email in URL, fetch instructor info
-        if (coachId) {
+        // If there's a coaching slug in URL, fetch coaching info and instructor data
+        if (coachingSlug) {
           try {
-            const instructorUser = await getUserByEmail(coachId);
-            if (instructorUser) {
+            const coaching = await getCoachingBySlug(coachingSlug);
+            if (coaching && coaching.instructor) {
               setCurrentInstructor({
-                id: instructorUser.id,
-                name: instructorUser.name,
-                bio: instructorUser.bio || 'Professional Coach',
-                avatarUrl: instructorUser.picture || ''
+                id: coaching.instructor.id,
+                name: coaching.instructor.name,
+                bio: coaching.instructor.bio || 'Professional Coach',
+                avatarUrl: coaching.instructor.picture || ''
               });
             }
           } catch (e) {
-            console.error('Failed to fetch instructor:', e);
+            console.error('Failed to fetch coaching:', e);
           }
         }
 
@@ -82,8 +82,8 @@ const App: React.FC = () => {
               remaining: 0
             } as User);
 
-            // If URL has coach param, show reservation page
-            if (coachId) {
+            // If URL has coaching slug param, show reservation page
+            if (coachingSlug) {
               setCurrentView(ViewState.RESERVATION);
             } else {
               setCurrentView(ViewState.DASHBOARD);
@@ -91,7 +91,7 @@ const App: React.FC = () => {
           }
         } else {
           // Not logged in - check if this is a public booking page or invite link
-          if (coachId || inviteCode) {
+          if (coachingSlug || inviteCode) {
             setCurrentView(ViewState.RESERVATION);
           }
         }
@@ -103,7 +103,7 @@ const App: React.FC = () => {
     };
 
     checkSession();
-  }, [coachId]);
+  }, [coachingSlug]);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -183,7 +183,7 @@ const App: React.FC = () => {
             <div className="min-h-screen flex items-center justify-center p-4">
               <div className="text-center">
                 <p className="text-slate-600 mb-4">잘못된 접근입니다.</p>
-                <p className="text-sm text-slate-400">URL에 강사 정보(?coach=이메일)가 필요합니다.</p>
+                <p className="text-sm text-slate-400">URL에 강사 정보(?slug=프로젝트슬러그)가 필요합니다.</p>
               </div>
             </div>
           );

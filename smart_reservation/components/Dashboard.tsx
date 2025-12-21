@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData } from '../types';
+import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData, Coaching } from '../types';
 import { postToGAS, getCurrentCoachId } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
 import { StudentInviteModal } from './StudentInviteModal';
+import { CoachingManagementModal } from './CoachingManagementModal';
 import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
-import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages } from '../lib/supabase/database';
+import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings } from '../lib/supabase/database';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 
 interface DashboardProps {
@@ -38,11 +39,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userPackages, setUserPackages] = useState<any[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  
+
   // Instructor - Settings
   const [settings, setSettings] = useState<AvailabilityData | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Coaching Management
+  const [currentCoaching, setCurrentCoaching] = useState<Coaching | null>(null);
+  const [showCoachingModal, setShowCoachingModal] = useState(false);
 
   const coachId = getCurrentCoachId();
   // Check if user is instructor based on user.userType
@@ -106,12 +111,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   useEffect(() => {
     fetchDashboard();
-    
+
     if (isCoach) {
         checkInstructorStatus();
+        loadFirstCoaching();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadFirstCoaching = async () => {
+    try {
+      const coachings = await getInstructorCoachings(user.id);
+      if (coachings.length > 0) {
+        setCurrentCoaching(coachings[0]);
+      }
+    } catch (e) {
+      console.error('Failed to load coachings:', e);
+    }
+  };
 
   const checkInstructorStatus = async () => {
       try {
@@ -604,14 +621,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
             {isCoach && (
-              <button
-                onClick={copyLink}
-                className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
-                title="수강생 예약 링크 복사"
-              >
-                <Share2 size={14} />
-                <span>수강생 전달 링크 복사</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setShowCoachingModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+                  title="코칭 관리"
+                >
+                  <FolderOpen size={14} />
+                  <span className="hidden sm:inline">코칭 관리</span>
+                </button>
+                <button
+                  onClick={copyLink}
+                  className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
+                  title="수강생 예약 링크 복사"
+                >
+                  <Share2 size={14} />
+                  <span>수강생 전달 링크 복사</span>
+                </button>
+              </>
             )}
             {isCoach && onNavigateToProfile && (
                 <button onClick={onNavigateToProfile} className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full">
@@ -641,15 +668,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           )}
 
           {/* Student Invite Modal */}
-          {showInviteModal && (
+          {showInviteModal && currentCoaching && (
             <StudentInviteModal
               instructorId={user.id}
-              instructorUsername={user.username || ''}
+              coachingId={currentCoaching.id}
+              coachingSlug={currentCoaching.slug}
               onClose={() => setShowInviteModal(false)}
               onSuccess={() => {
                 fetchUsers();
                 setShowInviteModal(false);
               }}
+            />
+          )}
+
+          {/* Coaching Management Modal */}
+          {showCoachingModal && (
+            <CoachingManagementModal
+              instructorId={user.id}
+              currentCoaching={currentCoaching}
+              onClose={() => setShowCoachingModal(false)}
+              onSelectCoaching={(coaching) => setCurrentCoaching(coaching)}
             />
           )}
 

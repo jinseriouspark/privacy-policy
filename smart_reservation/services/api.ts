@@ -2,13 +2,14 @@
 import { GAS_WEB_APP_URL } from '../constants';
 import { ApiResponse } from '../types';
 
-// Helper to get coach ID from URL (?coach=email)
-const getCoachIdFromUrl = () => {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('coach');
+// Helper to get project slug from URL (/{project-slug})
+const getProjectSlugFromUrl = () => {
+  const path = window.location.pathname;
+  const parts = path.split('/').filter(p => p);
+  return parts.length > 0 ? parts[0] : null;
 };
 
-export const getCurrentCoachId = () => getCoachIdFromUrl();
+export const getCurrentProjectSlug = () => getProjectSlugFromUrl();
 
 // --- DEMO MODE MOCK DATA ---
 let mockUser = {

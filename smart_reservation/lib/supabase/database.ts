@@ -778,14 +778,14 @@ function generateInvitationCode(): string {
 }
 
 /**
- * 학생 초대하기
+ * 학생 초대하기 (코칭 기반)
  */
-export async function createInvitation(instructorId: string, studentEmail: string) {
+export async function createInvitation(coachingId: string, studentEmail: string) {
   // 이미 초대한 적 있는지 확인
   const { data: existing } = await supabase
     .from('invitations')
     .select('*')
-    .eq('instructor_id', instructorId)
+    .eq('coaching_id', coachingId)
     .eq('email', studentEmail)
     .eq('status', 'pending')
     .single();
@@ -801,7 +801,7 @@ export async function createInvitation(instructorId: string, studentEmail: strin
   const { data, error } = await supabase
     .from('invitations')
     .insert({
-      instructor_id: instructorId,
+      coaching_id: coachingId,
       email: studentEmail,
       invitation_code: invitationCode,
       status: 'pending',
@@ -815,14 +815,17 @@ export async function createInvitation(instructorId: string, studentEmail: strin
 }
 
 /**
- * 초대 코드로 초대 정보 조회
+ * 초대 코드로 초대 정보 조회 (코칭 정보 포함)
  */
 export async function getInvitationByCode(invitationCode: string) {
   const { data, error } = await supabase
     .from('invitations')
     .select(`
       *,
-      instructor:instructor_id(*)
+      coaching:coaching_id(
+        *,
+        instructor:instructor_id(*)
+      )
     `)
     .eq('invitation_code', invitationCode)
     .single();
@@ -832,7 +835,7 @@ export async function getInvitationByCode(invitationCode: string) {
 }
 
 /**
- * 초대 수락 (학생-강사 연결)
+ * 초대 수락 (학생-코칭 연결)
  */
 export async function acceptInvitation(invitationCode: string, studentId: string, studentEmail: string) {
   // 초대 정보 조회
@@ -854,12 +857,13 @@ export async function acceptInvitation(invitationCode: string, studentId: string
     throw new Error('초대된 이메일과 로그인 이메일이 일치하지 않습니다.');
   }
 
-  // 학생-강사 관계 생성
+  // 학생-코칭 관계 생성
   const { error: relationError } = await supabase
     .from('student_instructors')
     .insert({
       student_id: studentId,
-      instructor_id: invitation.instructor_id
+      instructor_id: invitation.coaching.instructor_id,
+      coaching_id: invitation.coaching_id
     });
 
   if (relationError && relationError.code !== '23505') { // 중복 에러 무시
@@ -881,13 +885,13 @@ export async function acceptInvitation(invitationCode: string, studentId: string
 }
 
 /**
- * 강사의 초대 목록 조회
+ * 코칭의 초대 목록 조회
  */
-export async function getInstructorInvitations(instructorId: string) {
+export async function getCoachingInvitations(coachingId: string) {
   const { data, error } = await supabase
     .from('invitations')
     .select('*')
-    .eq('instructor_id', instructorId)
+    .eq('coaching_id', coachingId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -908,4 +912,136 @@ export async function getStudentInstructors(studentId: string) {
 
   if (error) throw error;
   return data || [];
+}
+
+/**
+ * ==========================================
+ * COACHING FUNCTIONS (코칭 관리)
+ * ==========================================
+ */
+
+/**
+ * Slug 생성 (코칭명 -> URL-friendly slug)
+ */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
+    .trim()
+    .replace(/\s+/g, '-') // 공백을 하이픈으로
+    .replace(/-+/g, '-') // 중복 하이픈 제거
+    .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
+}
+
+/**
+ * 코칭 생성
+ */
+export async function createCoaching(instructorId: string, title: string, type: string, description?: string) {
+  let slug = generateSlug(title);
+
+  // Slug 중복 체크 및 번호 추가
+  let counter = 1;
+  let finalSlug = slug;
+
+  while (true) {
+    const { data: existing } = await supabase
+      .from('coaching')
+      .select('id')
+      .eq('slug', finalSlug)
+      .single();
+
+    if (!existing) break;
+
+    finalSlug = `${slug}-${counter}`;
+    counter++;
+  }
+
+  const { data, error } = await supabase
+    .from('coaching')
+    .insert({
+      instructor_id: instructorId,
+      title,
+      slug: finalSlug,
+      type,
+      description: description || null,
+      status: 'active'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 강사의 코칭 목록 가져오기
+ */
+export async function getInstructorCoachings(instructorId: string) {
+  const { data, error } = await supabase
+    .from('coaching')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Slug로 코칭 가져오기
+ */
+export async function getCoachingBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('coaching')
+    .select(`
+      *,
+      instructor:instructor_id(*)
+    `)
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * 코칭 업데이트
+ */
+export async function updateCoaching(coachingId: string, updates: { title?: string; description?: string; status?: string }) {
+  const updateData: any = {};
+
+  if (updates.title) {
+    updateData.title = updates.title;
+  }
+  if (updates.description !== undefined) {
+    updateData.description = updates.description;
+  }
+  if (updates.status) {
+    updateData.status = updates.status;
+  }
+
+  const { data, error } = await supabase
+    .from('coaching')
+    .update(updateData)
+    .eq('id', coachingId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 코칭 삭제
+ */
+export async function deleteCoaching(coachingId: string) {
+  const { error } = await supabase
+    .from('coaching')
+    .delete()
+    .eq('id', coachingId);
+
+  if (error) throw error;
 }
