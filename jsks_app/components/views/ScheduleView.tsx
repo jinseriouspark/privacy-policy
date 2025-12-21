@@ -146,6 +146,23 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
     const specialInfo = getSpecialDate(dateKey, isMonday);
     const displayLunar = autoLunarDate || specialInfo.lunarInfo;
 
+    // Check if it's a holiday (Sunday or special holiday with "대체휴일" or public holidays)
+    const isSunday = dateObj.getDay() === 0;
+    const isHoliday = specialInfo.event && (
+      specialInfo.event.includes('대체휴일') ||
+      specialInfo.event.includes('삼일절') ||
+      specialInfo.event.includes('어린이날') ||
+      specialInfo.event.includes('현충일') ||
+      specialInfo.event.includes('광복절') ||
+      specialInfo.event.includes('개천절') ||
+      specialInfo.event.includes('한글날') ||
+      specialInfo.event.includes('설날') ||
+      specialInfo.event.includes('추석') ||
+      specialInfo.event.includes('부처님오신날') ||
+      specialInfo.event.includes('식목일')
+    );
+    const isRedDay = isSunday || isHoliday;
+
     return (
       <div
         key={dateKey}
@@ -162,7 +179,8 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
             text-[14px] font-bold leading-none
             ${isToday ? 'bg-primary text-white rounded-md px-1.5 py-0.5' : ''}
             ${!isToday && isSelected ? 'text-primary' : ''}
-            ${!isToday && !isSelected ? 'text-gray-700' : ''}
+            ${!isToday && !isSelected && isRedDay ? 'text-red-500' : ''}
+            ${!isToday && !isSelected && !isRedDay ? 'text-gray-700' : ''}
           `}>
             {day}
           </div>
