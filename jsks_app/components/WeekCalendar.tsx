@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DayData, ScheduleItem } from '../types';
 import { APP_STRINGS } from '../constants';
 import { Lunar, Solar } from 'lunar-javascript';
@@ -11,9 +11,11 @@ interface WeekCalendarProps {
   schedules?: ScheduleItem[];
   onSeeAll?: () => void;
   title?: string;
+  onScheduleClick?: (schedule: ScheduleItem) => void;
 }
 
-const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practiceLogs, schedules = [], onSeeAll, title }) => {
+const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practiceLogs, schedules = [], onSeeAll, title, onScheduleClick }) => {
+  const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   
   // Dynamically generate the current week's days and merge with practice logs
   const days: DayData[] = useMemo(() => {
@@ -81,11 +83,23 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
         isToday: isToday,
         hasSchedule: isPracticeComplete, // 수행 완료 시 점 표시
         lunarDate: displayLunar,
-        specialEvent: specialInfo.event
+        specialEvent: specialInfo.event,
+        dateStr: dateStr // 날짜 문자열 저장
       });
     }
     return result;
   }, [practiceLogs, schedules]);
+
+  // Filter schedules for selected date
+  const filteredSchedules = useMemo(() => {
+    if (!selectedDateStr) return [];
+    return schedules.filter(item => {
+      if (item.date !== selectedDateStr) return false;
+      if (item.id?.startsWith('practice_')) return false;
+      if (item.meta === '수행 완료') return false;
+      return item.type === 'temple' || item.type === 'personal';
+    });
+  }, [selectedDateStr, schedules]);
 
   return (
     <div className="w-full flex flex-col">
@@ -99,7 +113,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
 
       <div className="w-full grid grid-cols-7 gap-2">
         {days.map((day, index) => (
-          <div key={index} className="flex flex-col items-center gap-2 group cursor-pointer">
+          <div key={index} className="flex flex-col items-center gap-2 group">
             {/* Day Label */}
             <span className={`text-[11px] font-semibold uppercase tracking-wider ${day.isToday ? 'text-secondary' : 'text-gray-400'}`}>
               {day.dayLabel}
@@ -107,11 +121,13 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
 
             {/* Day Number Box */}
             <div
+              onClick={() => setSelectedDateStr(day.dateStr || null)}
               className={`
-                w-full aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-1
+                w-full aspect-square flex flex-col items-center justify-center rounded-lg transition-all duration-300 relative p-1 cursor-pointer
                 ${day.isToday
                   ? 'bg-dark text-white shadow-lg'
                   : 'bg-white border border-gray-100 text-gray-400 hover:border-gray-300'}
+                ${selectedDateStr === day.dateStr ? 'ring-2 ring-primary' : ''}
               `}
             >
               {/* Row 1: Lunar date */}
@@ -141,6 +157,44 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
           </div>
         ))}
       </div>
+
+      {/* Schedule List for Selected Date */}
+      {selectedDateStr && filteredSchedules.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-[12px] font-bold text-dark">
+              {selectedDateStr.split('-')[1]}월 {selectedDateStr.split('-')[2]}일 일정
+            </h4>
+            <button
+              onClick={() => setSelectedDateStr(null)}
+              className="text-[10px] text-gray-400 hover:text-dark"
+            >
+              닫기
+            </button>
+          </div>
+          {filteredSchedules.map(item => (
+            <div
+              key={item.id}
+              onClick={() => onScheduleClick?.(item)}
+              className="bg-white p-3 rounded-lg shadow-sm border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <div className="flex flex-col gap-1">
+                <div className="text-[10px] text-gray-500 font-medium">
+                  {item.time}
+                </div>
+                <h5 className="text-[12px] font-bold text-dark leading-snug">
+                  {item.title}
+                </h5>
+                {item.location && (
+                  <div className="text-gray-500 text-[10px]">
+                    {item.location}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

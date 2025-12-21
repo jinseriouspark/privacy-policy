@@ -7,6 +7,7 @@ export interface DayData {
   hasSchedule?: boolean;
   lunarDate?: string;
   specialEvent?: string;
+  dateStr?: string;
 }
 
 export type ScheduleType = 'temple' | 'personal' | 'practice';
