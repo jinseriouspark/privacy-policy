@@ -785,6 +785,24 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
                         <p className="text-sm text-gray-400 mt-1">{schedule.meta}</p>
                       )}
                     </div>
+                    {/* 삭제 버튼 */}
+                    <button
+                      onClick={async () => {
+                        if (confirm(`"${schedule.title}" 일정을 삭제하시겠습니까?${participants.length > 0 ? `\n참석 신청한 ${participants.length}명의 신청도 함께 삭제됩니다.` : ''}`)) {
+                          try {
+                            await dbService.deleteSchedule(schedule.id!);
+                            alert('일정이 삭제되었습니다.');
+                            fetchSchedules();
+                          } catch (error) {
+                            console.error('Delete error:', error);
+                            alert('삭제에 실패했습니다.');
+                          }
+                        }
+                      }}
+                      className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={20} />
+                    </button>
                   </div>
 
                   {/* 참석 인원 현황 */}
