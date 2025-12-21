@@ -65,7 +65,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
       if (i === 0) { // Monday
         const solar = Solar.fromDate(date);
         const lunar = solar.getLunar();
-        lunarDate = `${lunar.getMonthInChinese()}${lunar.getDayInChinese()}`;
+        lunarDate = `${lunar.getMonth()}.${lunar.getDay()}`;
       }
 
       result.push({
