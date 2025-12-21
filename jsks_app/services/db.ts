@@ -185,6 +185,8 @@ export const dbService = {
   },
 
   updateVideo: async (id: string, videoData: Partial<VideoContent>) => {
+    console.log('📝 updateVideo 호출:', { id, videoData });
+
     const updateData: any = {
       title: videoData.title,
       author: videoData.author,
@@ -206,12 +208,20 @@ export const dbService = {
       }
     });
 
-    const { error } = await supabase
+    console.log('📤 Supabase 업데이트 데이터:', updateData);
+
+    const { data, error } = await supabase
       .from('videos')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase 업데이트 에러:', error);
+      throw error;
+    }
+
+    console.log('✅ Supabase 업데이트 성공:', data);
     return { message: 'ok' };
   },
 

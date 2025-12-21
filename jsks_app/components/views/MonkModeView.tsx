@@ -204,7 +204,11 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
 
       if (editingVideo) {
         // 편집 모드
-        console.log('🔄 비디오 수정 시작:', editingVideo.id, videoData);
+        console.log('🔄 비디오 수정 시작:', {
+          id: editingVideo.id,
+          title: editingVideo.title,
+          videoData
+        });
         await dbService.updateVideo(editingVideo.id, videoData);
         console.log('✅ 비디오 수정 완료');
         alert('콘텐츠가 수정되었습니다.');
@@ -223,7 +227,17 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       setActiveTab('content-review');
     } catch (error) {
       console.error('❌ 비디오 저장 실패:', error);
-      alert(`저장에 실패했습니다.\n\n에러: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.error('에러 타입:', typeof error);
+      console.error('에러 상세:', JSON.stringify(error, null, 2));
+
+      let errorMessage = '알 수 없는 오류';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      }
+
+      alert(`저장에 실패했습니다.\n\n에러: ${errorMessage}\n\n브라우저 콘솔(F12)에서 상세 정보를 확인하세요.`);
     }
   };
 
