@@ -83,6 +83,19 @@ export async function getCoachings(instructorId: string) {
 }
 
 /**
+ * Slug 생성 (코칭명 -> URL-friendly slug)
+ */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
+    .trim()
+    .replace(/\s+/g, '-') // 공백을 하이픈으로
+    .replace(/-+/g, '-') // 중복 하이픈 제거
+    .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
+}
+
+/**
  * 코칭 생성
  */
 export async function createCoaching(data: {
@@ -94,11 +107,33 @@ export async function createCoaching(data: {
   is_active?: boolean;
   type?: 'private' | 'group';
 }) {
+  // Generate slug from title
+  let slug = generateSlug(data.title);
+
+  // Slug 중복 체크 및 번호 추가
+  let counter = 1;
+  let finalSlug = slug;
+
+  while (true) {
+    const { data: existing } = await supabase
+      .from('coaching')
+      .select('id')
+      .eq('slug', finalSlug)
+      .single();
+
+    if (!existing) break;
+
+    finalSlug = `${slug}-${counter}`;
+    counter++;
+  }
+
   const { data: coaching, error } = await supabase
-    .from('coachings')
+    .from('coaching')
     .insert({
       ...data,
-      type: data.type || 'private' // Default to 'private' if not specified
+      slug: finalSlug,
+      type: data.type || 'private', // Default to 'private' if not specified
+      status: 'active' // Default status
     })
     .select()
     .single();
@@ -122,7 +157,7 @@ export async function updateCoaching(
   }
 ) {
   const { data: coaching, error } = await supabase
-    .from('coachings')
+    .from('coaching')
     .update(data)
     .eq('id', coachingId)
     .select()
@@ -137,11 +172,43 @@ export async function updateCoaching(
  */
 export async function deleteCoaching(coachingId: string) {
   const { error } = await supabase
-    .from('coachings')
+    .from('coaching')
     .delete()
     .eq('id', coachingId);
 
   if (error) throw error;
+}
+
+/**
+ * 강사의 코칭 목록 가져오기
+ */
+export async function getInstructorCoachings(instructorId: string) {
+  const { data, error } = await supabase
+    .from('coaching')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Slug로 코칭 가져오기
+ */
+export async function getCoachingBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from('coaching')
+    .select(`
+      *,
+      instructor:instructor_id(*)
+    `)
+    .eq('slug', slug)
+    .single();
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
 }
 
 /**
@@ -914,134 +981,3 @@ export async function getStudentInstructors(studentId: string) {
   return data || [];
 }
 
-/**
- * ==========================================
- * COACHING FUNCTIONS (코칭 관리)
- * ==========================================
- */
-
-/**
- * Slug 생성 (코칭명 -> URL-friendly slug)
- */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
-    .trim()
-    .replace(/\s+/g, '-') // 공백을 하이픈으로
-    .replace(/-+/g, '-') // 중복 하이픈 제거
-    .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
-}
-
-/**
- * 코칭 생성
- */
-export async function createCoaching(instructorId: string, title: string, type: string, description?: string) {
-  let slug = generateSlug(title);
-
-  // Slug 중복 체크 및 번호 추가
-  let counter = 1;
-  let finalSlug = slug;
-
-  while (true) {
-    const { data: existing } = await supabase
-      .from('coaching')
-      .select('id')
-      .eq('slug', finalSlug)
-      .single();
-
-    if (!existing) break;
-
-    finalSlug = `${slug}-${counter}`;
-    counter++;
-  }
-
-  const { data, error } = await supabase
-    .from('coaching')
-    .insert({
-      instructor_id: instructorId,
-      title,
-      slug: finalSlug,
-      type,
-      description: description || null,
-      status: 'active'
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * 강사의 코칭 목록 가져오기
- */
-export async function getInstructorCoachings(instructorId: string) {
-  const { data, error } = await supabase
-    .from('coaching')
-    .select('*')
-    .eq('instructor_id', instructorId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
-}
-
-/**
- * Slug로 코칭 가져오기
- */
-export async function getCoachingBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from('coaching')
-    .select(`
-      *,
-      instructor:instructor_id(*)
-    `)
-    .eq('slug', slug)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw error;
-  }
-  return data;
-}
-
-/**
- * 코칭 업데이트
- */
-export async function updateCoaching(coachingId: string, updates: { title?: string; description?: string; status?: string }) {
-  const updateData: any = {};
-
-  if (updates.title) {
-    updateData.title = updates.title;
-  }
-  if (updates.description !== undefined) {
-    updateData.description = updates.description;
-  }
-  if (updates.status) {
-    updateData.status = updates.status;
-  }
-
-  const { data, error } = await supabase
-    .from('coaching')
-    .update(updateData)
-    .eq('id', coachingId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * 코칭 삭제
- */
-export async function deleteCoaching(coachingId: string) {
-  const { error } = await supabase
-    .from('coaching')
-    .delete()
-    .eq('id', coachingId);
-
-  if (error) throw error;
-}

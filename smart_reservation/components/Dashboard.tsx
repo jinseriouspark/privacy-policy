@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData, Coaching } from '../types';
-import { postToGAS, getCurrentCoachId } from '../services/api';
+import { postToGAS } from '../services/api';
 import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
