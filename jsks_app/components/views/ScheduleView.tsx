@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Calendar as CalendarIcon, Maximize2, Minimize2, ArrowLeft, Plus } from 'lucide-react';
 import { ScheduleItem } from '../../types';
 import { Lunar, Solar } from 'lunar-javascript';
+import { getSpecialDate } from '../../utils/specialDates';
 
 interface ScheduleViewProps {
   schedules: ScheduleItem[];
@@ -133,48 +134,63 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
     const hasEvents = dayEvents.length > 0;
 
     // Get lunar date (only for Monday - day of week = 1)
-    let lunarDate = '';
-    if (dateObj.getDay() === 1) { // Monday
+    const isMonday = dateObj.getDay() === 1;
+    let autoLunarDate = '';
+    if (isMonday) {
       const solar = Solar.fromDate(dateObj);
       const lunar = solar.getLunar();
-      lunarDate = `${lunar.getMonth()}.${lunar.getDay()}`;
+      autoLunarDate = `${lunar.getMonth()}.${lunar.getDay()}`;
     }
+
+    // Get special date info
+    const specialInfo = getSpecialDate(dateKey, isMonday);
+    const displayLunar = autoLunarDate || specialInfo.lunarInfo;
 
     return (
       <div
         key={dateKey}
         onClick={() => { setSelectedDate(dateObj); setBaseDate(dateObj); }}
         className={`
-          h-[60px] p-2 border-r border-b border-gray-100 cursor-pointer transition-colors overflow-hidden
+          h-[60px] p-1.5 border-r border-b border-gray-100 cursor-pointer transition-colors overflow-hidden
           ${isSelected ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'}
           ${dateObj.getDay() === 0 ? 'border-r-0' : ''}
         `}
       >
-        {/* Date Number and Lunar Date - side by side */}
-        <div className="flex items-baseline gap-1 mb-0.5">
+        {/* Row 1: Solar date (1,1) and Lunar date (1,2) */}
+        <div className="flex items-baseline justify-between mb-0.5">
           <div className={`
-            text-[14px] font-bold
-            ${isToday ? 'w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white' : ''}
+            text-[14px] font-bold leading-none
+            ${isToday ? 'bg-primary text-white rounded-md px-1.5 py-0.5' : ''}
             ${!isToday && isSelected ? 'text-primary' : ''}
             ${!isToday && !isSelected ? 'text-gray-700' : ''}
           `}>
             {day}
           </div>
 
-          {/* Lunar date - right side, same line */}
-          {lunarDate && (
-            <div className="text-[8px] text-gray-400 font-medium">
-              {lunarDate}
+          {/* Lunar date - (1,2) position */}
+          {displayLunar && (
+            <div className="text-[7px] text-gray-400 font-medium leading-none">
+              {displayLunar}
             </div>
           )}
         </div>
 
-        {/* Event Count */}
-        {hasEvents && (
-          <div className="text-[10px] text-secondary font-bold">
-            {dayEvents.length}개
-          </div>
-        )}
+        {/* Row 2: Event/Holiday (2,1) and Schedule Count (2,2) */}
+        <div className="flex items-start justify-between gap-0.5">
+          {/* Special event/holiday - (2,1) position */}
+          {specialInfo.event && (
+            <div className="text-[7px] text-secondary font-bold leading-tight flex-1 truncate">
+              {specialInfo.event}
+            </div>
+          )}
+
+          {/* Event count - (2,2) position */}
+          {hasEvents && (
+            <div className="text-[8px] text-primary font-bold leading-none whitespace-nowrap">
+              {dayEvents.length}개
+            </div>
+          )}
+        </div>
       </div>
     );
   };
