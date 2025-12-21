@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, Video, FileText, Bell, LogOut, ArrowLeft, Plus, Trash2, ExternalLink, Settings as SettingsIcon, Image, FolderOpen, BarChart3, TrendingUp } from 'lucide-react';
+import { Users, Calendar, Video, FileText, Bell, LogOut, ArrowLeft, Plus, Trash2, ExternalLink, Settings as SettingsIcon, Image, FolderOpen, BarChart3, TrendingUp, Clock } from 'lucide-react';
 import { User, VideoContent, AppConfig, ScheduleItem } from '../../types';
 import { dbService } from '../../services/db';
 import DriveFilePicker from '../DriveFilePicker';
@@ -208,7 +208,10 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
         }
       }
 
-      if (editingVideo) {
+      // 편집 모드인지 미리 체크
+      const isEditMode = !!editingVideo;
+
+      if (isEditMode) {
         // 편집 모드
         console.log('🔄 비디오 수정 시작:', {
           id: editingVideo.id,
@@ -217,7 +220,6 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
         });
         await dbService.updateVideo(editingVideo.id, videoData);
         console.log('✅ 비디오 수정 완료');
-        setEditingVideo(null);
       } else {
         // 새로 추가
         console.log('➕ 비디오 추가 시작:', videoData);
@@ -226,6 +228,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       }
 
       // 폼 초기화
+      setEditingVideo(null);
       setIsAddingVideo(false);
       setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
 
@@ -238,7 +241,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       setActiveTab('content-review');
 
       // 성공 메시지
-      alert(editingVideo ? '콘텐츠가 수정되었습니다.' : '콘텐츠가 등록되었습니다.');
+      alert(isEditMode ? '콘텐츠가 수정되었습니다.' : '콘텐츠가 등록되었습니다.');
     } catch (error) {
       console.error('❌ 비디오 저장 실패:', error);
       console.error('에러 타입:', typeof error);
