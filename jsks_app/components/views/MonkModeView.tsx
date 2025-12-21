@@ -74,8 +74,16 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   }, [activeTab]);
 
   const fetchVideos = async () => {
-    const data = await dbService.getVideos(true); // 스님 모드에서는 모든 비디오 가져오기
-    setVideos(data);
+    try {
+      console.log('📥 비디오 목록 가져오기 시작');
+      const data = await dbService.getVideos(true); // 스님 모드에서는 모든 비디오 가져오기
+      console.log('✅ 비디오 목록 가져오기 성공:', data?.length || 0, '개');
+      setVideos(data || []);
+    } catch (error) {
+      console.error('❌ 비디오 목록 가져오기 실패:', error);
+      // 에러가 나도 빈 배열로 설정하여 UI가 깨지지 않도록
+      setVideos([]);
+    }
   };
 
   const fetchSettings = async () => {
@@ -209,20 +217,28 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
         });
         await dbService.updateVideo(editingVideo.id, videoData);
         console.log('✅ 비디오 수정 완료');
-        alert('콘텐츠가 수정되었습니다.');
         setEditingVideo(null);
       } else {
         // 새로 추가
         console.log('➕ 비디오 추가 시작:', videoData);
         await dbService.addVideo(videoData);
         console.log('✅ 비디오 추가 완료');
-        alert('콘텐츠가 등록되었습니다.');
       }
 
+      // 폼 초기화
       setIsAddingVideo(false);
       setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
+
+      // 비디오 목록 새로고침
+      console.log('🔄 비디오 목록 새로고침 중...');
       await fetchVideos();
+      console.log('✅ 비디오 목록 새로고침 완료');
+
+      // 탭 전환
       setActiveTab('content-review');
+
+      // 성공 메시지
+      alert(editingVideo ? '콘텐츠가 수정되었습니다.' : '콘텐츠가 등록되었습니다.');
     } catch (error) {
       console.error('❌ 비디오 저장 실패:', error);
       console.error('에러 타입:', typeof error);
