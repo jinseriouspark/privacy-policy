@@ -58,6 +58,12 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
   // 드라이브 폴더 ID (AddView와 동일)
   const MONK_DRIVE_FOLDER_ID = '1Iw3aFnn0cimoiD2WaTbuEQRcFflwdFkC';
 
+  // Fetch Data on Component Mount and Tab Change
+  useEffect(() => {
+    // 컴포넌트 마운트 시 videos 미리 로드
+    fetchVideos();
+  }, []);
+
   // Fetch Data on Tab Change
   useEffect(() => {
     if (activeTab === 'videos') fetchVideos();
