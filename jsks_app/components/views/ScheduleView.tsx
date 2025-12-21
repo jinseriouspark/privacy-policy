@@ -85,7 +85,8 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, onBack, onSchedu
     if (viewMode === 'month') {
       // Month View Generation (Start from Monday)
       const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0(Sun) - 6(Sat)
-      const adjustedFirstDay = (firstDayOfMonth + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
+      // Convert to Monday=0, Tuesday=1, ..., Sunday=6
+      const adjustedFirstDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
       // Empty slots for previous month
