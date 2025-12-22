@@ -33,6 +33,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [setupData, setSetupData] = useState<{ adminEmail: string, instructorId: string } | null>(null);
   const [calendarConnected, setCalendarConnected] = useState(true);
+
+  // URL to Tab mapping
+  const urlToTab: Record<string, TabType> = {
+    '/summary': 'stats',
+    '/all-reservation': 'reservations',
+    '/group': 'group-classes',
+    '/attend': 'attendance',
+    '/student': 'users',
+    '/membership': 'packages',
+    '/setting': 'settings'
+  };
+
+  const tabToUrl: Record<TabType, string> = {
+    'stats': '/summary',
+    'reservations': '/all-reservation',
+    'group-classes': '/group',
+    'attendance': '/attend',
+    'users': '/student',
+    'packages': '/membership',
+    'settings': '/setting'
+  };
   
   // Instructor - User Mgmt
   const [users, setUsers] = useState<User[]>([]);
@@ -109,6 +130,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     }
   };
 
+  // Initialize tab from URL on mount
+  useEffect(() => {
+    if (isCoach) {
+      const currentPath = window.location.pathname;
+      const tabFromUrl = urlToTab[currentPath];
+      if (tabFromUrl) {
+        setActiveTab(tabFromUrl);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     fetchDashboard();
 
@@ -149,6 +182,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   };
 
   // --- Handlers ---
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    const url = tabToUrl[tab];
+    if (url) {
+      window.history.pushState({}, '', url);
+    }
+  };
 
   const handleCancel = async (reservationId: string, date: string, time: string) => {
     const message = isCoach 
@@ -739,49 +780,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             <div className="overflow-x-auto">
                 <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl min-w-max">
                     <button
-                        onClick={() => setActiveTab('stats')}
+                        onClick={() => handleTabChange('stats')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <TrendingUp size={14} className="inline mr-1" />
                         통계
                     </button>
                     <button
-                        onClick={() => setActiveTab('reservations')}
+                        onClick={() => handleTabChange('reservations')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'reservations' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <Calendar size={14} className="inline mr-1" />
                         예약
                     </button>
                     <button
-                        onClick={() => setActiveTab('group-classes')}
+                        onClick={() => handleTabChange('group-classes')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'group-classes' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <span className="inline-block w-4 h-4 bg-purple-100 text-purple-600 rounded text-[10px] font-black leading-4 text-center mr-1">G</span>
                         그룹수업
                     </button>
                     <button
-                        onClick={() => setActiveTab('attendance')}
+                        onClick={() => handleTabChange('attendance')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'attendance' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <CheckCircle2 size={14} className="inline mr-1" />
                         출석
                     </button>
                     <button
-                        onClick={() => { setActiveTab('users'); fetchUsers(); }}
+                        onClick={() => { handleTabChange('users'); fetchUsers(); }}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <Users size={14} className="inline mr-1" />
                         회원
                     </button>
                     <button
-                        onClick={() => setActiveTab('packages')}
+                        onClick={() => handleTabChange('packages')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'packages' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <Package size={14} className="inline mr-1" />
                         수강권
                     </button>
                     <button
-                        onClick={() => { setActiveTab('settings'); fetchSettings(); }}
+                        onClick={() => { handleTabChange('settings'); fetchSettings(); }}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <Settings size={14} className="inline mr-1" />
