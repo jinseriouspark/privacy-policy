@@ -118,7 +118,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
               >
                 가격
               </button>
-              <a href="#" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
+              <a href="mailto:contact@traff-engine.com" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
                 문의
               </a>
               <button
@@ -159,7 +159,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
                 >
                   가격
                 </button>
-                <a href="#" className="text-slate-600 hover:text-slate-900 font-medium">
+                <a href="mailto:contact@traff-engine.com" className="text-slate-600 hover:text-slate-900 font-medium">
                   문의
                 </a>
                 <button
@@ -330,7 +330,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
             >
               개인정보처리방침
             </button>
-            <a href="#" className="text-sm hover:text-white transition-colors">문의하기</a>
+            <a href="mailto:contact@traff-engine.com" className="text-sm hover:text-white transition-colors">문의하기</a>
           </div>
         </div>
       </footer>
