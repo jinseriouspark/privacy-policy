@@ -54,6 +54,21 @@ export async function getUserByEmail(email: string) {
 }
 
 /**
+ * 사용자 계정 유형 선택 (강사 또는 수강생)
+ */
+export async function selectUserType(userId: string, userType: 'instructor' | 'student') {
+  const { data, error } = await supabase
+    .from('users')
+    .update({ user_type: userType })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
  * Username으로 강사 조회
  */
 export async function getInstructorByUsername(username: string) {

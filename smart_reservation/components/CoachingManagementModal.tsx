@@ -47,7 +47,15 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
     if (!newCoachingTitle.trim()) return;
 
     try {
-      const newCoaching = await createCoaching(instructorId, newCoachingTitle, newCoachingType, newCoachingDesc);
+      const newCoaching = await createCoaching({
+        instructor_id: instructorId,
+        title: newCoachingTitle,
+        description: newCoachingDesc,
+        type: newCoachingType,
+        duration: 60, // Default 60 minutes
+        price: 0,
+        is_active: true
+      });
       setCoachings([newCoaching, ...coachings]);
       setNewCoachingTitle('');
       setNewCoachingDesc('');
@@ -131,7 +139,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                 type="text"
                 value={newCoachingTitle}
                 onChange={(e) => setNewCoachingTitle(e.target.value)}
-                placeholder="코칭 이름 (예: 필라테스 개인 레슨, 요가 그룹 수업)"
+                placeholder="Class ID (예: pilates-private, yoga-group)"
                 className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-orange-500 focus:outline-none mb-2"
               />
               <select

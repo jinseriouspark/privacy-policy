@@ -49,12 +49,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [currentCoaching, setCurrentCoaching] = useState<Coaching | null>(null);
   const [showCoachingModal, setShowCoachingModal] = useState(false);
 
-  const coachId = getCurrentCoachId();
   // Check if user is instructor based on user.userType
   const isCoach = user.userType === 'instructor';
 
   // Cache Key
-  const CACHE_KEY = `dashboard_data_${user.email}_${coachId || 'default'}`;
+  const CACHE_KEY = `dashboard_data_${user.email}_${currentCoaching?.id || 'default'}`;
 
   // Share URL Calculation
   const shareUrl = typeof window !== 'undefined' 

@@ -9,12 +9,13 @@ import InstructorProfile from './components/InstructorProfile';
 import StudioSetup from './components/StudioSetup';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
+import AccountTypeSelection from './components/AccountTypeSelection';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentProjectSlug } from './services/api';
 import { AlertTriangle } from 'lucide-react';
 import { signOut } from './lib/supabase/auth';
 import { supabase } from './lib/supabase/client';
-import { getUserByEmail, acceptInvitation, getInvitationByCode, getCoachingBySlug } from './lib/supabase/database';
+import { getUserByEmail, acceptInvitation, getInvitationByCode, getCoachingBySlug, selectUserType } from './lib/supabase/database';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -69,7 +70,26 @@ const App: React.FC = () => {
           const email = session.user.email!;
           const existingUser = await getUserByEmail(email);
 
-          if (existingUser && existingUser.user_type) {
+          if (existingUser) {
+            // If user_type is null, show account type selection
+            if (!existingUser.user_type) {
+              setCurrentUser({
+                id: existingUser.id,
+                email: existingUser.email,
+                name: existingUser.name,
+                picture: existingUser.picture,
+                userType: undefined,
+                username: existingUser.username,
+                bio: existingUser.bio,
+                isProfileComplete: false,
+                remaining: 0
+              } as User);
+              setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
+              setLoading(false);
+              return;
+            }
+
+            // User has user_type set
             // Check if there's an invitation code to accept
             if (inviteCode) {
               try {
@@ -123,11 +143,47 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
 
+    // user_type이 없으면 계정 유형 선택 화면으로
+    if (!user.userType) {
+      setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
+    }
     // 강사이고 프로필 미완성 시 스튜디오 설정으로
-    if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
+    else if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
       setCurrentView(ViewState.STUDIO_SETUP);
     } else {
       setCurrentView(ViewState.DASHBOARD);
+    }
+  };
+
+  const handleSelectUserType = async (userType: 'instructor' | 'student') => {
+    if (!currentUser) return;
+
+    try {
+      const updatedUser = await selectUserType(currentUser.id!, userType);
+
+      const user: User = {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        picture: updatedUser.picture,
+        userType: updatedUser.user_type as UserType,
+        username: updatedUser.username,
+        bio: updatedUser.bio,
+        isProfileComplete: userType === 'student', // 수강생은 바로 완료
+        remaining: 0
+      };
+
+      setCurrentUser(user);
+
+      // 강사는 스튜디오 설정으로, 수강생은 대시보드로
+      if (userType === 'instructor') {
+        setCurrentView(ViewState.STUDIO_SETUP);
+      } else {
+        setCurrentView(ViewState.DASHBOARD);
+      }
+    } catch (error) {
+      console.error('Failed to select user type:', error);
+      alert('계정 유형 선택에 실패했습니다.');
     }
   };
 
@@ -164,6 +220,14 @@ const App: React.FC = () => {
 
       case ViewState.LOGIN:
         return <Login onLogin={handleLogin} />;
+
+      case ViewState.ACCOUNT_TYPE_SELECTION:
+        return (
+          <AccountTypeSelection
+            onSelectType={handleSelectUserType}
+            onBack={handleLogout}
+          />
+        );
 
       case ViewState.STUDIO_SETUP:
         if (!currentUser) return null;
@@ -252,8 +316,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Full-screen views without Layout (Landing, Dashboard, Profile, Privacy, Terms)
-  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE, ViewState.PRIVACY, ViewState.TERMS];
+  // Full-screen views without Layout (Landing, Dashboard, Profile, Privacy, Terms, AccountTypeSelection)
+  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE, ViewState.PRIVACY, ViewState.TERMS, ViewState.ACCOUNT_TYPE_SELECTION];
 
   if (fullScreenViews.includes(currentView)) {
     return (
