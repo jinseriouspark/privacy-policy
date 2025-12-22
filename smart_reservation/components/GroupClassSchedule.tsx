@@ -195,19 +195,6 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">상태 *</label>
-          <select
-            value={formData.status || 'scheduled'}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-            className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
-          >
-            <option value="scheduled">예정</option>
-            <option value="cancelled">취소</option>
-            <option value="completed">완료</option>
-          </select>
-        </div>
       </div>
 
       <div className="flex space-x-3 pt-4">

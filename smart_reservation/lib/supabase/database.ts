@@ -131,7 +131,7 @@ export async function createCoaching(data: {
 
   while (true) {
     const { data: existing } = await supabase
-      .from('coaching')
+      .from('coachings')
       .select('id')
       .eq('slug', finalSlug)
       .single();
@@ -143,7 +143,7 @@ export async function createCoaching(data: {
   }
 
   const { data: coaching, error } = await supabase
-    .from('coaching')
+    .from('coachings')
     .insert({
       ...data,
       slug: finalSlug,
@@ -172,7 +172,7 @@ export async function updateCoaching(
   }
 ) {
   const { data: coaching, error } = await supabase
-    .from('coaching')
+    .from('coachings')
     .update(data)
     .eq('id', coachingId)
     .select()
@@ -187,7 +187,7 @@ export async function updateCoaching(
  */
 export async function deleteCoaching(coachingId: string) {
   const { error } = await supabase
-    .from('coaching')
+    .from('coachings')
     .delete()
     .eq('id', coachingId);
 
@@ -199,7 +199,7 @@ export async function deleteCoaching(coachingId: string) {
  */
 export async function getInstructorCoachings(instructorId: string) {
   const { data, error } = await supabase
-    .from('coaching')
+    .from('coachings')
     .select('*')
     .eq('instructor_id', instructorId)
     .order('created_at', { ascending: false });
@@ -212,7 +212,7 @@ export async function getInstructorCoachings(instructorId: string) {
  */
 export async function getCoachingBySlug(slug: string) {
   const { data, error } = await supabase
-    .from('coaching')
+    .from('coachings')
     .select(`
       *,
       instructor:instructor_id(*)
