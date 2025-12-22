@@ -174,18 +174,24 @@ export async function createCoaching(data: {
     counter++;
   }
 
+  console.log('[createCoaching] Creating coaching:', { ...data, slug: finalSlug });
+
   const { data: coaching, error } = await supabase
     .from('coachings')
     .insert({
       ...data,
       slug: finalSlug,
-      type: data.type || 'private', // Default to 'private' if not specified
-      status: 'active' // Default status
+      type: data.type || 'private' // Default to 'private' if not specified
     })
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[createCoaching] Error:', error);
+    throw error;
+  }
+
+  console.log('[createCoaching] Coaching created:', coaching);
   return coaching;
 }
 
