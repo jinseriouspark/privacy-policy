@@ -26,41 +26,12 @@ const App: React.FC = () => {
   // URL에서 강사 프로젝트 슬러그 가져오기
   const coachingSlug = getCurrentProjectSlug();
 
-  // Sync URL with view state
-  useEffect(() => {
-    const path = window.location.pathname;
-
-    // Update URL based on current view
-    const viewToPath: Record<ViewState, string> = {
-      [ViewState.LANDING]: '/',
-      [ViewState.LOGIN]: '/login',
-      [ViewState.ACCOUNT_TYPE_SELECTION]: '/select-account-type',
-      [ViewState.STUDIO_SETUP]: '/studio-setup',
-      [ViewState.DASHBOARD]: '/dashboard',
-      [ViewState.RESERVATION]: coachingSlug ? `/${coachingSlug}` : '/reservation',
-      [ViewState.INSTRUCTOR_SELECT]: '/instructor-select',
-      [ViewState.PROFILE]: '/profile',
-      [ViewState.PRIVACY]: '/privacy-policy',
-      [ViewState.TERMS]: '/terms-of-service'
-    };
-
-    const expectedPath = viewToPath[currentView];
-
-    // Don't update URL if it's already correct or if we're loading
-    if (!loading && path !== expectedPath && expectedPath) {
-      window.history.pushState({}, '', expectedPath);
-    }
-  }, [currentView, loading, coachingSlug]);
-
   // Check session on app load
   useEffect(() => {
     const checkSession = async () => {
       try {
         // Check for special routes first
         const path = window.location.pathname;
-
-        console.log('[App] Checking session, current path:', path);
-
         if (path === '/privacy-policy') {
           setCurrentView(ViewState.PRIVACY);
           setLoading(false);
@@ -161,23 +132,13 @@ const App: React.FC = () => {
               remaining: 0
             } as User);
 
-            console.log('[App] User logged in:', {
-              email: existingUser.email,
-              userType: existingUser.user_type,
-              coachingSlug,
-              coachEmail
-            });
-
             // If URL has coaching slug param, show reservation page
             if (coachingSlug) {
-              console.log('[App] Navigating to RESERVATION (coaching slug)');
               setCurrentView(ViewState.RESERVATION);
             } else if (coachEmail) {
               // If URL has coach email, show instructor selection
-              console.log('[App] Navigating to INSTRUCTOR_SELECT (coach email)');
               setCurrentView(ViewState.INSTRUCTOR_SELECT);
             } else {
-              console.log('[App] Navigating to DASHBOARD');
               setCurrentView(ViewState.DASHBOARD);
             }
           }
@@ -198,20 +159,16 @@ const App: React.FC = () => {
   }, [coachingSlug]);
 
   const handleLogin = (user: User) => {
-    console.log('[App] handleLogin called with user:', user.email, user.userType);
     setCurrentUser(user);
 
     // user_type이 없으면 계정 유형 선택 화면으로
     if (!user.userType) {
-      console.log('[App] No user type, showing ACCOUNT_TYPE_SELECTION');
       setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
     }
     // 강사이고 프로필 미완성 시 스튜디오 설정으로
     else if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
-      console.log('[App] Instructor without profile, showing STUDIO_SETUP');
       setCurrentView(ViewState.STUDIO_SETUP);
     } else {
-      console.log('[App] Complete user, showing DASHBOARD');
       setCurrentView(ViewState.DASHBOARD);
     }
   };
