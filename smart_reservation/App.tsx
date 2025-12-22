@@ -46,6 +46,28 @@ const App: React.FC = () => {
         // Check for invitation code in URL
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
+        const coachEmail = urlParams.get('coach');
+
+        // If there's a coach email in URL, fetch instructor data
+        if (coachEmail && !coachingSlug) {
+          try {
+            const instructor = await getUserByEmail(coachEmail);
+            if (instructor) {
+              setCurrentInstructor({
+                id: instructor.id,
+                name: instructor.name,
+                bio: instructor.bio || 'Professional Coach',
+                avatarUrl: instructor.picture || ''
+              });
+              // Show instructor selection page for students
+              setCurrentView(ViewState.INSTRUCTOR_SELECT);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error('Failed to fetch instructor:', e);
+          }
+        }
 
         // If there's a coaching slug in URL, fetch coaching info and instructor data
         if (coachingSlug) {
