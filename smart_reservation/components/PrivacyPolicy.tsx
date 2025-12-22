@@ -1,143 +1,216 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { ArrowLeft, Shield, Database, Calendar, Mail, Clock, Lock } from 'lucide-react';
 
 interface PrivacyPolicyProps {
-  onClose: () => void;
+  onBack: () => void;
 }
 
-const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onClose }) => {
+const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <h2 className="text-2xl font-bold text-slate-900">개인정보처리방침</h2>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-orange-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            onClick={onBack}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <X size={24} className="text-slate-600" />
+            <ArrowLeft size={20} />
+            <span className="font-medium">뒤로 가기</span>
           </button>
         </div>
+      </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)] prose prose-slate">
-          <h3>1. 개인정보의 수집 및 이용 목적</h3>
-          <p>
-            예약매니아(이하 "회사")는 다음의 목적을 위하여 개인정보를 처리합니다. 처리한
-            개인정보는 다음의 목적 이외의 용도로는 사용되지 않으며, 이용 목적이 변경될 시에는
-            사전 동의를 구합니다.
-          </p>
-          <ul>
-            <li>회원 가입 및 관리</li>
-            <li>예약 서비스 제공</li>
-            <li>서비스 개선 및 통계 분석</li>
-            <li>고객 문의 응대</li>
-          </ul>
-
-          <h3>2. 수집하는 개인정보의 항목</h3>
-          <p>회사는 다음과 같은 개인정보를 수집합니다:</p>
-          <ul>
-            <li><strong>필수 정보:</strong> 이메일 주소, 이름, Google 프로필 사진</li>
-            <li><strong>선택 정보:</strong> 전화번호, 스튜디오 정보, 자기소개</li>
-            <li><strong>자동 수집 정보:</strong> 서비스 이용 기록, 접속 로그, 쿠키</li>
-          </ul>
-
-          <h3>3. 개인정보의 보유 및 이용기간</h3>
-          <p>
-            회사는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집 시에
-            동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.
-          </p>
-          <ul>
-            <li><strong>회원 정보:</strong> 회원 탈퇴 시까지</li>
-            <li><strong>예약 기록:</strong> 서비스 종료 후 1년</li>
-            <li><strong>부정 이용 기록:</strong> 5년 (전자상거래법)</li>
-          </ul>
-
-          <h3>4. 개인정보의 제3자 제공</h3>
-          <p>
-            회사는 원칙적으로 정보주체의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위
-            내에서만 처리하며, 정보주체의 동의, 법률의 특별한 규정 등이 있는 경우에만 제3자에게
-            제공합니다.
-          </p>
-          <p>현재 회사는 다음의 서비스와 연동하여 개인정보를 공유합니다:</p>
-          <ul>
-            <li><strong>Google Calendar API:</strong> 예약 일정 동기화</li>
-            <li><strong>Google Meet:</strong> 화상 회의 링크 생성</li>
-            <li><strong>Google Sheets:</strong> 데이터 저장</li>
-          </ul>
-
-          <h3>5. 개인정보 처리의 위탁</h3>
-          <p>회사는 원활한 서비스 제공을 위해 다음과 같이 개인정보 처리를 위탁하고 있습니다:</p>
-          <table className="min-w-full border border-slate-200 text-sm">
-            <thead>
-              <tr className="bg-slate-50">
-                <th className="border border-slate-200 px-4 py-2">수탁업체</th>
-                <th className="border border-slate-200 px-4 py-2">위탁업무</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-slate-200 px-4 py-2">Google LLC</td>
-                <td className="border border-slate-200 px-4 py-2">
-                  인증, 캘린더 연동, 데이터 저장
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h3>6. 정보주체의 권리·의무 및 행사방법</h3>
-          <p>정보주체는 회사에 대해 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다:</p>
-          <ul>
-            <li>개인정보 열람 요구</li>
-            <li>오류 등이 있을 경우 정정 요구</li>
-            <li>삭제 요구</li>
-            <li>처리정지 요구</li>
-          </ul>
-          <p>
-            권리 행사는 서비스 내 프로필 설정 메뉴 또는 고객센터를 통해 가능합니다.
-          </p>
-
-          <h3>7. 개인정보의 파기</h3>
-          <p>
-            회사는 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을 때에는
-            지체없이 해당 개인정보를 파기합니다.
-          </p>
-          <ul>
-            <li><strong>파기절차:</strong> 불필요한 개인정보는 내부 방침에 따라 즉시 파기</li>
-            <li><strong>파기방법:</strong> 전자적 파일 형태는 복구 불가능한 방법으로 영구 삭제</li>
-          </ul>
-
-          <h3>8. 개인정보 보호책임자</h3>
-          <p>
-            회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한
-            정보주체의 불만처리 및 피해구제를 위하여 아래와 같이 개인정보 보호책임자를 지정하고
-            있습니다.
-          </p>
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <p><strong>개인정보 보호책임자</strong></p>
-            <p>이메일: privacy@reservation-mania.com</p>
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          {/* Title Section */}
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-8 text-white">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <Shield size={32} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">개인정보처리방침</h1>
+                <p className="text-orange-100 mt-2">Privacy Policy</p>
+              </div>
+            </div>
+            <p className="text-sm text-orange-100">최종 수정일: 2024년 12월 22일</p>
           </div>
 
-          <h3>9. 개인정보의 안전성 확보조치</h3>
-          <p>회사는 개인정보의 안전성 확보를 위해 다음과 같은 조치를 취하고 있습니다:</p>
-          <ul>
-            <li>개인정보 취급 직원의 최소화 및 교육</li>
-            <li>개인정보에 대한 접근 제한</li>
-            <li>접속기록의 보관 및 위변조 방지</li>
-            <li>개인정보의 암호화</li>
-            <li>보안프로그램 설치 및 갱신</li>
-          </ul>
+          {/* Policy Content */}
+          <div className="p-8 space-y-8">
+            {/* Section 1 */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Database size={20} className="text-orange-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">1. 수집하는 개인정보</h2>
+              </div>
+              <div className="pl-13 space-y-4 text-slate-700">
+                <p className="leading-relaxed">
+                  예약매니아는 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다:
+                </p>
+                <div className="bg-slate-50 rounded-xl p-6 space-y-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-2">필수 정보</h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>이메일 주소 (Google 계정 인증)</li>
+                      <li>이름 (서비스 이용자 식별)</li>
+                      <li>프로필 사진 (선택사항, Google 계정에서 제공)</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-2">Google Calendar API 관련 정보</h3>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Google Calendar 일정 읽기 권한</li>
+                      <li>Google Calendar 일정 생성/수정 권한</li>
+                      <li>예약 일정 정보 (날짜, 시간, 제목, 설명)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-          <h3>10. 개인정보처리방침 변경</h3>
-          <p>
-            이 개인정보처리방침은 2025년 1월 1일부터 적용되며, 법령 및 방침에 따른 변경내용의
-            추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여
-            고지할 것입니다.
-          </p>
+            {/* Section 2 */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Calendar size={20} className="text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">2. Google Calendar API 사용 목적</h2>
+              </div>
+              <div className="pl-13 space-y-4 text-slate-700">
+                <p className="leading-relaxed">
+                  Google Calendar API는 다음 목적을 위해서만 사용됩니다:
+                </p>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                  <ul className="space-y-3">
+                    <li className="flex items-start gap-3">
+                      <span className="text-blue-600 font-bold">✓</span>
+                      <span>강사의 예약 가능 시간 조회</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="text-blue-600 font-bold">✓</span>
+                      <span>학생의 예약 생성 및 일정 자동 추가</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="text-blue-600 font-bold">✓</span>
+                      <span>예약 변경 및 취소 시 일정 업데이트</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="text-blue-600 font-bold">✓</span>
+                      <span>예약 충돌 방지를 위한 일정 확인</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                  <h3 className="font-bold text-red-900 mb-3">❌ 다음 용도로는 절대 사용하지 않습니다:</h3>
+                  <ul className="space-y-2 text-sm text-red-800">
+                    <li>• 제3자에게 Calendar 데이터 판매 또는 공유</li>
+                    <li>• 광고 목적으로 Calendar 정보 활용</li>
+                    <li>• 예약 관리 이외의 목적으로 일정 데이터 분석</li>
+                    <li>• 사용자의 동의 없는 Calendar 정보 접근</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
 
-          <div className="mt-8 pt-6 border-t border-slate-200 text-sm text-slate-500">
-            <p>시행일: 2025년 1월 1일</p>
+            {/* Section 3 */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Lock size={20} className="text-purple-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">3. 개인정보 보관 및 보호</h2>
+              </div>
+              <div className="pl-13 space-y-4 text-slate-700">
+                <div className="bg-slate-50 rounded-xl p-6 space-y-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-2">보관 기간</h3>
+                    <p className="text-sm">
+                      • 회원 탈퇴 시까지 보관<br />
+                      • 탈퇴 후 즉시 삭제 (법령에 따른 보관 의무 제외)
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 mb-2">보안 조치</h3>
+                    <p className="text-sm">
+                      • Supabase Row Level Security (RLS) 적용<br />
+                      • Google OAuth 2.0 보안 인증<br />
+                      • HTTPS 암호화 통신<br />
+                      • 접근 권한 최소화 원칙
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 4 */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Mail size={20} className="text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">4. 이용자 권리</h2>
+              </div>
+              <div className="pl-13 space-y-4 text-slate-700">
+                <p className="leading-relaxed">
+                  이용자는 언제든지 다음 권리를 행사할 수 있습니다:
+                </p>
+                <div className="grid gap-4">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <h3 className="font-bold text-green-900 mb-2">개인정보 열람 및 수정</h3>
+                    <p className="text-sm text-green-800">
+                      프로필 페이지에서 언제든지 본인의 정보를 확인하고 수정할 수 있습니다.
+                    </p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <h3 className="font-bold text-green-900 mb-2">Google 연동 해제</h3>
+                    <p className="text-sm text-green-800">
+                      Google 계정 설정에서 예약매니아 앱 액세스 권한을 언제든지 취소할 수 있습니다.
+                    </p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <h3 className="font-bold text-green-900 mb-2">회원 탈퇴</h3>
+                    <p className="text-sm text-green-800">
+                      대시보드에서 회원 탈퇴를 요청하면 즉시 모든 개인정보가 삭제됩니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Section 5 */}
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Clock size={20} className="text-orange-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">5. 개인정보처리방침 변경</h2>
+              </div>
+              <div className="pl-13 space-y-4 text-slate-700">
+                <p className="leading-relaxed">
+                  본 방침이 변경될 경우 웹사이트 공지사항을 통해 공지하며, 중요한 변경사항의 경우 이메일로 사전 통지합니다.
+                </p>
+              </div>
+            </section>
+
+            {/* Contact */}
+            <section className="border-t-2 border-slate-200 pt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">6. 문의</h2>
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6">
+                <p className="text-slate-700 mb-4">
+                  개인정보처리방침에 대한 문의사항이 있으시면 아래로 연락 주시기 바랍니다:
+                </p>
+                <div className="space-y-2 text-sm text-slate-600">
+                  <p><strong>서비스명:</strong> 예약매니아</p>
+                  <p><strong>이메일:</strong> contact@traff-engine.com</p>
+                  <p><strong>운영:</strong> 박진슬</p>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

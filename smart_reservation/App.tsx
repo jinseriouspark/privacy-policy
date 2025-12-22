@@ -7,6 +7,8 @@ import { Dashboard } from './components/Dashboard';
 import Reservation from './components/Reservation';
 import InstructorProfile from './components/InstructorProfile';
 import StudioSetup from './components/StudioSetup';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentProjectSlug } from './services/api';
 import { AlertTriangle } from 'lucide-react';
@@ -27,6 +29,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // Check for special routes first
+        const path = window.location.pathname;
+        if (path === '/privacy-policy') {
+          setCurrentView(ViewState.PRIVACY);
+          setLoading(false);
+          return;
+        }
+        if (path === '/terms-of-service') {
+          setCurrentView(ViewState.TERMS);
+          setLoading(false);
+          return;
+        }
+
         // Check for invitation code in URL
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
@@ -212,13 +227,33 @@ const App: React.FC = () => {
           />
         );
 
+      case ViewState.PRIVACY:
+        return (
+          <PrivacyPolicy
+            onBack={() => {
+              window.history.replaceState({}, '', '/');
+              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
+            }}
+          />
+        );
+
+      case ViewState.TERMS:
+        return (
+          <TermsOfService
+            onBack={() => {
+              window.history.replaceState({}, '', '/');
+              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
+            }}
+          />
+        );
+
       default:
         return <Login onLogin={handleLogin} />;
     }
   };
 
-  // Full-screen views without Layout (Landing, Dashboard, Profile)
-  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE];
+  // Full-screen views without Layout (Landing, Dashboard, Profile, Privacy, Terms)
+  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE, ViewState.PRIVACY, ViewState.TERMS];
 
   if (fullScreenViews.includes(currentView)) {
     return (
