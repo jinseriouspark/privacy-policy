@@ -9,7 +9,7 @@ const getProjectSlugFromUrl = () => {
 
   // Exclude dashboard/system routes
   const systemRoutes = [
-    'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'setting',
+    'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'setting', 'class',
     'onboarding', 'privacy-policy', 'terms-of-service', 'login'
   ];
 
