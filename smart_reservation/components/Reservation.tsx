@@ -161,6 +161,9 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
         throw new Error('강사의 캘린더가 설정되지 않았습니다. 강사에게 문의해주세요.');
       }
 
+      // Deduct package credit FIRST (before creating reservation)
+      await deductPackageCredit(selectedPackageId);
+
       // Create Google Calendar event with Meet link
       const event = await addEventToCalendar({
         calendarId: instructorSettings.calendar_id,
@@ -183,14 +186,19 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
         status: 'confirmed'
       });
 
-      // Deduct package credit
-      await deductPackageCredit(selectedPackageId);
+      // Update local state to reflect the deduction
+      setUserPackages(prev => prev.map(pkg =>
+        pkg.id === selectedPackageId
+          ? { ...pkg, remaining_sessions: pkg.remaining_sessions - 1 }
+          : pkg
+      ));
 
       setConfirmed(true);
       setTimeout(onSuccess, 4000);
     } catch (err: any) {
       console.error('Reservation error:', err);
       setError(err.message || '예약 중 오류가 발생했습니다.');
+    } finally {
       setProcessing(false);
     }
   };
