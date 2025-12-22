@@ -51,7 +51,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
         instructor_id: instructorId,
         title: newCoachingTitle,
         description: newCoachingDesc,
-        type: newCoachingType,
+        type: 'private', // Always private by default
         duration: 60, // Default 60 minutes
         price: 0,
         is_active: true
@@ -59,7 +59,6 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
       setCoachings([newCoaching, ...coachings]);
       setNewCoachingTitle('');
       setNewCoachingDesc('');
-      setNewCoachingType(ClassType.PRIVATE);
       setCreating(false);
 
       // 첫 코칭이면 자동 선택
@@ -142,14 +141,6 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                 placeholder="Class ID (예: pilates-private, yoga-group)"
                 className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-orange-500 focus:outline-none mb-2"
               />
-              <select
-                value={newCoachingType}
-                onChange={(e) => setNewCoachingType(e.target.value as ClassType)}
-                className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-orange-500 focus:outline-none mb-2"
-              >
-                <option value={ClassType.PRIVATE}>개인 레슨 (1:1)</option>
-                <option value={ClassType.GROUP}>그룹 수업</option>
-              </select>
               <textarea
                 value={newCoachingDesc}
                 onChange={(e) => setNewCoachingDesc(e.target.value)}

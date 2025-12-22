@@ -6,14 +6,15 @@ import { upsertInstructorSettings } from '../lib/supabase/database';
 interface InstructorSetupModalProps {
   adminEmail: string;
   instructorId: string;
+  defaultCalendarName?: string;
   onClose: () => void;
 }
 
-export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ adminEmail, instructorId, onClose }) => {
+export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ adminEmail, instructorId, defaultCalendarName, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [calendarName, setCalendarName] = useState('코칭 예약');
+  const [calendarName, setCalendarName] = useState(defaultCalendarName || '코칭 예약');
   const [createdCalendarId, setCreatedCalendarId] = useState<string | null>(null);
 
   const handleCreateCalendar = async () => {

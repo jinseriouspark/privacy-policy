@@ -700,7 +700,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           <div className="min-h-screen bg-slate-50">
             <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
               {showSetupModal && setupData && (
-                  <InstructorSetupModal adminEmail={setupData.adminEmail} instructorId={setupData.instructorId} onClose={() => setShowSetupModal(false)} />
+                  <InstructorSetupModal
+                    adminEmail={setupData.adminEmail}
+                    instructorId={setupData.instructorId}
+                    defaultCalendarName={currentCoaching?.title || '코칭 예약'}
+                    onClose={() => setShowSetupModal(false)}
+                  />
               )}
 
               <Header />
