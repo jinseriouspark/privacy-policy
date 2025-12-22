@@ -88,19 +88,32 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       if (!user) return;
 
       try {
+        console.log('Fetching packages for:', { studentId: user.id, instructorId: instructor.id });
         const packages = await getStudentPackages(user.id, instructor.id);
+        console.log('Packages fetched:', packages);
+
         // Filter active packages with remaining sessions
         const activePackages = packages.filter((pkg: any) => {
           const now = new Date();
           const expiresAt = pkg.expires_at ? new Date(pkg.expires_at) : null;
           const isExpired = expiresAt && expiresAt < now;
-          return pkg.remaining_sessions > 0 && !isExpired;
+          const isActive = pkg.remaining_sessions > 0 && !isExpired;
+          console.log('Package filter:', {
+            name: pkg.name,
+            remaining: pkg.remaining_sessions,
+            expiresAt,
+            isExpired,
+            isActive
+          });
+          return isActive;
         });
+        console.log('Active packages:', activePackages);
         setUserPackages(activePackages);
 
         // Auto-select first package if available
         if (activePackages.length > 0 && !selectedPackageId) {
           setSelectedPackageId(activePackages[0].id);
+          console.log('Auto-selected package:', activePackages[0].id);
         }
       } catch (e) {
         console.error('Failed to fetch packages:', e);
