@@ -141,6 +141,10 @@ const App: React.FC = () => {
               setCurrentView(ViewState.INSTRUCTOR_SELECT);
             } else {
               setCurrentView(ViewState.DASHBOARD);
+              // For instructors, default to summary page
+              if (existingUser.user_type === 'instructor') {
+                window.history.pushState({}, '', '/summary');
+              }
             }
           }
         } else {
@@ -172,6 +176,10 @@ const App: React.FC = () => {
       setCurrentView(ViewState.STUDIO_SETUP);
     } else {
       setCurrentView(ViewState.DASHBOARD);
+      // For instructors, default to summary page
+      if (user.userType === UserType.INSTRUCTOR) {
+        window.history.pushState({}, '', '/summary');
+      }
     }
   };
 
