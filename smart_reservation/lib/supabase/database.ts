@@ -543,6 +543,39 @@ export async function createPackage(data: {
   }
 
   console.log('[createPackage] Package created successfully:', pkg);
+
+  // CRITICAL FIX: Ensure student-instructor relationship exists
+  // This is needed for getStudentPackages to work correctly
+  console.log('[createPackage] Ensuring student-instructor relationship exists');
+
+  // First check if relationship already exists
+  const { data: existingRelation } = await supabase
+    .from('student_instructors')
+    .select('id')
+    .eq('student_id', data.student_id)
+    .eq('instructor_id', data.instructor_id)
+    .maybeSingle();
+
+  if (!existingRelation) {
+    // Create new relationship
+    const { error: relationError } = await supabase
+      .from('student_instructors')
+      .insert({
+        student_id: data.student_id,
+        instructor_id: data.instructor_id,
+        coaching_id: data.coaching_id || null
+      });
+
+    if (relationError) {
+      // Log error but don't fail - the package was created successfully
+      console.error('[createPackage] Warning: Failed to create student-instructor relation:', relationError);
+    } else {
+      console.log('[createPackage] Student-instructor relationship created');
+    }
+  } else {
+    console.log('[createPackage] Student-instructor relationship already exists');
+  }
+
   return pkg;
 }
 

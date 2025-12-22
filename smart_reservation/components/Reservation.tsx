@@ -180,11 +180,16 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour duration
 
       // Get instructor's calendar ID
+      console.log('[Reservation] Fetching instructor settings for:', instructor.id);
       const instructorSettings = await getInstructorSettings(instructor.id);
+      console.log('[Reservation] Instructor settings:', instructorSettings);
 
       if (!instructorSettings?.calendar_id) {
+        console.error('[Reservation] No calendar_id found in settings:', instructorSettings);
         throw new Error('강사의 캘린더가 설정되지 않았습니다. 강사에게 문의해주세요.');
       }
+
+      console.log('[Reservation] Using calendar_id:', instructorSettings.calendar_id);
 
       // Deduct package credit FIRST (before creating reservation)
       await deductPackageCredit(selectedPackageId);

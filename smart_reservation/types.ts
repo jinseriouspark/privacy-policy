@@ -5,6 +5,7 @@ export enum UserType {
 }
 
 export interface User {
+  id?: string; // Supabase user UUID - optional for backward compatibility
   email: string;
   name: string;
   remaining: number;
