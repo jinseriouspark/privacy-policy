@@ -428,7 +428,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           {/* 학생 초대 버튼 */}
           <div className="flex justify-end">
             <button
-              onClick={() => setShowInviteModal(true)}
+              onClick={() => {
+                if (!currentCoaching) {
+                  alert('먼저 코칭을 생성해주세요. "코칭 관리" 버튼을 클릭하여 새 코칭을 만드세요.');
+                  return;
+                }
+                setShowInviteModal(true);
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg"
             >
               <Users size={18} />
