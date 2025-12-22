@@ -662,18 +662,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-            {isCoach && (
-              <>
-                <button
-                  onClick={() => setShowCoachingModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
-                  title="코칭 관리"
-                >
-                  <FolderOpen size={14} />
-                  <span className="hidden sm:inline">코칭 관리</span>
-                </button>
-              </>
-            )}
             {isCoach && onNavigateToProfile && (
                 <button onClick={onNavigateToProfile} className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full">
                     <Settings size={18} />
