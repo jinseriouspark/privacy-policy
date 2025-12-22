@@ -43,12 +43,12 @@ const App: React.FC = () => {
           return;
         }
 
-        // Check for invitation code in URL
+        // Check for invitation code and coach email in URL
         const urlParams = new URLSearchParams(window.location.search);
         const inviteCode = urlParams.get('invite');
         const coachEmail = urlParams.get('coach');
 
-        // If there's a coach email in URL, fetch instructor data
+        // Fetch instructor data if needed (for both coach email and coaching slug)
         if (coachEmail && !coachingSlug) {
           try {
             const instructor = await getUserByEmail(coachEmail);
@@ -59,18 +59,11 @@ const App: React.FC = () => {
                 bio: instructor.bio || 'Professional Coach',
                 avatarUrl: instructor.picture || ''
               });
-              // Show instructor selection page for students
-              setCurrentView(ViewState.INSTRUCTOR_SELECT);
-              setLoading(false);
-              return;
             }
           } catch (e) {
-            console.error('Failed to fetch instructor:', e);
+            console.error('Failed to fetch instructor by email:', e);
           }
-        }
-
-        // If there's a coaching slug in URL, fetch coaching info and instructor data
-        if (coachingSlug) {
+        } else if (coachingSlug) {
           try {
             const coaching = await getCoachingBySlug(coachingSlug);
             if (coaching && coaching.instructor) {
@@ -142,6 +135,9 @@ const App: React.FC = () => {
             // If URL has coaching slug param, show reservation page
             if (coachingSlug) {
               setCurrentView(ViewState.RESERVATION);
+            } else if (coachEmail) {
+              // If URL has coach email, show instructor selection
+              setCurrentView(ViewState.INSTRUCTOR_SELECT);
             } else {
               setCurrentView(ViewState.DASHBOARD);
             }
