@@ -870,8 +870,20 @@ export async function createInvitation(coachingId: string, studentEmail: string)
     .eq('id', coachingId)
     .single();
 
-  if (coachingError) throw coachingError;
-  if (!coaching) throw new Error('Coaching not found');
+  if (coachingError) {
+    console.error('Failed to get coaching:', coachingError);
+    throw coachingError;
+  }
+
+  if (!coaching) {
+    throw new Error('Coaching not found');
+  }
+
+  if (!coaching.instructor_id) {
+    throw new Error('Coaching has no instructor_id');
+  }
+
+  console.log('Creating invitation with instructor_id:', coaching.instructor_id, 'coaching_id:', coachingId);
 
   // 이미 초대한 적 있는지 확인
   const { data: existing } = await supabase
@@ -890,20 +902,28 @@ export async function createInvitation(coachingId: string, studentEmail: string)
   // 새 초대 코드 생성
   const invitationCode = generateInvitationCode();
 
+  const insertData = {
+    instructor_id: coaching.instructor_id,
+    coaching_id: coachingId,
+    email: studentEmail,
+    invitation_code: invitationCode,
+    status: 'pending',
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7일
+  };
+
+  console.log('Inserting invitation:', insertData);
+
   const { data, error } = await supabase
     .from('invitations')
-    .insert({
-      instructor_id: coaching.instructor_id,
-      coaching_id: coachingId,
-      email: studentEmail,
-      invitation_code: invitationCode,
-      status: 'pending',
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7일
-    })
+    .insert(insertData)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Failed to insert invitation:', error);
+    throw error;
+  }
+
   return data;
 }
 

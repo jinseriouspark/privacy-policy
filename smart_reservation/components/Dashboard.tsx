@@ -374,7 +374,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     </div>
 
                     {/* Date & Time */}
-                    <div className="flex items-center gap-3 text-sm text-slate-600 border-t border-slate-100 pt-2">
+                    <div className="flex items-center gap-3 text-sm text-slate-600 border-t border-slate-100 pt-2 flex-wrap">
                         <div className="flex items-center gap-1.5">
                             <Calendar size={14} className="text-slate-400" />
                             <span className="font-medium">{res.date}</span>
@@ -383,6 +383,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                             <Clock size={14} className="text-slate-400" />
                             <span className="font-medium">{res.time}</span>
                         </div>
+                        {isUpcoming && res.meetLink && (
+                            <a
+                                href={res.meetLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors ml-auto"
+                            >
+                                <Video size={14} />
+                                <span className="font-medium text-xs">Meet 입장</span>
+                            </a>
+                        )}
                     </div>
                 </div>
             </div>
