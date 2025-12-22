@@ -1,0 +1,62 @@
+# QA Test Suite Dependencies for Yeyak-mania
+
+# Core Testing Framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-html==4.1.1
+pytest-cov==4.1.0
+pytest-xdist==3.5.0  # For parallel test execution
+
+# Supabase Client
+supabase==2.3.0
+postgrest==0.13.0
+
+# Environment Configuration
+python-dotenv==1.0.0
+
+# UI Testing (Playwright)
+playwright==1.40.0
+pytest-playwright==0.4.3
+
+# Date/Time Utilities
+python-dateutil==2.8.2
+
+# HTTP Testing
+requests==2.31.0
+httpx==0.25.2
+
+# Data Validation
+pydantic==2.5.3
+
+# JSON Schema Validation
+jsonschema==4.20.0
+
+# Mocking and Fixtures
+pytest-mock==3.12.0
+faker==21.0.0  # For generating test data
+
+# Reporting
+pytest-json-report==1.5.0
+allure-pytest==2.13.2  # Optional: Advanced reporting
+
+# Code Coverage
+coverage==7.3.3
+
+# Type Checking (Optional)
+mypy==1.7.1
+types-requests==2.31.0.10
+
+# Linting (Optional)
+ruff==0.1.8
+
+# Performance Testing (Optional)
+pytest-benchmark==4.0.0
+
+# Retry Logic
+tenacity==8.2.3
+
+# Color Output
+colorama==0.4.6
+
+# UUID Generation
+uuid==1.30

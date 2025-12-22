@@ -1,0 +1,238 @@
+# Example GitHub Actions workflow for running QA tests
+# Copy this file to .github/workflows/qa.yml to enable CI/CD
+
+name: QA Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  api-tests:
+    name: API & Database Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        cd qa
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run API tests
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        cd qa
+        pytest test_api.py -v --html=reports/api_report.html --self-contained-html
+
+    - name: Upload API test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-test-results
+        path: qa/reports/
+        retention-days: 30
+
+  scenario-tests:
+    name: Scenario & Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        cd qa
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run scenario tests
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        cd qa
+        pytest test_scenarios.py -v --html=reports/scenario_report.html --self-contained-html
+
+    - name: Upload scenario test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scenario-test-results
+        path: qa/reports/
+        retention-days: 30
+
+  ui-tests:
+    name: UI & E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        cd qa
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install Playwright browsers
+      run: |
+        cd qa
+        playwright install --with-deps chromium
+
+    - name: Run UI tests
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        APP_URL: https://yeyak-mania.vercel.app
+        HEADLESS_MODE: true
+      run: |
+        cd qa
+        pytest test_ui.py -v --html=reports/ui_report.html --self-contained-html
+
+    - name: Upload UI test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ui-test-results
+        path: qa/reports/
+        retention-days: 30
+
+    - name: Upload screenshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-screenshots
+        path: qa/screenshots/
+        retention-days: 7
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        cd qa
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        playwright install chromium
+
+    - name: Run tests with coverage
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        cd qa
+        pytest --cov=. --cov-report=html --cov-report=xml --cov-report=term
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: qa/coverage/
+        retention-days: 30
+
+    - name: Upload coverage to Codecov (optional)
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./qa/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  smoke-tests:
+    name: Smoke Tests (Fast)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        cd qa
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run smoke tests
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      run: |
+        cd qa
+        pytest -m smoke -v
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [api-tests, scenario-tests, ui-tests]
+    if: always()
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Create test summary
+      run: |
+        echo "# QA Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Test Suites" >> $GITHUB_STEP_SUMMARY
+        echo "- API Tests: ${{ needs.api-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Scenario Tests: ${{ needs.scenario-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- UI Tests: ${{ needs.ui-tests.result }}" >> $GITHUB_STEP_SUMMARY
+
+# Notification example (optional)
+# Add Slack, Discord, or email notifications here

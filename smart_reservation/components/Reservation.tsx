@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, AvailabilityData } from '../types';
-import { getInstructorAvailability, createReservation, getStudentPackages } from '../lib/supabase/database';
+import { getInstructorAvailability, createReservation, getStudentPackages, getInstructorSettings } from '../lib/supabase/database';
 import { signInWithGoogle } from '../lib/supabase/auth';
+import { addEventToCalendar } from '../lib/google-calendar';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink, Package } from 'lucide-react';
 
 interface ReservationProps {
@@ -110,12 +111,34 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       const startTime = new Date(`${selectedDateStr}T${selectedTime}:00`);
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour duration
 
+      // Get instructor's calendar ID
+      const instructorSettings = await getInstructorSettings(instructor.id);
+
+      if (!instructorSettings?.calendar_id) {
+        throw new Error('강사의 캘린더가 설정되지 않았습니다. 강사에게 문의해주세요.');
+      }
+
+      // Create Google Calendar event with Meet link
+      const event = await addEventToCalendar({
+        calendarId: instructorSettings.calendar_id,
+        title: `코칭 - ${user.name}`,
+        start: startTime.toISOString(),
+        end: endTime.toISOString(),
+        description: `${instructor.name} 강사님과의 코칭 세션`,
+        attendees: [user.email] // Add student email
+      });
+
+      // Create reservation with Meet link
       await createReservation({
         student_id: user.id,
         instructor_id: instructor.id,
         start_time: startTime.toISOString(),
-        end_time: endTime.toISOString()
+        end_time: endTime.toISOString(),
+        meet_link: event.meetLink || '',
+        google_event_id: event.id,
+        status: 'confirmed'
       });
+
       setConfirmed(true);
       setTimeout(onSuccess, 4000);
     } catch (err: any) {

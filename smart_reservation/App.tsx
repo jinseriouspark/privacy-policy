@@ -271,7 +271,35 @@ const App: React.FC = () => {
           />
         );
 
-      // INSTRUCTOR_SELECT 뷰는 SaaS 모드에서 제거됨 (URL로 이미 결정됨)
+      case ViewState.INSTRUCTOR_SELECT:
+        // Show coaching list for selected instructor
+        if (!currentInstructor) {
+          return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+              <div className="text-center">
+                <p className="text-slate-600 mb-4">강사 정보가 없습니다.</p>
+                <button
+                  onClick={() => setCurrentView(ViewState.LANDING)}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+                >
+                  홈으로 돌아가기
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <PublicBooking
+            instructor={currentInstructor}
+            user={currentUser}
+            onSelectCoaching={(coachingSlug) => {
+              // Navigate to reservation page with coaching slug
+              window.history.pushState({}, '', `/${coachingSlug}`);
+              setCurrentView(ViewState.RESERVATION);
+            }}
+            onBack={() => setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING)}
+          />
+        );
 
       case ViewState.RESERVATION:
         // Public booking page - instructor is required, but user can be null (guest booking)

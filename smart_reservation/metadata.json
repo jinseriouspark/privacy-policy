@@ -1,0 +1,5 @@
+{
+  "name": "Smart Coaching Reservation",
+  "description": "A modern coaching reservation system for 2030s, integrating React with Google Apps Script and Calendar.",
+  "requestFramePermissions": []
+}

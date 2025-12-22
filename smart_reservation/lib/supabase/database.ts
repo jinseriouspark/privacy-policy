@@ -101,13 +101,20 @@ export async function getCoachings(instructorId: string) {
  * Slug 생성 (코칭명 -> URL-friendly slug)
  */
 function generateSlug(name: string): string {
-  return name
+  const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
     .trim()
     .replace(/\s+/g, '-') // 공백을 하이픈으로
     .replace(/-+/g, '-') // 중복 하이픈 제거
     .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
+
+  // If slug is empty after processing, generate a random slug
+  if (!slug) {
+    return 'coaching-' + Math.random().toString(36).substring(2, 9);
+  }
+
+  return slug;
 }
 
 /**
@@ -351,6 +358,8 @@ export async function createReservation(data: {
   start_time: string;
   end_time: string;
   notes?: string;
+  meet_link?: string;
+  google_event_id?: string;
 }) {
   const { data: reservation, error } = await supabase
     .from('reservations')

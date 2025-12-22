@@ -94,7 +94,7 @@ export async function addEventToCalendar(params: {
     const accessToken = session.provider_token;
 
     const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(params.calendarId)}/events`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(params.calendarId)}/events?conferenceDataVersion=1`,
       {
         method: 'POST',
         headers: {
