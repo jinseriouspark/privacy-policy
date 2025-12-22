@@ -996,3 +996,84 @@ export async function getStudentInstructors(studentId: string) {
   return data || [];
 }
 
+
+/**
+ * ===================
+ * Activity Logging
+ * ===================
+ */
+
+export type ActivityAction = 
+  | 'view_tab'
+  | 'create_coaching'
+  | 'invite_student'
+  | 'create_package'
+  | 'schedule_group_class'
+  | 'check_attendance'
+  | 'view_stats';
+
+export type TabName = 
+  | 'dashboard'
+  | 'packages'
+  | 'group_classes'
+  | 'attendance'
+  | 'stats';
+
+/**
+ * 사용자 활동 로그 기록
+ */
+export async function logActivity(data: {
+  user_id: string;
+  action: ActivityAction;
+  tab_name?: TabName;
+  metadata?: Record<string, any>;
+}) {
+  const { error } = await supabase
+    .from('activity_logs')
+    .insert({
+      user_id: data.user_id,
+      action: data.action,
+      tab_name: data.tab_name,
+      metadata: data.metadata || {}
+    });
+
+  if (error) {
+    console.error('Failed to log activity:', error);
+    // Don't throw - logging failures shouldn't break the app
+  }
+}
+
+/**
+ * 사용자 활동 통계 조회
+ */
+export async function getUserActivityStats(userId: string, days: number = 30) {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', startDate.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  // Analyze data
+  const tabCounts: Record<string, number> = {};
+  const actionCounts: Record<string, number> = {};
+
+  data?.forEach(log => {
+    if (log.tab_name) {
+      tabCounts[log.tab_name] = (tabCounts[log.tab_name] || 0) + 1;
+    }
+    actionCounts[log.action] = (actionCounts[log.action] || 0) + 1;
+  });
+
+  return {
+    logs: data || [],
+    tabCounts,
+    actionCounts,
+    totalActions: data?.length || 0
+  };
+}

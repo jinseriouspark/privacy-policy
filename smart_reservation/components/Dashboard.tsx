@@ -10,6 +10,7 @@ import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
+import { logActivity, type TabName } from '../lib/supabase/database';
 import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings } from '../lib/supabase/database';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 
