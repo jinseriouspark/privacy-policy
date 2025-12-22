@@ -795,8 +795,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 {activeTab === 'reservations' && (
                     <>
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-md font-bold text-slate-800 flex items-center">
-                                <Calendar size={18} className="mr-2 text-orange-500"/> 전체 예약
+                            <h3 className="text-xl font-bold text-slate-900 flex items-center">
+                                <Calendar size={22} className="mr-2 text-orange-500"/> 전체 예약
                             </h3>
                             <button onClick={fetchDashboard} className="text-slate-400 hover:text-orange-500 transition-colors">
                                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
