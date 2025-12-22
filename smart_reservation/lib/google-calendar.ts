@@ -93,6 +93,38 @@ export async function addEventToCalendar(params: {
 
     const accessToken = session.provider_token;
 
+    const requestBody = {
+      summary: params.title,
+      description: params.description,
+      start: {
+        dateTime: params.start,
+        timeZone: 'Asia/Seoul'
+      },
+      end: {
+        dateTime: params.end,
+        timeZone: 'Asia/Seoul'
+      },
+      attendees: params.attendees?.map(email => ({ email })),
+      conferenceData: {
+        createRequest: {
+          requestId: `${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' }
+        }
+      },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 30 }
+        ]
+      }
+    };
+
+    console.log('Google Calendar API Request:', {
+      url: `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(params.calendarId)}/events?conferenceDataVersion=1`,
+      body: requestBody
+    });
+
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(params.calendarId)}/events?conferenceDataVersion=1`,
       {
@@ -101,41 +133,19 @@ export async function addEventToCalendar(params: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          summary: params.title,
-          description: params.description,
-          start: {
-            dateTime: params.start,
-            timeZone: 'Asia/Seoul'
-          },
-          end: {
-            dateTime: params.end,
-            timeZone: 'Asia/Seoul'
-          },
-          attendees: params.attendees?.map(email => ({ email })),
-          conferenceData: {
-            createRequest: {
-              requestId: `${Date.now()}`,
-              conferenceSolutionKey: { type: 'hangoutsMeet' }
-            }
-          },
-          reminders: {
-            useDefault: false,
-            overrides: [
-              { method: 'email', minutes: 24 * 60 },
-              { method: 'popup', minutes: 30 }
-            ]
-          }
-        })
+        body: JSON.stringify(requestBody)
       }
     );
 
     if (!response.ok) {
       const error = await response.json();
+      console.error('Google Calendar API Error:', error);
       throw new Error(error.error?.message || '이벤트 생성에 실패했습니다.');
     }
 
     const event = await response.json();
+    console.log('Google Calendar Event Created:', event);
+
     return {
       id: event.id,
       meetLink: event.hangoutLink,

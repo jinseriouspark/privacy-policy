@@ -165,6 +165,12 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       await deductPackageCredit(selectedPackageId);
 
       // Create Google Calendar event with Meet link
+      console.log('Creating calendar event with:', {
+        calendarId: instructorSettings.calendar_id,
+        title: `코칭 - ${user.name}`,
+        attendees: [user.email]
+      });
+
       const event = await addEventToCalendar({
         calendarId: instructorSettings.calendar_id,
         title: `코칭 - ${user.name}`,
@@ -173,6 +179,8 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
         description: `${instructor.name} 강사님과의 코칭 세션`,
         attendees: [user.email] // Add student email
       });
+
+      console.log('Calendar event created:', event);
 
       // Create reservation with Meet link
       await createReservation({
