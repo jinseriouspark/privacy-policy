@@ -77,11 +77,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // Cache Key
   const CACHE_KEY = `dashboard_data_${user.email}_${currentCoaching?.id || 'default'}`;
 
-  // Share URL Calculation
-  const shareUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}${window.location.pathname}?coach=${user.email}`
-    : '';
-
   const fetchDashboard = async () => {
     // [Optimization] Load from cache first for instant feedback
     const cached = localStorage.getItem(CACHE_KEY);
@@ -336,13 +331,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       updated[dayIndex] = { ...updated[dayIndex], [field]: value };
       setSettings({ ...settings, workingHours: updated });
   };
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-        alert(`링크가 복사되었습니다!\n\n이 링크를 수강생에게 전달하세요.`);
-    });
-  };
-
 
   // --- Sub Views ---
 
@@ -688,14 +676,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 >
                   <FolderOpen size={14} />
                   <span className="hidden sm:inline">코칭 관리</span>
-                </button>
-                <button
-                  onClick={copyLink}
-                  className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold transition-all shadow-md"
-                  title="수강생 예약 링크 복사"
-                >
-                  <Share2 size={14} />
-                  <span>수강생 전달 링크 복사</span>
                 </button>
               </>
             )}
