@@ -23,6 +23,11 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
     status: 'scheduled'
   });
 
+  // Recurrence settings
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [selectedDays, setSelectedDays] = useState<number[]>([]); // 0=Sun, 1=Mon, ...6=Sat
+
   useEffect(() => {
     fetchSessions();
   }, []);
@@ -70,16 +75,45 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
     setFormData(session);
   };
 
+  const generateRecurringDates = (): string[] => {
+    if (!formData.date || !recurrenceEndDate || selectedDays.length === 0) {
+      return [formData.date!];
+    }
+
+    const dates: string[] = [];
+    const startDate = new Date(formData.date);
+    const endDate = new Date(recurrenceEndDate);
+
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+
+      if (selectedDays.includes(dayOfWeek)) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dates;
+  };
+
   const handleSave = async () => {
     if (!formData.title || !formData.date || !formData.time || !instructorId) {
       alert('모든 필수 항목을 입력해주세요.');
       return;
     }
 
+    if (isRecurring && (!recurrenceEndDate || selectedDays.length === 0)) {
+      alert('반복 설정이 완료되지 않았습니다. 종료일과 요일을 선택해주세요.');
+      return;
+    }
+
     try {
-      let result;
       if (editingId) {
-        result = await updateGroupSession(editingId, {
+        // Edit mode - single update
+        const result = await updateGroupSession(editingId, {
           title: formData.title,
           date: formData.date,
           time: formData.time,
@@ -87,38 +121,57 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
           maxCapacity: formData.maxCapacity,
           status: formData.status
         });
-      } else {
-        result = await createGroupSession(instructorId, {
-          title: formData.title!,
-          date: formData.date!,
-          time: formData.time!,
-          type: formData.type || ClassType.GROUP,
-          maxCapacity: formData.maxCapacity || 6,
-          status: formData.status || 'scheduled'
-        });
-      }
 
-      // Convert Supabase format to ClassSession format
-      const formatted = {
-        id: result.id,
-        title: result.title,
-        date: result.date,
-        time: result.time,
-        type: result.type,
-        maxCapacity: result.max_capacity,
-        currentCount: result.current_count,
-        status: result.status
-      };
+        const formatted = {
+          id: result.id,
+          title: result.title,
+          date: result.date,
+          time: result.time,
+          type: result.type,
+          maxCapacity: result.max_capacity,
+          currentCount: result.current_count,
+          status: result.status
+        };
 
-      if (editingId) {
         setSessions(sessions.map(s => s.id === editingId ? formatted : s));
       } else {
-        setSessions([...sessions, formatted]);
+        // Create mode - potentially multiple sessions
+        const datesToCreate = isRecurring ? generateRecurringDates() : [formData.date!];
+
+        const newSessions: ClassSession[] = [];
+
+        for (const date of datesToCreate) {
+          const result = await createGroupSession(instructorId, {
+            title: formData.title!,
+            date: date,
+            time: formData.time!,
+            type: formData.type || ClassType.GROUP,
+            maxCapacity: formData.maxCapacity || 6,
+            status: formData.status || 'scheduled'
+          });
+
+          newSessions.push({
+            id: result.id,
+            title: result.title,
+            date: result.date,
+            time: result.time,
+            type: result.type,
+            maxCapacity: result.max_capacity,
+            currentCount: result.current_count,
+            status: result.status
+          });
+        }
+
+        setSessions([...sessions, ...newSessions]);
+        alert(`${newSessions.length}개의 그룹 수업이 생성되었습니다.`);
       }
 
       setEditingId(null);
       setIsCreating(false);
       setFormData({});
+      setIsRecurring(false);
+      setRecurrenceEndDate('');
+      setSelectedDays([]);
     } catch (err: any) {
       alert(err.message || '저장에 실패했습니다.');
     }
@@ -196,6 +249,75 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
           />
         </div>
       </div>
+
+      {/* Recurrence Settings */}
+      {!editingId && (
+        <div className="border-t border-slate-200 pt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="w-4 h-4 text-orange-500 border-slate-300 rounded focus:ring-orange-400"
+              />
+              <span className="text-sm font-medium text-slate-700">반복 일정으로 설정</span>
+            </label>
+          </div>
+
+          {isRecurring && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">반복 종료일 *</label>
+                <input
+                  type="date"
+                  value={recurrenceEndDate}
+                  onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                  min={formData.date}
+                  className="w-full px-4 py-2 rounded-lg border border-orange-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">반복 요일 선택 *</label>
+                <div className="grid grid-cols-7 gap-2">
+                  {[
+                    { day: 0, label: '일', color: 'text-red-600' },
+                    { day: 1, label: '월', color: 'text-slate-700' },
+                    { day: 2, label: '화', color: 'text-slate-700' },
+                    { day: 3, label: '수', color: 'text-slate-700' },
+                    { day: 4, label: '목', color: 'text-slate-700' },
+                    { day: 5, label: '금', color: 'text-slate-700' },
+                    { day: 6, label: '토', color: 'text-blue-600' }
+                  ].map(({ day, label, color }) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDays(
+                          selectedDays.includes(day)
+                            ? selectedDays.filter(d => d !== day)
+                            : [...selectedDays, day]
+                        );
+                      }}
+                      className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedDays.includes(day)
+                          ? 'bg-orange-500 text-white shadow-md'
+                          : `bg-white border border-slate-200 ${color} hover:bg-slate-50`
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  💡 시작일부터 종료일까지 선택한 요일에 모든 수업이 자동 생성됩니다
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex space-x-3 pt-4">
         <button
