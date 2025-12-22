@@ -502,6 +502,36 @@ export async function updatePackage(
 }
 
 /**
+ * 수강권 1회 차감
+ */
+export async function deductPackageCredit(packageId: string) {
+  // First get the current package
+  const { data: pkg, error: fetchError } = await supabase
+    .from('packages')
+    .select('*')
+    .eq('id', packageId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!pkg) throw new Error('Package not found');
+
+  if (pkg.remaining_sessions <= 0) {
+    throw new Error('수강권 잔여 횟수가 부족합니다.');
+  }
+
+  // Deduct one session
+  const { data, error } = await supabase
+    .from('packages')
+    .update({ remaining_sessions: pkg.remaining_sessions - 1 })
+    .eq('id', packageId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
  * 패키지 삭제
  */
 export async function deletePackage(packageId: string) {

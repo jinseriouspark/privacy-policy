@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, AvailabilityData } from '../types';
-import { getInstructorAvailability, createReservation, getStudentPackages, getInstructorSettings } from '../lib/supabase/database';
+import { getInstructorAvailability, createReservation, getStudentPackages, getInstructorSettings, deductPackageCredit } from '../lib/supabase/database';
 import { signInWithGoogle } from '../lib/supabase/auth';
 import { addEventToCalendar } from '../lib/google-calendar';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink, Package } from 'lucide-react';
@@ -80,7 +80,35 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
     };
 
     fetchAvailability();
-  }, [currentWeekStart, instructor.id]); 
+  }, [currentWeekStart, instructor.id]);
+
+  // Fetch user's packages
+  useEffect(() => {
+    const fetchPackages = async () => {
+      if (!user) return;
+
+      try {
+        const packages = await getStudentPackages(user.id, instructor.id);
+        // Filter active packages with remaining sessions
+        const activePackages = packages.filter((pkg: any) => {
+          const now = new Date();
+          const expiresAt = pkg.expires_at ? new Date(pkg.expires_at) : null;
+          const isExpired = expiresAt && expiresAt < now;
+          return pkg.remaining_sessions > 0 && !isExpired;
+        });
+        setUserPackages(activePackages);
+
+        // Auto-select first package if available
+        if (activePackages.length > 0 && !selectedPackageId) {
+          setSelectedPackageId(activePackages[0].id);
+        }
+      } catch (e) {
+        console.error('Failed to fetch packages:', e);
+      }
+    };
+
+    fetchPackages();
+  }, [user, instructor.id]); 
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentWeekStart);
@@ -108,6 +136,21 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
     setError(null);
 
     try {
+      // Validate package selection
+      if (!selectedPackageId) {
+        throw new Error('수강권을 선택해주세요.');
+      }
+
+      // Verify package still has credits
+      const selectedPackage = userPackages.find(pkg => pkg.id === selectedPackageId);
+      if (!selectedPackage) {
+        throw new Error('선택한 수강권을 찾을 수 없습니다.');
+      }
+
+      if (selectedPackage.remaining_sessions <= 0) {
+        throw new Error('수강권 잔여 횟수가 부족합니다.');
+      }
+
       const startTime = new Date(`${selectedDateStr}T${selectedTime}:00`);
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour duration
 
@@ -132,12 +175,16 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       await createReservation({
         student_id: user.id,
         instructor_id: instructor.id,
+        package_id: selectedPackageId,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         meet_link: event.meetLink || '',
         google_event_id: event.id,
         status: 'confirmed'
       });
+
+      // Deduct package credit
+      await deductPackageCredit(selectedPackageId);
 
       setConfirmed(true);
       setTimeout(onSuccess, 4000);
@@ -373,6 +420,64 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       {error && (
         <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 text-center animate-pulse">
           {error}
+        </div>
+      )}
+
+      {/* Package Selection */}
+      {user && userPackages.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-100">
+          <div className="flex items-center gap-2 mb-3">
+            <Package size={18} className="text-purple-600" />
+            <h3 className="font-bold text-slate-900">수강권 선택</h3>
+          </div>
+          <div className="space-y-2">
+            {userPackages.map((pkg: any) => {
+              const isSelected = selectedPackageId === pkg.id;
+              const expiresAt = pkg.expires_at ? new Date(pkg.expires_at) : null;
+              const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+              return (
+                <button
+                  key={pkg.id}
+                  onClick={() => setSelectedPackageId(pkg.id)}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    isSelected
+                      ? 'border-purple-500 bg-purple-100/50 shadow-md'
+                      : 'border-slate-200 bg-white hover:border-purple-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`font-bold ${isSelected ? 'text-purple-900' : 'text-slate-900'}`}>
+                        {pkg.name || '수강권'}
+                      </p>
+                      <p className="text-sm text-slate-600 mt-1">
+                        잔여: <span className="font-bold text-purple-600">{pkg.remaining_sessions}</span>
+                        {pkg.total_sessions && ` / ${pkg.total_sessions}회`}
+                      </p>
+                      {daysLeft !== null && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          {daysLeft > 0 ? `${daysLeft}일 남음` : '만료됨'}
+                        </p>
+                      )}
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      isSelected ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
+                    }`}>
+                      {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {user && userPackages.length === 0 && (
+        <div className="p-6 bg-yellow-50 text-yellow-800 rounded-2xl border border-yellow-200 text-center">
+          <p className="font-bold mb-2">사용 가능한 수강권이 없습니다</p>
+          <p className="text-sm">강사에게 수강권 등록을 요청해주세요.</p>
         </div>
       )}
 
