@@ -517,13 +517,20 @@ export async function createPackage(data: {
   start_date?: string;
   expires_at?: string;
 }) {
+  console.log('[createPackage] Creating package with data:', data);
+
   const { data: pkg, error } = await supabase
     .from('packages')
     .insert(data)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[createPackage] Error creating package:', error);
+    throw error;
+  }
+
+  console.log('[createPackage] Package created successfully:', pkg);
   return pkg;
 }
 

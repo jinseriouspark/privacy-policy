@@ -96,6 +96,14 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
       const packageName = newPackage.name || selectedCoaching?.title || '수강권';
       const expiresAt = calculateExpiryDate(newPackage.start_date, newPackage.validity_days);
 
+      console.log('[UserEditModal] Creating package for:', {
+        student: { id: user.id, email: user.email, name: user.name },
+        instructorId,
+        packageName,
+        coaching_id: newPackage.coaching_id,
+        expiresAt
+      });
+
       await createPackage({
         student_id: user.id,
         instructor_id: instructorId,
@@ -106,6 +114,8 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         start_date: newPackage.start_date,
         expires_at: expiresAt
       });
+
+      console.log('[UserEditModal] Package created successfully');
 
       // Reset form
       setNewPackage({
