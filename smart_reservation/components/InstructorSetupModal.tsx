@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Calendar, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { Check, Calendar, Loader2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
 import { createCoachingCalendar } from '../lib/google-calendar';
 import { upsertInstructorSettings } from '../lib/supabase/database';
 
@@ -14,6 +14,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [calendarName, setCalendarName] = useState('코칭 예약');
+  const [createdCalendarId, setCreatedCalendarId] = useState<string | null>(null);
 
   const handleCreateCalendar = async () => {
     if (!calendarName.trim()) {
@@ -33,10 +34,11 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
         calendar_id: calendar.id
       });
 
+      setCreatedCalendarId(calendar.id);
       setSuccess(true);
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 3000);
 
     } catch (e: any) {
       console.error(e);
@@ -68,6 +70,19 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">설정 완료!</h3>
                 <p className="text-slate-600 text-sm mt-2">캘린더가 생성되었습니다.<br/>예약이 자동으로 등록됩니다.</p>
+
+                {createdCalendarId && (
+                  <a
+                    href={`https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(createdCalendarId)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <Calendar size={20} />
+                    <span>Google Calendar에서 확인</span>
+                    <ExternalLink size={16} />
+                  </a>
+                )}
             </div>
           ) : (
             <div className="space-y-6">
