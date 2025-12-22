@@ -54,6 +54,31 @@ export async function getUserByEmail(email: string) {
 }
 
 /**
+ * 사용자 정보 업데이트
+ */
+export async function updateUser(userId: string, data: {
+  name?: string;
+  bio?: string;
+  picture?: string;
+  username?: string;
+}) {
+  const { data: user, error } = await supabase
+    .from('users')
+    .update({
+      name: data.name,
+      bio: data.bio,
+      picture: data.picture,
+      username: data.username,
+    })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return user;
+}
+
+/**
  * 사용자 계정 유형 선택 (강사 또는 수강생)
  */
 export async function selectUserType(userId: string, userType: 'instructor' | 'student') {
