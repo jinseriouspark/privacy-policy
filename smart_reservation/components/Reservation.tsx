@@ -88,7 +88,13 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
       if (!user) return;
 
       try {
-        console.log('Fetching packages for:', { studentId: user.id, instructorId: instructor.id });
+        console.log('Fetching packages for:', {
+          user: user,
+          studentId: user.id,
+          studentEmail: user.email,
+          instructorId: instructor.id,
+          instructorName: instructor.name
+        });
         const packages = await getStudentPackages(user.id, instructor.id);
         console.log('Packages fetched:', packages);
 

@@ -440,18 +440,43 @@ export async function getPackages(instructorId: string) {
  * 특정 학생의 패키지 목록 조회 (강사별)
  */
 export async function getStudentPackages(studentId: string, instructorId: string) {
+  console.log('[getStudentPackages] Querying with:', { studentId, instructorId });
+
   const { data, error } = await supabase
     .from('packages')
     .select(`
       *,
-      coaching:coaching_id(*)
+      coaching:coaching_id(*),
+      student:student_id(id, email, name),
+      instructor:instructor_id(id, email, name)
     `)
     .eq('student_id', studentId)
     .eq('instructor_id', instructorId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[getStudentPackages] Error:', error);
+    throw error;
+  }
+
+  console.log('[getStudentPackages] Found packages:', data);
   return data || [];
+}
+
+/**
+ * 이메일로 학생의 수강권 조회 (fallback)
+ */
+export async function getStudentPackagesByEmail(studentEmail: string, instructorId: string) {
+  console.log('[getStudentPackagesByEmail] Querying with:', { studentEmail, instructorId });
+
+  // First get student by email
+  const student = await getUserByEmail(studentEmail);
+  if (!student) {
+    console.warn('[getStudentPackagesByEmail] Student not found');
+    return [];
+  }
+
+  return getStudentPackages(student.id, instructorId);
 }
 
 /**
