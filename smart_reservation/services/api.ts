@@ -6,7 +6,18 @@ import { ApiResponse } from '../types';
 const getProjectSlugFromUrl = () => {
   const path = window.location.pathname;
   const parts = path.split('/').filter(p => p);
-  return parts.length > 0 ? parts[0] : null;
+
+  // Exclude dashboard/system routes
+  const systemRoutes = [
+    'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'setting',
+    'onboarding', 'privacy-policy', 'terms-of-service', 'login'
+  ];
+
+  if (parts.length > 0 && !systemRoutes.includes(parts[0])) {
+    return parts[0];
+  }
+
+  return null;
 };
 
 export const getCurrentProjectSlug = () => getProjectSlugFromUrl();
