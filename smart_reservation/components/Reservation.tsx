@@ -85,10 +85,15 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
   // Fetch user's packages
   useEffect(() => {
     const fetchPackages = async () => {
-      if (!user) return;
+      console.log('[Reservation] fetchPackages called, user:', user ? { id: user.id, email: user.email, name: user.name } : null);
+
+      if (!user) {
+        console.log('[Reservation] No user, skipping package fetch');
+        return;
+      }
 
       try {
-        console.log('Fetching packages for:', {
+        console.log('[Reservation] Fetching packages for:', {
           user: user,
           studentId: user.id,
           studentEmail: user.email,
@@ -96,7 +101,7 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
           instructorName: instructor.name
         });
         const packages = await getStudentPackages(user.id, instructor.id);
-        console.log('Packages fetched:', packages);
+        console.log('[Reservation] Packages fetched:', packages);
 
         // Filter active packages with remaining sessions
         const activePackages = packages.filter((pkg: any) => {
@@ -104,7 +109,8 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
           const expiresAt = pkg.expires_at ? new Date(pkg.expires_at) : null;
           const isExpired = expiresAt && expiresAt < now;
           const isActive = pkg.remaining_sessions > 0 && !isExpired;
-          console.log('Package filter:', {
+          console.log('[Reservation] Package filter:', {
+            id: pkg.id,
             name: pkg.name,
             remaining: pkg.remaining_sessions,
             expiresAt,
@@ -113,16 +119,16 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
           });
           return isActive;
         });
-        console.log('Active packages:', activePackages);
+        console.log('[Reservation] Active packages:', activePackages);
         setUserPackages(activePackages);
 
         // Auto-select first package if available
         if (activePackages.length > 0 && !selectedPackageId) {
           setSelectedPackageId(activePackages[0].id);
-          console.log('Auto-selected package:', activePackages[0].id);
+          console.log('[Reservation] Auto-selected package:', activePackages[0].id);
         }
       } catch (e) {
-        console.error('Failed to fetch packages:', e);
+        console.error('[Reservation] Failed to fetch packages:', e);
       }
     };
 
