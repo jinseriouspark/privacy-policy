@@ -345,8 +345,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
           onClose={() => setShowPricing(false)}
         />
       )}
-      {showTerms && <TermsOfService onClose={() => setShowTerms(false)} />}
-      {showPrivacy && <PrivacyPolicy onClose={() => setShowPrivacy(false)} />}
+      {showTerms && <TermsOfService onBack={() => setShowTerms(false)} />}
+      {showPrivacy && <PrivacyPolicy onBack={() => setShowPrivacy(false)} />}
     </div>
   );
 };
