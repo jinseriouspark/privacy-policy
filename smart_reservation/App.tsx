@@ -86,7 +86,7 @@ const App: React.FC = () => {
           const existingUser = await getUserByEmail(email);
 
           if (existingUser) {
-            // If user_type is null, show account type selection
+            // If user_type is null, show account type selection (onboarding)
             if (!existingUser.user_type) {
               setCurrentUser({
                 id: existingUser.id,
@@ -100,6 +100,7 @@ const App: React.FC = () => {
                 remaining: 0
               } as User);
               setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
+              window.history.pushState({}, '', '/onboarding');
               setLoading(false);
               return;
             }
@@ -161,9 +162,10 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
 
-    // user_type이 없으면 계정 유형 선택 화면으로
+    // user_type이 없으면 계정 유형 선택 화면으로 (onboarding)
     if (!user.userType) {
       setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
+      window.history.pushState({}, '', '/onboarding');
     }
     // 강사이고 프로필 미완성 시 스튜디오 설정으로
     else if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
