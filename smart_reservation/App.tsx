@@ -220,6 +220,7 @@ const App: React.FC = () => {
       await signOut(); // Supabase 세션 삭제
       setCurrentUser(null);
       setCurrentView(ViewState.LANDING);
+      window.history.pushState({}, '', '/');
     } catch (error) {
       console.error('Logout error:', error);
     }
