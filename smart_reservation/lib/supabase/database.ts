@@ -400,14 +400,26 @@ export async function createReservation(data: {
  * 예약 취소
  */
 export async function cancelReservation(reservationId: string) {
+  console.log('[cancelReservation] Cancelling reservation:', reservationId);
+
   const { data, error } = await supabase
     .from('reservations')
     .update({ status: 'cancelled' })
     .eq('id', reservationId)
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[cancelReservation] Error:', error);
+    throw error;
+  }
+
+  if (!data) {
+    console.error('[cancelReservation] No reservation found with ID:', reservationId);
+    throw new Error('예약을 찾을 수 없습니다.');
+  }
+
+  console.log('[cancelReservation] Cancelled successfully:', data);
   return data;
 }
 
