@@ -27,13 +27,23 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
     setError(null);
 
     try {
+      console.log('[InstructorSetupModal] Creating calendar:', calendarName);
+
       // Google Calendar에 새 캘린더 생성
       const calendar = await createCoachingCalendar(calendarName);
+      console.log('[InstructorSetupModal] Calendar created:', calendar);
 
       // Supabase에 캘린더 ID 저장
+      console.log('[InstructorSetupModal] Saving calendar_id to instructor settings:', {
+        instructorId,
+        calendar_id: calendar.id
+      });
+
       await upsertInstructorSettings(instructorId, {
         calendar_id: calendar.id
       });
+
+      console.log('[InstructorSetupModal] Settings saved successfully');
 
       setCreatedCalendarId(calendar.id);
       setSuccess(true);
@@ -42,7 +52,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
       }, 3000);
 
     } catch (e: any) {
-      console.error(e);
+      console.error('[InstructorSetupModal] Error:', e);
       setError(e.message || "캘린더 생성 실패");
     } finally {
       setLoading(false);
