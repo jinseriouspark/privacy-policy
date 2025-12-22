@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, FolderOpen, Trash2 } from 'lucide-react';
+import { X, Plus, FolderOpen, Trash2, Copy, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
 import { Coaching, ClassType } from '../types';
 import {
   getInstructorCoachings,
   createCoaching,
   updateCoaching,
-  deleteCoaching
+  deleteCoaching,
+  getInstructorSettings
 } from '../lib/supabase/database';
+import { InstructorSetupModal } from './InstructorSetupModal';
 
 interface CoachingManagementModalProps {
   instructorId: string;
@@ -27,9 +29,13 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
   const [newCoachingTitle, setNewCoachingTitle] = useState('');
   const [newCoachingType, setNewCoachingType] = useState<ClassType>(ClassType.PRIVATE);
   const [newCoachingDesc, setNewCoachingDesc] = useState('');
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     loadCoachings();
+    checkCalendarStatus();
   }, [instructorId]);
 
   const loadCoachings = async () => {
@@ -41,6 +47,22 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkCalendarStatus = async () => {
+    try {
+      const settings = await getInstructorSettings(instructorId);
+      setCalendarConnected(!!settings?.calendar_id);
+    } catch (e) {
+      console.error('Failed to check calendar status:', e);
+    }
+  };
+
+  const handleCopyLink = (slug: string) => {
+    const url = `${window.location.origin}/${slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 2000);
   };
 
   const handleCreateCoaching = async () => {
@@ -99,8 +121,20 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden border border-slate-200">
+    <>
+      {showSetupModal && (
+        <InstructorSetupModal
+          adminEmail=""
+          instructorId={instructorId}
+          onClose={() => {
+            setShowSetupModal(false);
+            checkCalendarStatus();
+          }}
+        />
+      )}
+
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white relative">
           <button
@@ -122,6 +156,26 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
 
         {/* Body */}
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+          {/* Calendar Status Banner */}
+          {!calendarConnected && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-bold text-sm text-slate-900 mb-1">캘린더 연동 필요</p>
+                  <p className="text-xs text-slate-600 mb-3">예약 기능을 사용하려면 Google 캘린더를 연동해야 합니다.</p>
+                  <button
+                    onClick={() => setShowSetupModal(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-sm font-bold rounded-lg transition-all"
+                  >
+                    <Calendar size={14} className="inline mr-1.5" />
+                    지금 연동하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Create New Coaching */}
           {!creating ? (
             <button
@@ -183,19 +237,21 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
               coachings.map(coaching => (
                 <div
                   key={coaching.id}
-                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                  className={`p-4 rounded-xl border-2 transition-all ${
                     currentCoaching?.id === coaching.id
                       ? 'border-orange-500 bg-orange-50'
                       : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
-                  onClick={() => {
-                    onSelectCoaching(coaching);
-                    onClose();
-                  }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between mb-3">
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => {
+                        onSelectCoaching(coaching);
+                        onClose();
+                      }}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-slate-900">{coaching.title}</h3>
                         {currentCoaching?.id === coaching.id && (
                           <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded-full font-bold">
@@ -209,9 +265,15 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                         }`}>
                           {coaching.type === ClassType.GROUP ? '그룹' : '개인'}
                         </span>
+                        {calendarConnected && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
+                            <CheckCircle2 size={10} />
+                            캘린더 연동됨
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1 font-mono">
-                        /{coaching.slug}
+                        {window.location.origin}/{coaching.slug}
                       </p>
                       {coaching.description && (
                         <p className="text-sm text-slate-600 mt-2">{coaching.description}</p>
@@ -228,12 +290,40 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                       <Trash2 size={18} />
                     </button>
                   </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyLink(coaching.slug);
+                      }}
+                      className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
+                        copiedSlug === coaching.slug
+                          ? 'bg-green-500 text-white'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {copiedSlug === coaching.slug ? (
+                        <>
+                          <CheckCircle2 size={14} />
+                          링크 복사됨!
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          예약 링크 복사
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
