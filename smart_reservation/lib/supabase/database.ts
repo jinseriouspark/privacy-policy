@@ -863,6 +863,16 @@ function generateInvitationCode(): string {
  * 학생 초대하기 (코칭 기반)
  */
 export async function createInvitation(coachingId: string, studentEmail: string) {
+  // Get coaching info to get instructor_id
+  const { data: coaching, error: coachingError } = await supabase
+    .from('coachings')
+    .select('instructor_id')
+    .eq('id', coachingId)
+    .single();
+
+  if (coachingError) throw coachingError;
+  if (!coaching) throw new Error('Coaching not found');
+
   // 이미 초대한 적 있는지 확인
   const { data: existing } = await supabase
     .from('invitations')
@@ -883,6 +893,7 @@ export async function createInvitation(coachingId: string, studentEmail: string)
   const { data, error } = await supabase
     .from('invitations')
     .insert({
+      instructor_id: coaching.instructor_id,
       coaching_id: coachingId,
       email: studentEmail,
       invitation_code: invitationCode,
