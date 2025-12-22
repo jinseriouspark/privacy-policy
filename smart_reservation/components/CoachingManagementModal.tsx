@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, FolderOpen, Trash2, Copy, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
+import { X, Plus, FolderOpen, Trash2, CheckCircle2, Calendar, AlertCircle } from 'lucide-react';
 import { Coaching, ClassType } from '../types';
 import {
   getInstructorCoachings,
@@ -31,7 +31,6 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
   const [newCoachingDesc, setNewCoachingDesc] = useState('');
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     loadCoachings();
@@ -56,13 +55,6 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
     } catch (e) {
       console.error('Failed to check calendar status:', e);
     }
-  };
-
-  const handleCopyLink = (slug: string) => {
-    const url = `${window.location.origin}/${slug}`;
-    navigator.clipboard.writeText(url);
-    setCopiedSlug(slug);
-    setTimeout(() => setCopiedSlug(null), 2000);
   };
 
   const handleCreateCoaching = async () => {
@@ -291,32 +283,6 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                     </button>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyLink(coaching.slug);
-                      }}
-                      className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1.5 ${
-                        copiedSlug === coaching.slug
-                          ? 'bg-green-500 text-white'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {copiedSlug === coaching.slug ? (
-                        <>
-                          <CheckCircle2 size={14} />
-                          링크 복사됨!
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={14} />
-                          예약 링크 복사
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
               ))
             )}
