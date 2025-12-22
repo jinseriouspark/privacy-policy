@@ -24,9 +24,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ instructor, user, onSelec
     setError(null);
     try {
       const data = await getInstructorCoachings(instructor.id);
-      // Filter only active coachings
-      const activeCoachings = data.filter(c => c.status === 'active');
-      setCoachings(activeCoachings);
+      // Show all coachings (status field doesn't exist in coachings table)
+      setCoachings(data);
     } catch (err: any) {
       console.error('Failed to fetch coachings:', err);
       setError(err.message || '코칭 목록을 불러올 수 없습니다.');
