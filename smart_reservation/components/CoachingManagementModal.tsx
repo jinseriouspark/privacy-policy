@@ -31,6 +31,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
   const [newCoachingDesc, setNewCoachingDesc] = useState('');
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [selectedCoachingForSetup, setSelectedCoachingForSetup] = useState<Coaching | null>(null);
 
   useEffect(() => {
     loadCoachings();
@@ -50,8 +51,11 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
 
   const checkCalendarStatus = async () => {
     try {
-      const settings = await getInstructorSettings(instructorId);
-      setCalendarConnected(!!settings?.calendar_id);
+      // CHANGED: Check if ALL coachings have calendar_id (not instructor settings)
+      const data = await getInstructorCoachings(instructorId);
+      // At least one coaching should have calendar for overall status
+      const anyHasCalendar = data.some(c => c.calendar_id);
+      setCalendarConnected(anyHasCalendar);
     } catch (e) {
       console.error('Failed to check calendar status:', e);
     }
@@ -114,12 +118,16 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
 
   return (
     <>
-      {showSetupModal && (
+      {showSetupModal && selectedCoachingForSetup && (
         <InstructorSetupModal
           adminEmail=""
           instructorId={instructorId}
+          coachingId={selectedCoachingForSetup.id}
+          defaultCalendarName={selectedCoachingForSetup.title}
           onClose={() => {
             setShowSetupModal(false);
+            setSelectedCoachingForSetup(null);
+            loadCoachings(); // Reload to show updated calendar status
             checkCalendarStatus();
           }}
         />
@@ -148,25 +156,16 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
 
         {/* Body */}
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-          {/* Calendar Status Banner */}
-          {!calendarConnected && (
-            <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
-              <div className="flex items-start gap-3">
-                <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-bold text-sm text-slate-900 mb-1">캘린더 연동 필요</p>
-                  <p className="text-xs text-slate-600 mb-3">예약 기능을 사용하려면 Google 캘린더를 연동해야 합니다.</p>
-                  <button
-                    onClick={() => setShowSetupModal(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-sm font-bold rounded-lg transition-all"
-                  >
-                    <Calendar size={14} className="inline mr-1.5" />
-                    지금 연동하기
-                  </button>
-                </div>
+          {/* Info Banner: Per-coaching calendar setup */}
+          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Calendar size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-bold text-sm text-slate-900 mb-1">코칭별 캘린더 관리</p>
+                <p className="text-xs text-slate-600">각 코칭마다 별도의 Google 캘린더를 생성하여 예약을 관리할 수 있습니다.</p>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Create New Coaching */}
           {!creating ? (
@@ -257,11 +256,23 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                         }`}>
                           {coaching.type === ClassType.GROUP ? '그룹' : '개인'}
                         </span>
-                        {calendarConnected && (
+                        {coaching.calendar_id ? (
                           <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
                             <CheckCircle2 size={10} />
                             캘린더 연동됨
                           </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCoachingForSetup(coaching);
+                              setShowSetupModal(true);
+                            }}
+                            className="px-2 py-0.5 bg-orange-100 text-orange-600 hover:bg-orange-200 text-xs rounded-full font-medium flex items-center gap-1 transition-colors"
+                          >
+                            <Calendar size={10} />
+                            캘린더 연동 필요
+                          </button>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1 font-mono">

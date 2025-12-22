@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
 import { Check, Calendar, Loader2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
 import { createCoachingCalendar } from '../lib/google-calendar';
-import { upsertInstructorSettings } from '../lib/supabase/database';
+import { updateCoachingCalendar } from '../lib/supabase/database';
 
 interface InstructorSetupModalProps {
   adminEmail: string;
-  instructorId: string;
+  instructorId: string; // Kept for backwards compatibility, but no longer used
+  coachingId: string; // NEW: coaching ID to link calendar to
   defaultCalendarName?: string;
   onClose: () => void;
 }
 
-export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ adminEmail, instructorId, defaultCalendarName, onClose }) => {
+export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
+  adminEmail,
+  instructorId,
+  coachingId,
+  defaultCalendarName,
+  onClose
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -33,23 +40,21 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({ admi
       const calendar = await createCoachingCalendar(calendarName);
       console.log('[InstructorSetupModal] Calendar created:', calendar);
 
-      // Supabase에 캘린더 ID 저장
-      console.log('[InstructorSetupModal] Saving calendar_id to instructor settings:', {
-        instructorId,
+      // CHANGED: Supabase에 코칭별로 캘린더 ID 저장 (instructor settings가 아님)
+      console.log('[InstructorSetupModal] Saving calendar_id to coaching:', {
+        coachingId,
         calendar_id: calendar.id
       });
 
-      await upsertInstructorSettings(instructorId, {
-        calendar_id: calendar.id
-      });
+      await updateCoachingCalendar(coachingId, calendar.id);
 
-      console.log('[InstructorSetupModal] Settings saved successfully');
+      console.log('[InstructorSetupModal] Coaching calendar saved successfully');
 
       setCreatedCalendarId(calendar.id);
       setSuccess(true);
       setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+        onClose(); // Just close instead of reload
+      }, 2000);
 
     } catch (e: any) {
       console.error('[InstructorSetupModal] Error:', e);

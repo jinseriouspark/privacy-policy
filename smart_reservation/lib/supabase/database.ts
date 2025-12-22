@@ -1296,3 +1296,39 @@ export async function getUserActivityStats(userId: string, days: number = 30) {
     totalActions: data?.length || 0
   };
 }
+
+// ============================================================================
+// COACHING CALENDAR FUNCTIONS
+// ============================================================================
+
+/**
+ * 코칭의 Google Calendar ID 업데이트
+ * @param coachingId - 코칭 ID
+ * @param calendarId - Google Calendar ID
+ */
+export async function updateCoachingCalendar(coachingId: string, calendarId: string) {
+  const { data, error } = await supabase
+    .from('coachings')
+    .update({ calendar_id: calendarId })
+    .eq('id', coachingId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * 코칭의 캘린더 정보 조회
+ * @param coachingId - 코칭 ID
+ */
+export async function getCoachingCalendar(coachingId: string) {
+  const { data, error } = await supabase
+    .from('coachings')
+    .select('id, title, slug, calendar_id')
+    .eq('id', coachingId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
