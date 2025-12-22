@@ -1047,12 +1047,16 @@ export async function getInvitationByCode(invitationCode: string) {
  * 초대 수락 (학생-코칭 연결)
  */
 export async function acceptInvitation(invitationCode: string, studentId: string, studentEmail: string) {
+  console.log('[acceptInvitation] Starting with:', { invitationCode, studentId, studentEmail });
+
   // 초대 정보 조회
   const invitation = await getInvitationByCode(invitationCode);
 
   if (!invitation) {
     throw new Error('유효하지 않은 초대 코드입니다.');
   }
+
+  console.log('[acceptInvitation] Invitation found:', invitation);
 
   if (invitation.status !== 'pending') {
     throw new Error('이미 사용된 초대 코드입니다.');
@@ -1067,6 +1071,12 @@ export async function acceptInvitation(invitationCode: string, studentId: string
   }
 
   // 학생-코칭 관계 생성
+  console.log('[acceptInvitation] Creating student_instructor relation:', {
+    student_id: studentId,
+    instructor_id: invitation.coaching.instructor_id,
+    coaching_id: invitation.coaching_id
+  });
+
   const { error: relationError } = await supabase
     .from('student_instructors')
     .insert({
@@ -1076,8 +1086,11 @@ export async function acceptInvitation(invitationCode: string, studentId: string
     });
 
   if (relationError && relationError.code !== '23505') { // 중복 에러 무시
+    console.error('[acceptInvitation] Relation error:', relationError);
     throw relationError;
   }
+
+  console.log('[acceptInvitation] Relation created successfully (or already exists)');
 
   // 초대 상태 업데이트
   const { error: updateError } = await supabase
@@ -1121,6 +1134,34 @@ export async function getStudentInstructors(studentId: string) {
 
   if (error) throw error;
   return data || [];
+}
+
+/**
+ * 특정 강사의 학생 목록 조회
+ */
+export async function getInstructorStudents(instructorId: string) {
+  console.log('[getInstructorStudents] Fetching students for instructor:', instructorId);
+
+  const { data, error } = await supabase
+    .from('student_instructors')
+    .select(`
+      *,
+      student:student_id(*)
+    `)
+    .eq('instructor_id', instructorId);
+
+  if (error) {
+    console.error('[getInstructorStudents] Error:', error);
+    throw error;
+  }
+
+  console.log('[getInstructorStudents] Found relations:', data);
+
+  // Extract student objects from the relations
+  const students = data?.map(rel => rel.student).filter(Boolean) || [];
+  console.log('[getInstructorStudents] Extracted students:', students);
+
+  return students;
 }
 
 

@@ -11,7 +11,7 @@ import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
 import { logActivity, type TabName } from '../lib/supabase/database';
-import { getAllStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings } from '../lib/supabase/database';
+import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings } from '../lib/supabase/database';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 
 interface DashboardProps {
@@ -173,7 +173,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const fetchUsers = async () => {
       setUsersLoading(true);
       try {
-          const students = await getAllStudents();
+          console.log('[Dashboard] Fetching students for instructor:', user.id);
+          const students = await getInstructorStudents(user.id);
 
           // Load packages for each student
           const formattedUsersPromises = students.map(async (s) => {
