@@ -1,5 +1,6 @@
 import { supabase } from './client';
-import { User, UserType } from '../../types';
+import { User, UserType, UserRole } from '../../types';
+import { getUserRoles, getPrimaryRole, setInitialRole } from './roles';
 
 /**
  * 사용자 생성 또는 업데이트 (Google 로그인 후)
@@ -11,6 +12,8 @@ export async function upsertUser(data: {
   userType?: UserType;
   username?: string;
   bio?: string;
+  studioName?: string;
+  phone?: string;
 }) {
   // Get current auth user
   const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -22,12 +25,11 @@ export async function upsertUser(data: {
   const { data: user, error } = await supabase
     .from('users')
     .upsert({
-      id: authUser.id, // Use Supabase Auth user ID
       email: data.email,
       name: data.name,
       picture: data.picture,
-      user_type: data.userType,
-      username: data.username,
+      studio_name: data.studioName,
+      phone: data.phone,
       bio: data.bio,
     }, {
       onConflict: 'email'
@@ -36,20 +38,77 @@ export async function upsertUser(data: {
     .single();
 
   if (error) throw error;
+
+  // Set user role if provided
+  if (data.userType && user) {
+    await setInitialRole(user.id, data.userType === UserType.INSTRUCTOR ? 'instructor' : 'student');
+  }
+
   return user;
 }
 
 /**
  * 이메일로 사용자 조회
+ * 🆕 역할 정보 포함
  */
 export async function getUserByEmail(email: string) {
+  console.log('[getUserByEmail] Querying for:', email);
+
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .eq('email', email)
+    .maybeSingle();
+
+  console.log('[getUserByEmail] Query result:', { data, error });
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[getUserByEmail] Error:', error);
+    throw error;
+  }
+
+  // 역할 정보 추가
+  if (data) {
+    console.log('[getUserByEmail] User found, fetching roles...');
+    try {
+      const roles = await getUserRoles(data.id);
+      console.log('[getUserByEmail] Roles:', roles);
+
+      const primaryRole = await getPrimaryRole(data.id);
+      console.log('[getUserByEmail] Primary role:', primaryRole);
+
+      return { ...data, roles, primaryRole };
+    } catch (roleError) {
+      console.error('[getUserByEmail] Error fetching roles:', roleError);
+      // Return user without roles if role fetch fails
+      return { ...data, roles: [], primaryRole: null };
+    }
+  }
+
+  console.log('[getUserByEmail] No user found');
+  return data;
+}
+
+/**
+ * ID로 사용자 조회
+ * 🆕 역할 정보 포함
+ */
+export async function getUserById(userId: string) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
     .single();
 
   if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
+
+  // 역할 정보 추가
+  if (data) {
+    const roles = await getUserRoles(data.id);
+    const primaryRole = await getPrimaryRole(data.id);
+    return { ...data, roles, primaryRole };
+  }
+
   return data;
 }
 
@@ -61,32 +120,51 @@ export async function updateUser(userId: string, data: {
   bio?: string;
   picture?: string;
   username?: string;
+  studio_name?: string;
+  phone?: string;
+  is_profile_complete?: boolean;
 }) {
+  const updateData: any = {};
+
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.bio !== undefined) updateData.bio = data.bio;
+  if (data.picture !== undefined) updateData.picture = data.picture;
+  if (data.username !== undefined) updateData.username = data.username;
+  if (data.studio_name !== undefined) updateData.studio_name = data.studio_name;
+  if (data.phone !== undefined) updateData.phone = data.phone;
+  if (data.is_profile_complete !== undefined) updateData.is_profile_complete = data.is_profile_complete;
+
+  console.log('[updateUser] Updating user:', userId, 'with data:', updateData);
+
   const { data: user, error } = await supabase
     .from('users')
-    .update({
-      name: data.name,
-      bio: data.bio,
-      picture: data.picture,
-      username: data.username,
-    })
+    .update(updateData)
     .eq('id', userId)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[updateUser] Error:', error);
+    throw error;
+  }
+
+  console.log('[updateUser] Success:', user);
   return user;
 }
 
 /**
  * 사용자 계정 유형 선택 (강사 또는 수강생)
+ * 🆕 역할 기반 시스템 사용
  */
 export async function selectUserType(userId: string, userType: 'instructor' | 'student') {
+  // user_roles 테이블에 역할 추가
+  await setInitialRole(userId, userType);
+
+  // Return user data
   const { data, error } = await supabase
     .from('users')
-    .update({ user_type: userType })
-    .eq('id', userId)
     .select()
+    .eq('id', userId)
     .single();
 
   if (error) throw error;
@@ -97,15 +175,23 @@ export async function selectUserType(userId: string, userType: 'instructor' | 's
  * Username으로 강사 조회
  */
 export async function getInstructorByUsername(username: string) {
-  const { data, error } = await supabase
+  const { data: user, error } = await supabase
     .from('users')
     .select('*')
     .eq('username', username)
-    .eq('user_type', 'instructor')
     .single();
 
   if (error) throw error;
-  return data;
+
+  // Verify user is an instructor
+  if (user) {
+    const roles = await getUserRoles(user.id);
+    if (!roles.includes('instructor')) {
+      throw new Error('User is not an instructor');
+    }
+  }
+
+  return user;
 }
 
 /**
@@ -128,15 +214,15 @@ export async function getCoachings(instructorId: string) {
 function generateSlug(name: string): string {
   const slug = name
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, '') // 특수문자 제거
+    .replace(/[^a-z0-9\s-]/g, '') // 특수문자와 한글 제거 (영문/숫자만 허용)
     .trim()
     .replace(/\s+/g, '-') // 공백을 하이픈으로
     .replace(/-+/g, '-') // 중복 하이픈 제거
     .replace(/^-|-$/g, ''); // 앞뒤 하이픈 제거
 
-  // If slug is empty after processing, generate a random slug
+  // If slug is empty after processing, generate 8-character random slug (like calendar ID)
   if (!slug) {
-    return 'coaching-' + Math.random().toString(36).substring(2, 9);
+    return Math.random().toString(36).substring(2, 10); // 8자리 랜덤 문자열
   }
 
   return slug;
@@ -153,11 +239,12 @@ export async function createCoaching(data: {
   price?: number;
   is_active?: boolean;
   type?: 'private' | 'group';
+  working_hours?: object;
 }) {
   // Generate slug from title
   let slug = generateSlug(data.title);
 
-  // Slug 중복 체크 및 번호 추가
+  // Slug 중복 체크 (강사 계정 내에서만)
   let counter = 1;
   let finalSlug = slug;
 
@@ -166,6 +253,7 @@ export async function createCoaching(data: {
       .from('coachings')
       .select('id')
       .eq('slug', finalSlug)
+      .eq('instructor_id', data.instructor_id) // 🔧 강사 ID 추가
       .single();
 
     if (!existing) break;
@@ -181,7 +269,8 @@ export async function createCoaching(data: {
     .insert({
       ...data,
       slug: finalSlug,
-      type: data.type || 'private' // Default to 'private' if not specified
+      type: data.type || 'private', // Default to 'private' if not specified
+      working_hours: data.working_hours || {}
     })
     .select()
     .single();
@@ -207,6 +296,7 @@ export async function updateCoaching(
     price?: number;
     is_active?: boolean;
     type?: 'private' | 'group';
+    working_hours?: object;
   }
 ) {
   const { data: coaching, error } = await supabase
@@ -248,6 +338,10 @@ export async function getInstructorCoachings(instructorId: string) {
 /**
  * Slug로 코칭 가져오기
  */
+/**
+ * 코칭 조회 by slug (legacy support)
+ * @deprecated Use getCoachingByCoachAndSlug instead for new format
+ */
 export async function getCoachingBySlug(slug: string) {
   const { data, error } = await supabase
     .from('coachings')
@@ -265,26 +359,72 @@ export async function getCoachingBySlug(slug: string) {
 }
 
 /**
+ * 코칭 조회 by coach short_id and slug (new format)
+ * Supports /{coach_id}/{class_slug} URL format
+ */
+export async function getCoachingByCoachAndSlug(coachShortId: string, slug: string) {
+  // First get instructor by short_id
+  const { data: instructor, error: instructorError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('short_id', coachShortId)
+    .single();
+
+  if (instructorError || !instructor) {
+    return null;
+  }
+
+  // Verify user is an instructor
+  const roles = await getUserRoles(instructor.id);
+  if (!roles.includes('instructor')) {
+    return null;
+  }
+
+  // Then get coaching by instructor_id + slug
+  const { data, error } = await supabase
+    .from('coachings')
+    .select(`
+      *,
+      instructor:instructor_id(*)
+    `)
+    .eq('instructor_id', instructor.id)
+    .eq('slug', slug)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+/**
  * ClassPackage 형식으로 코칭 조회 (PackageManagement용)
  */
 export async function getClassPackages(instructorId: string) {
   const { data, error } = await supabase
-    .from('coachings')
+    .from('package_templates')
     .select('*')
     .eq('instructor_id', instructorId)
-    .order('created_at', { ascending: false });
+    .eq('is_active', true)
+    .order('display_order', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('[getClassPackages] Error:', error);
+    throw error;
+  }
+
+  console.log('[getClassPackages] Raw data from package_templates:', data);
 
   // Convert to ClassPackage format
-  return (data || []).map(coaching => ({
-    id: coaching.id,
-    name: coaching.title,
-    type: coaching.type || 'individual',
-    credits: coaching.credits || 0,
-    validDays: coaching.valid_days || 0,
-    price: coaching.price || 0,
-    isActive: coaching.is_active
+  return (data || []).map(template => ({
+    id: template.id,
+    name: template.name,
+    type: template.type === 'session_based' ? 'private' : 'group',
+    credits: template.total_sessions || 0,
+    validDays: template.validity_days || 0,
+    price: template.price || 0,
+    isActive: template.is_active
   }));
 }
 
@@ -298,32 +438,38 @@ export async function createClassPackage(instructorId: string, packageData: {
   validDays: number;
   price: number;
   isActive: boolean;
+  coachingId?: string;
 }) {
   const { data, error } = await supabase
-    .from('coachings')
+    .from('package_templates')
     .insert({
       instructor_id: instructorId,
-      title: packageData.name,
-      type: packageData.type,
-      credits: packageData.credits,
-      valid_days: packageData.validDays,
+      coaching_id: packageData.coachingId || null,
+      name: packageData.name,
+      total_sessions: packageData.credits,
+      validity_days: packageData.validDays,
       price: packageData.price,
+      type: 'session_based',
       is_active: packageData.isActive,
-      duration: 60, // Default duration
+      display_order: 0
     })
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[createClassPackage] Error:', error);
+    throw error;
+  }
 
   return {
     id: data.id,
-    name: data.title,
-    type: data.type,
-    credits: data.credits,
-    validDays: data.valid_days,
+    name: data.name,
+    type: packageData.type,
+    credits: data.total_sessions,
+    validDays: data.validity_days,
     price: data.price,
-    isActive: data.is_active
+    isActive: data.is_active,
+    coachingId: data.coaching_id  // 🆕 코칭 ID 포함
   };
 }
 
@@ -337,32 +483,37 @@ export async function updateClassPackage(packageId: string, packageData: {
   validDays?: number;
   price?: number;
   isActive?: boolean;
+  coachingId?: string;  // 🆕 코칭 ID 추가
 }) {
   const updateData: any = {};
-  if (packageData.name !== undefined) updateData.title = packageData.name;
-  if (packageData.type !== undefined) updateData.type = packageData.type;
-  if (packageData.credits !== undefined) updateData.credits = packageData.credits;
-  if (packageData.validDays !== undefined) updateData.valid_days = packageData.validDays;
+  if (packageData.name !== undefined) updateData.name = packageData.name;
+  if (packageData.credits !== undefined) updateData.total_sessions = packageData.credits;
+  if (packageData.validDays !== undefined) updateData.validity_days = packageData.validDays;
   if (packageData.price !== undefined) updateData.price = packageData.price;
   if (packageData.isActive !== undefined) updateData.is_active = packageData.isActive;
+  if (packageData.coachingId !== undefined) updateData.coaching_id = packageData.coachingId;  // 🆕 코칭 ID 업데이트
 
   const { data, error } = await supabase
-    .from('coachings')
+    .from('package_templates')
     .update(updateData)
     .eq('id', packageId)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[updateClassPackage] Error:', error);
+    throw error;
+  }
 
   return {
     id: data.id,
-    name: data.title,
+    name: data.name,
     type: data.type,
-    credits: data.credits,
-    validDays: data.valid_days,
+    credits: data.total_sessions,
+    validDays: data.validity_days,
     price: data.price,
-    isActive: data.is_active
+    isActive: data.is_active,
+    coachingId: data.coaching_id  // 🆕 코칭 ID 포함
   };
 }
 
@@ -371,11 +522,14 @@ export async function updateClassPackage(packageId: string, packageData: {
  */
 export async function deleteClassPackage(packageId: string) {
   const { error } = await supabase
-    .from('coachings')
+    .from('package_templates')
     .delete()
     .eq('id', packageId);
 
-  if (error) throw error;
+  if (error) {
+    console.error('[deleteClassPackage] Error:', error);
+    throw error;
+  }
 }
 
 /**
@@ -391,23 +545,65 @@ export async function createReservation(data: {
   notes?: string;
   meet_link?: string;
   google_event_id?: string;
+  status?: string;
 }) {
+  console.log('[createReservation] Creating reservation with data:', data);
+
   const { data: reservation, error } = await supabase
     .from('reservations')
     .insert(data)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[createReservation] Error:', error);
+    throw error;
+  }
+
+  console.log('[createReservation] Success:', reservation);
   return reservation;
 }
 
 /**
  * 예약 취소
  */
-export async function cancelReservation(reservationId: string) {
+export async function cancelReservation(reservationId: string, skipTimeCheck: boolean = false) {
   console.log('[cancelReservation] Cancelling reservation:', reservationId);
 
+  // 먼저 예약 정보를 가져와서 package_id 확인
+  const { data: reservation, error: fetchError } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('id', reservationId)
+    .single();
+
+  if (fetchError) {
+    console.error('[cancelReservation] Fetch error:', fetchError);
+    throw fetchError;
+  }
+
+  if (!reservation) {
+    throw new Error('예약을 찾을 수 없습니다.');
+  }
+
+  // 취소 가능 시간 체크 (skipTimeCheck가 false인 경우만)
+  let canRefund = true;
+  if (!skipTimeCheck) {
+    const startTime = new Date(reservation.start_time);
+    const now = new Date();
+    const cancellationHours = 24; // 기본 24시간 (하드코딩)
+    const hoursUntilStart = (startTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    console.log('[cancelReservation] Hours until start:', hoursUntilStart);
+    console.log('[cancelReservation] Cancellation policy:', cancellationHours, 'hours');
+
+    if (hoursUntilStart < cancellationHours) {
+      canRefund = false;
+      console.log('[cancelReservation] Cancellation too late, no refund');
+    }
+  }
+
+  // 예약 상태를 취소로 변경
   const { data, error } = await supabase
     .from('reservations')
     .update({ status: 'cancelled' })
@@ -425,8 +621,41 @@ export async function cancelReservation(reservationId: string) {
     throw new Error('예약을 찾을 수 없습니다.');
   }
 
+  // 수강권 회수 복귀 (취소 가능 시간 내에 취소하고 package_id가 있는 경우)
+  if (canRefund && reservation.package_id) {
+    console.log('[cancelReservation] Restoring package credit for package:', reservation.package_id);
+
+    const { error: packageError } = await supabase.rpc('increment_package_sessions', {
+      p_package_id: reservation.package_id,
+      p_amount: 1
+    });
+
+    // RPC가 없으면 직접 업데이트
+    if (packageError) {
+      console.log('[cancelReservation] RPC not available, using direct update');
+      const { data: pkg } = await supabase
+        .from('packages')
+        .select('remaining_sessions')
+        .eq('id', reservation.package_id)
+        .single();
+
+      if (pkg) {
+        await supabase
+          .from('packages')
+          .update({ remaining_sessions: pkg.remaining_sessions + 1 })
+          .eq('id', reservation.package_id);
+
+        console.log('[cancelReservation] Package credit restored');
+      }
+    } else {
+      console.log('[cancelReservation] Package credit restored via RPC');
+    }
+  } else if (!canRefund && reservation.package_id) {
+    console.log('[cancelReservation] Cancellation too late - credit NOT restored');
+  }
+
   console.log('[cancelReservation] Cancelled successfully:', data);
-  return data;
+  return { ...data, refunded: canRefund };
 }
 
 /**
@@ -452,13 +681,54 @@ export async function getReservations(userId: string, userType: 'instructor' | '
 }
 
 /**
+ * 오늘 예약 목록 조회 (모바일 홈 화면용)
+ */
+export async function getTodayReservations(instructorId: string) {
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select(`
+      *,
+      coaching:coaching_id(*),
+      student:student_id(*),
+      package:package_id(*)
+    `)
+    .eq('instructor_id', instructorId)
+    .gte('start_time', todayStart.toISOString())
+    .lt('start_time', todayEnd.toISOString())
+    .in('status', ['confirmed', 'pending'])
+    .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * 모든 사용자 목록 조회 (학생만)
  */
 export async function getAllStudents() {
+  // Get all users with student role
+  const { data: studentRoles, error: rolesError } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role_name', 'student');
+
+  if (rolesError) throw rolesError;
+
+  if (!studentRoles || studentRoles.length === 0) {
+    return [];
+  }
+
+  const studentIds = studentRoles.map(r => r.user_id);
+
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('user_type', 'student')
+    .in('id', studentIds)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -652,6 +922,37 @@ export async function deletePackage(packageId: string) {
 }
 
 /**
+ * 학생의 수강권 조회 (특정 강사 또는 모든 강사)
+ */
+export async function getAllStudentPackages(studentId: number, instructorId?: number) {
+  console.log('[getAllStudentPackages] Querying for student:', studentId, 'instructor:', instructorId);
+
+  let query = supabase
+    .from('packages')
+    .select(`
+      *,
+      coaching:coaching_id(*),
+      instructor:instructor_id(id, email, name)
+    `)
+    .eq('student_id', studentId);
+
+  // 특정 강사의 수강권만 필터링
+  if (instructorId) {
+    query = query.eq('instructor_id', instructorId);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[getAllStudentPackages] Error:', error);
+    throw error;
+  }
+
+  console.log('[getAllStudentPackages] Found packages:', data);
+  return data || [];
+}
+
+/**
  * 강사의 설정 조회
  */
 export async function getInstructorSettings(instructorId: string) {
@@ -669,7 +970,7 @@ export async function getInstructorSettings(instructorId: string) {
  * 강사의 설정 업데이트 또는 생성
  */
 export async function upsertInstructorSettings(instructorId: string, settings: {
-  calendar_id?: string;
+  google_calendar_id?: string;
   timezone?: string;
   business_hours?: any;
   buffer_time?: number;
@@ -733,7 +1034,7 @@ export async function getInstructorAvailability(
     '6': { start: '09:00', end: '18:00', isWorking: false },
   };
 
-  // Get reservations in the date range
+  // Get reservations in the date range (from DB)
   const reservations = await getReservationsByDateRange(
     instructorId,
     startDate,
@@ -746,6 +1047,38 @@ export async function getInstructorAvailability(
     type: r.coaching?.type || 'private',
     coachingTitle: r.coaching?.title || '수업'
   }));
+
+  // 🆕 Google Calendar busy times 추가
+  try {
+    // 강사의 모든 코칭에서 google_calendar_id 가져오기
+    const coachings = await getInstructorCoachings(instructorId);
+    const calendarIds = coachings
+      .map(c => c.google_calendar_id)
+      .filter(Boolean) as string[];
+
+    if (calendarIds.length > 0) {
+      // Google Calendar API로 busy times 조회
+      const { getCalendarBusyTimes } = await import('../google-calendar');
+      const googleBusyTimes = await getCalendarBusyTimes({
+        calendarIds,
+        timeMin: startDate,
+        timeMax: endDate
+      });
+
+      // Google Calendar busy times를 busyRanges에 추가
+      googleBusyTimes.forEach(busy => {
+        busyRanges.push({
+          start: busy.start,
+          end: busy.end,
+          type: 'private',
+          coachingTitle: 'Google Calendar 일정'
+        });
+      });
+    }
+  } catch (error) {
+    console.warn('[getInstructorAvailability] Google Calendar busy times 조회 실패:', error);
+    // Google Calendar 조회 실패해도 DB 예약은 계속 표시
+  }
 
   return { workingHours, busyRanges };
 }
@@ -928,16 +1261,15 @@ export async function getInstructorStats(
 
   if (reservationsError) throw reservationsError;
 
-  // Get all students (unique)
+  // Get all students (from packages table - includes students without reservations yet)
   const { data: allStudents, error: studentsError } = await supabase
-    .from('reservations')
+    .from('packages')
     .select('student_id')
-    .eq('instructor_id', instructorId)
-    .in('status', ['confirmed', 'completed']);
+    .eq('instructor_id', instructorId);
 
   if (studentsError) throw studentsError;
 
-  const uniqueStudentIds = new Set(allStudents?.map(r => r.student_id) || []);
+  const uniqueStudentIds = new Set(allStudents?.map(p => p.student_id) || []);
   const totalStudents = uniqueStudentIds.size;
 
   // Calculate revenue
@@ -1307,9 +1639,15 @@ export async function getUserActivityStats(userId: string, days: number = 30) {
  * @param calendarId - Google Calendar ID
  */
 export async function updateCoachingCalendar(coachingId: string, calendarId: string) {
+  // google_calendar_id의 앞 8자리를 slug로 사용
+  const newSlug = calendarId.substring(0, 8);
+
   const { data, error } = await supabase
     .from('coachings')
-    .update({ calendar_id: calendarId })
+    .update({
+      google_calendar_id: calendarId,
+      slug: newSlug  // slug도 함께 업데이트
+    })
     .eq('id', coachingId)
     .select()
     .single();
@@ -1325,10 +1663,245 @@ export async function updateCoachingCalendar(coachingId: string, calendarId: str
 export async function getCoachingCalendar(coachingId: string) {
   const { data, error } = await supabase
     .from('coachings')
-    .select('id, title, slug, calendar_id')
+    .select('id, title, google_calendar_id')
     .eq('id', coachingId)
     .single();
 
   if (error) throw error;
   return data;
 }
+
+
+/**
+ * ============================================
+ * Solapi Settings Management
+ * ============================================
+ * 강사별 Solapi API 키 암호화 저장/조회
+ */
+
+export interface SolapiSettings {
+  apiKey: string;
+  apiSecret: string;
+  senderPhone: string;
+  kakaoSenderKey?: string;
+  templateId?: string;
+  isActive: boolean;
+}
+
+/**
+ * Solapi 설정 저장 (암호화)
+ */
+export async function saveSolapiSettings(
+  userId: number,
+  settings: {
+    apiKey: string;
+    apiSecret: string;
+    senderPhone: string;
+    kakaoSenderKey?: string;
+    templateId?: string;
+  }
+): Promise<void> {
+  const { error } = await supabase.rpc("save_solapi_settings", {
+    p_user_id: userId,
+    p_api_key: settings.apiKey,
+    p_api_secret: settings.apiSecret,
+    p_sender_phone: settings.senderPhone,
+    p_kakao_sender_key: settings.kakaoSenderKey || null,
+    p_template_id: settings.templateId || "booking_link_v1",
+  });
+
+  if (error) throw error;
+}
+
+/**
+ * Solapi 설정 조회 (복호화)
+ */
+export async function getSolapiSettings(userId: number): Promise<SolapiSettings | null> {
+  const { data, error } = await supabase.rpc("get_solapi_settings", {
+    p_user_id: userId,
+  });
+
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+
+  const settings = data[0];
+  return {
+    apiKey: settings.api_key,
+    apiSecret: settings.api_secret,
+    senderPhone: settings.sender_phone,
+    kakaoSenderKey: settings.kakao_sender_key,
+    templateId: settings.template_id,
+    isActive: settings.is_active,
+  };
+}
+
+/**
+ * Solapi 설정 활성화 상태 확인
+ */
+export async function checkSolapiActive(userId: number): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_solapi_secrets")
+    .select("is_active")
+    .eq("user_id", userId)
+    .single();
+
+  if (error) return false;
+  return data?.is_active || false;
+}
+
+/**
+ * 학생 알림 조회
+ */
+export async function getStudentNotifications(studentId: string) {
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("*")
+    .eq("user_id", parseInt(studentId))
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 알림 읽음 처리
+ */
+export async function markNotificationAsRead(notificationId: string) {
+  const { error } = await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("id", notificationId);
+
+  if (error) throw error;
+}
+
+/**
+ * 알림 삭제
+ */
+export async function deleteNotification(notificationId: string) {
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", notificationId);
+
+  if (error) throw error;
+}
+
+/**
+ * 강사의 특정 날짜 예약 가능 시간 조회
+ */
+export async function getAvailableTimeSlots(
+  instructorId: string,
+  coachingId: string,
+  date: Date
+) {
+  try {
+    // 해당 날짜의 시작과 끝 시간 계산
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 해당 날짜의 모든 예약 조회
+    const { data: reservations, error } = await supabase
+      .from("reservations")
+      .select("start_time, end_time")
+      .eq("instructor_id", parseInt(instructorId))
+      .gte("start_time", startOfDay.toISOString())
+      .lte("start_time", endOfDay.toISOString())
+      .in("status", ["confirmed", "pending"]);
+
+    if (error) throw error;
+
+    // 코칭 정보 조회하여 기본 근무 시간 가져오기
+    const { data: coaching, error: coachingError } = await supabase
+      .from("coachings")
+      .select("duration, working_hours")
+      .eq("id", coachingId)
+      .single();
+
+    if (coachingError) throw coachingError;
+
+    const duration = coaching?.duration || 60;
+    const workingHours = coaching?.working_hours;
+
+    // 해당 날짜의 요일 확인 (0=일요일, 1=월요일, ...)
+    const dayOfWeek = date.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+
+    // 기본 근무 시간 (오전 9시 ~ 오후 6시)
+    const defaultDayWorkingHours = {
+      enabled: dayName !== 'sunday', // 일요일은 기본적으로 비활성화
+      start: '09:00',
+      end: '18:00'
+    };
+
+    // 해당 요일의 근무 시간 가져오기
+    let dayWorkingHours = defaultDayWorkingHours;
+    if (workingHours && typeof workingHours === 'object' && dayName in workingHours) {
+      dayWorkingHours = workingHours[dayName];
+    }
+
+    // 해당 요일에 근무 시간이 없거나 비활성화되어 있으면 빈 배열 반환
+    if (!dayWorkingHours.enabled) {
+      console.log(`[getAvailableTimeSlots] ${dayName} is disabled`);
+      return [];
+    }
+
+    const [startHour] = dayWorkingHours.start.split(':').map(Number);
+    const [endHour] = dayWorkingHours.end.split(':').map(Number);
+
+    console.log(`[getAvailableTimeSlots] Working hours for ${dayName}:`, dayWorkingHours);
+
+    const allSlots: { time: string; available: boolean; reason?: string }[] = [];
+
+    const now = new Date();
+
+    for (let hour = startHour; hour < endHour; hour++) {
+      const slotTime = `${hour.toString().padStart(2, '0')}:00`;
+
+      // 슬롯의 정확한 시작 시간 계산
+      const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, 0, 0, 0);
+      const slotEndDate = new Date(slotDate.getTime() + duration * 60 * 1000);
+
+      // 이미 예약된 시간과 겹치는지 확인
+      const isBooked = reservations?.some(reservation => {
+        const resStart = new Date(reservation.start_time);
+        const resEnd = new Date(reservation.end_time);
+
+        // 시간대가 겹치는지 확인
+        return (
+          (slotDate >= resStart && slotDate < resEnd) ||
+          (slotEndDate > resStart && slotEndDate <= resEnd) ||
+          (slotDate <= resStart && slotEndDate >= resEnd)
+        );
+      });
+
+      // 과거 시간은 예약 불가 (슬롯 시작 시간이 현재보다 이전이면)
+      const isPast = slotDate <= now;
+
+      // 이유 설정
+      let reason: string | undefined;
+      if (isPast) {
+        reason = 'past';
+      } else if (isBooked) {
+        reason = 'booked';
+      }
+
+      allSlots.push({
+        time: slotTime,
+        available: !isBooked && !isPast,
+        reason
+      });
+    }
+
+    return allSlots;
+  } catch (error) {
+    console.error('Failed to get available time slots:', error);
+    throw error;
+  }
+}
+

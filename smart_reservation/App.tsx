@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Instructor, ViewState, UserType } from './types';
+import { User, Instructor, UserType } from './types';
 import Layout from './components/Layout';
 import LandingPage from './components/LandingPage';
 import Login from './components/Login';
 import { Dashboard } from './components/Dashboard';
+import { MobileDashboard } from './components/mobile/MobileDashboard';
 import Reservation from './components/Reservation';
 import InstructorProfile from './components/InstructorProfile';
 import StudioSetup from './components/StudioSetup';
@@ -11,216 +12,356 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import AccountTypeSelection from './components/AccountTypeSelection';
 import ErrorBoundary from './components/ErrorBoundary';
-import { getCurrentProjectSlug } from './services/api';
-import { AlertTriangle } from 'lucide-react';
+import PublicBooking from './components/PublicBooking';
+import { getCurrentProjectSlug, getBookingUrlParams, getStudioSlug } from './services/api';
 import { signOut } from './lib/supabase/auth';
 import { supabase } from './lib/supabase/client';
-import { getUserByEmail, acceptInvitation, getInvitationByCode, getCoachingBySlug, selectUserType } from './lib/supabase/database';
+import { getUserByEmail, upsertUser, acceptInvitation, getCoachingBySlug, getCoachingByCoachAndSlug, selectUserType, getInstructorCoachings } from './lib/supabase/database';
+import { navigateTo, replaceTo, getCurrentRoute, getPostLoginRoute, ROUTES } from './utils/router';
+import { initGA, trackPageView, analytics } from './lib/analytics';
+import { useIsMobile } from './hooks/useIsMobile';
+import { Toaster } from 'react-hot-toast';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.LANDING);
   const [loading, setLoading] = useState(true);
   const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null);
 
-  // URL에서 강사 프로젝트 슬러그 가져오기
-  const coachingSlug = getCurrentProjectSlug();
+  // Mobile detection (480px = smartphone only, not tablets)
+  const isMobile = useIsMobile(480);
 
-  // Check session on app load
+  // URL 상태 추적
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Initialize Google Analytics
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        // Check for special routes first
-        const path = window.location.pathname;
-        if (path === '/privacy-policy') {
-          setCurrentView(ViewState.PRIVACY);
-          setLoading(false);
-          return;
-        }
-        if (path === '/terms-of-service') {
-          setCurrentView(ViewState.TERMS);
-          setLoading(false);
-          return;
-        }
+    initGA();
+  }, []);
 
-        // Check for invitation code and coach email in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const inviteCode = urlParams.get('invite');
-        const coachEmail = urlParams.get('coach');
+  // Listen for URL changes
+  useEffect(() => {
+    // Remove hash from URL (Supabase auth uses hash fragments)
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      // Let Supabase handle auth, then clean up
+      setTimeout(() => {
+        const cleanUrl = window.location.pathname + window.location.search;
+        window.history.replaceState({}, '', cleanUrl);
+      }, 100);
+    } else if (window.location.hash) {
+      // Remove any other hash
+      const cleanUrl = window.location.pathname + window.location.search;
+      window.history.replaceState({}, '', cleanUrl);
+    }
 
-        // Fetch instructor data if needed (for both coach email and coaching slug)
-        if (coachEmail && !coachingSlug) {
-          try {
-            const instructor = await getUserByEmail(coachEmail);
-            if (instructor) {
-              setCurrentInstructor({
-                id: instructor.id,
-                name: instructor.name,
-                bio: instructor.bio || 'Professional Coach',
-                avatarUrl: instructor.picture || ''
-              });
-            }
-          } catch (e) {
-            console.error('Failed to fetch instructor by email:', e);
-          }
-        } else if (coachingSlug) {
-          try {
-            const coaching = await getCoachingBySlug(coachingSlug);
-            if (coaching && coaching.instructor) {
-              setCurrentInstructor({
-                id: coaching.instructor.id,
-                name: coaching.instructor.name,
-                bio: coaching.instructor.bio || 'Professional Coach',
-                avatarUrl: coaching.instructor.picture || ''
-              });
-            }
-          } catch (e) {
-            console.error('Failed to fetch coaching:', e);
-          }
-        }
-
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          const email = session.user.email!;
-          const existingUser = await getUserByEmail(email);
-
-          if (existingUser) {
-            // If user_type is null, show account type selection (onboarding)
-            if (!existingUser.user_type) {
-              setCurrentUser({
-                id: existingUser.id,
-                email: existingUser.email,
-                name: existingUser.name,
-                picture: existingUser.picture,
-                userType: undefined,
-                username: existingUser.username,
-                bio: existingUser.bio,
-                isProfileComplete: false,
-                remaining: 0
-              } as User);
-              setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
-              window.history.pushState({}, '', '/onboarding');
-              setLoading(false);
-              return;
-            }
-
-            // User has user_type set
-            // Check if there's an invitation code to accept
-            if (inviteCode) {
-              try {
-                await acceptInvitation(inviteCode, existingUser.id, email);
-                alert('강사와 연결되었습니다! 이제 예약이 가능합니다.');
-                // Remove invite param from URL
-                window.history.replaceState({}, '', window.location.pathname);
-              } catch (e: any) {
-                console.error('Failed to accept invitation:', e);
-                if (e.message) {
-                  alert(e.message);
-                }
-              }
-            }
-
-            setCurrentUser({
-              id: existingUser.id,
-              email: existingUser.email,
-              name: existingUser.name,
-              picture: existingUser.picture,
-              userType: existingUser.user_type as UserType,
-              username: existingUser.username,
-              bio: existingUser.bio,
-              isProfileComplete: true,
-              remaining: 0
-            } as User);
-
-            // If URL has coaching slug param, show reservation page
-            if (coachingSlug) {
-              setCurrentView(ViewState.RESERVATION);
-            } else if (coachEmail) {
-              // If URL has coach email, show instructor selection
-              setCurrentView(ViewState.INSTRUCTOR_SELECT);
-            } else {
-              setCurrentView(ViewState.DASHBOARD);
-              // For instructors, default to summary page
-              if (existingUser.user_type === 'instructor') {
-                window.history.pushState({}, '', '/summary');
-              }
-            }
-          }
-        } else {
-          // Not logged in - check if this is a public booking page or invite link
-          if (coachingSlug || inviteCode) {
-            setCurrentView(ViewState.RESERVATION);
-          }
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      } finally {
-        setLoading(false);
-      }
+    const handleUrlChange = () => {
+      setCurrentPath(window.location.pathname);
+      trackPageView(window.location.pathname);
     };
 
-    checkSession();
-  }, [coachingSlug]);
+    // Track initial page view
+    trackPageView(window.location.pathname);
+
+    // Listen to browser back/forward
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('navigate', handleUrlChange as EventListener);
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('navigate', handleUrlChange as EventListener);
+    };
+  }, []);
+
+  // Check session and handle routing
+  useEffect(() => {
+    checkSessionAndRoute();
+  }, [currentPath]);
+
+  const checkSessionAndRoute = async () => {
+    try {
+      const path = window.location.pathname;
+      const route = getCurrentRoute();
+
+      // Public routes (no auth required)
+      if (path === ROUTES.PRIVACY || path === ROUTES.TERMS) {
+        setLoading(false);
+        return;
+      }
+
+      // Check for booking routes
+      const coachingSlug = getCurrentProjectSlug();
+      const { coachId, classSlug, studioSlug } = getBookingUrlParams();
+
+      // Fetch instructor data for booking pages
+      await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
+
+      // Check Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        await handleAuthenticatedUser(session.user.email!, route);
+      } else {
+        await handleGuestUser(path, coachingSlug, coachId, classSlug, route.params.invite);
+      }
+    } catch (error) {
+      console.error('Session check error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInstructorData = async (
+    coachingSlug: string | null,
+    coachId: string | null,
+    classSlug: string | null,
+    studioSlug: string | null,
+    coachEmail: string | undefined
+  ) => {
+    try {
+      // New format: /book/{studioSlug}
+      if (studioSlug && !coachingSlug) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('*')
+          .eq('username', studioSlug)
+          .single();
+
+        if (users) {
+          setCurrentInstructor({
+            id: users.id,
+            name: users.name,
+            bio: users.bio || 'Professional Coach',
+            avatarUrl: users.picture || ''
+          });
+        }
+      } else if (coachEmail && !coachingSlug) {
+        const instructor = await getUserByEmail(coachEmail);
+        if (instructor) {
+          setCurrentInstructor({
+            id: instructor.id,
+            name: instructor.name,
+            bio: instructor.bio || 'Professional Coach',
+            avatarUrl: instructor.picture || ''
+          });
+        }
+      } else if (coachId && classSlug) {
+        const coaching = await getCoachingByCoachAndSlug(coachId, classSlug);
+        if (coaching?.instructor) {
+          setCurrentInstructor({
+            id: coaching.instructor.id,
+            name: coaching.instructor.name,
+            bio: coaching.instructor.bio || 'Professional Coach',
+            avatarUrl: coaching.instructor.picture || ''
+          });
+        }
+      } else if (coachingSlug) {
+        const coaching = await getCoachingBySlug(coachingSlug);
+        if (coaching?.instructor) {
+          setCurrentInstructor({
+            id: coaching.instructor.id,
+            name: coaching.instructor.name,
+            bio: coaching.instructor.bio || 'Professional Coach',
+            avatarUrl: coaching.instructor.picture || ''
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch instructor:', e);
+    }
+  };
+
+  const handleAuthenticatedUser = async (email: string, route: any) => {
+    console.log('[handleAuthenticatedUser] START', { email });
+
+    let existingUser = await getUserByEmail(email);
+    console.log('[handleAuthenticatedUser] existingUser:', existingUser);
+
+    // 🆕 If user doesn't exist in DB, create them automatically
+    if (!existingUser) {
+      console.log('[handleAuthenticatedUser] Creating new user in DB...');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      if (!authUser) {
+        console.error('[handleAuthenticatedUser] No auth user!');
+        return;
+      }
+
+      // Create user with student role by default (can be changed in onboarding)
+      existingUser = await upsertUser({
+        email: authUser.email!,
+        name: authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
+        picture: authUser.user_metadata?.avatar_url,
+        userType: UserType.STUDENT, // Default to student for booking links
+      });
+
+      console.log('[handleAuthenticatedUser] New user created:', existingUser);
+    }
+
+    // Handle invitation acceptance
+    if (route.params.invite) {
+      try {
+        await acceptInvitation(route.params.invite, existingUser.id, email);
+        alert('강사와 연결되었습니다! 이제 예약이 가능합니다.');
+        replaceTo(window.location.pathname);
+      } catch (e: any) {
+        console.error('Failed to accept invitation:', e);
+        if (e.message) alert(e.message);
+      }
+    }
+
+    // Get user role from user_roles table
+    const primaryRole = existingUser.primaryRole; // 'instructor' or 'student'
+    const hasRole = !!primaryRole;
+
+    console.log('[handleAuthenticatedUser] primaryRole:', primaryRole, 'hasRole:', hasRole);
+
+    const user: User = {
+      id: existingUser.id,
+      email: existingUser.email,
+      name: existingUser.name,
+      picture: existingUser.picture,
+      userType: primaryRole === 'instructor' ? UserType.INSTRUCTOR : primaryRole === 'student' ? UserType.STUDENT : undefined,
+      username: existingUser.username,
+      bio: existingUser.bio,
+      isProfileComplete: hasRole && (primaryRole === 'student' || !!existingUser.studio_name),
+      remaining: 0
+    };
+
+    console.log('[handleAuthenticatedUser] Setting currentUser:', user);
+    setCurrentUser(user);
+
+    // Check if there's a saved redirect path (from requestCalendarPermissions)
+    const savedRedirect = sessionStorage.getItem('postLoginRedirect');
+    if (savedRedirect && window.location.pathname !== savedRedirect) {
+      sessionStorage.removeItem('postLoginRedirect');
+      console.log('[handleAuthenticatedUser] Redirecting to saved path:', savedRedirect);
+      navigateTo(savedRedirect);
+      return;
+    }
+
+    // If user hasn't selected type, redirect to onboarding
+    if (!hasRole && window.location.pathname !== ROUTES.ONBOARDING) {
+      navigateTo(ROUTES.ONBOARDING);
+      return;
+    }
+
+    // 🆕 If instructor with NO profile, redirect to setup
+    if (primaryRole === 'instructor' && window.location.pathname !== ROUTES.SETUP) {
+      // Only redirect to setup if studio_name is null
+      if (!existingUser.studio_name) {
+        console.log('[handleAuthenticatedUser] studio_name is null, redirecting to setup');
+        navigateTo(ROUTES.SETUP);
+        return;
+      }
+
+      // Log coachings count but don't block access
+      try {
+        const coachings = await getInstructorCoachings(existingUser.id);
+        console.log('[handleAuthenticatedUser] Instructor has', coachings.length, 'coachings');
+      } catch (e) {
+        console.error('[handleAuthenticatedUser] Failed to check coachings:', e);
+      }
+    }
+
+    // If on login page or landing, redirect to appropriate page
+    if (window.location.pathname === ROUTES.LOGIN || window.location.pathname === ROUTES.LANDING) {
+      const postLoginRoute = getPostLoginRoute(user);
+      navigateTo(postLoginRoute);
+    }
+  };
+
+  const handleGuestUser = async (
+    path: string,
+    coachingSlug: string | null,
+    coachId: string | null,
+    classSlug: string | null,
+    inviteCode: string | undefined
+  ) => {
+    // Guest can access booking pages and public routes
+    const isBookingPage = coachingSlug || (coachId && classSlug);
+    const isPublicRoute = path === ROUTES.LANDING || path === ROUTES.LOGIN ||
+                         path === ROUTES.PRIVACY || path === ROUTES.TERMS;
+
+    if (!isBookingPage && !isPublicRoute && path !== '/') {
+      // Redirect guests to landing
+      navigateTo(ROUTES.LANDING);
+    }
+  };
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
+    analytics.login('google');
 
-    // user_type이 없으면 계정 유형 선택 화면으로 (onboarding)
-    if (!user.userType) {
-      setCurrentView(ViewState.ACCOUNT_TYPE_SELECTION);
-      window.history.pushState({}, '', '/onboarding');
+    // Check if there's a saved redirect path (from requestCalendarPermissions)
+    const savedRedirect = sessionStorage.getItem('postLoginRedirect');
+    if (savedRedirect) {
+      sessionStorage.removeItem('postLoginRedirect');
+      navigateTo(savedRedirect);
+      return;
     }
-    // 강사이고 프로필 미완성 시 스튜디오 설정으로
+
+    // user_type이 없으면 onboarding으로
+    if (!user.userType) {
+      navigateTo(ROUTES.ONBOARDING);
+    }
+    // 강사이고 프로필 미완성 시 setup으로
     else if (user.userType === UserType.INSTRUCTOR && !user.isProfileComplete) {
-      setCurrentView(ViewState.STUDIO_SETUP);
+      navigateTo(ROUTES.SETUP);
     } else {
-      setCurrentView(ViewState.DASHBOARD);
-      // For instructors, default to summary page
-      if (user.userType === UserType.INSTRUCTOR) {
-        window.history.pushState({}, '', '/summary');
-      }
+      const postLoginRoute = getPostLoginRoute(user);
+      navigateTo(postLoginRoute);
     }
   };
 
   const handleSelectUserType = async (userType: 'instructor' | 'student') => {
-    if (!currentUser) return;
+    console.log('[handleSelectUserType] START', { userType, currentUser });
+
+    if (!currentUser) {
+      console.error('[handleSelectUserType] No currentUser!');
+      return;
+    }
 
     try {
-      const updatedUser = await selectUserType(currentUser.id!, userType);
+      console.log('[handleSelectUserType] Calling selectUserType...');
+      await selectUserType(currentUser.id!, userType);
+      console.log('[handleSelectUserType] selectUserType SUCCESS');
 
       const user: User = {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        name: updatedUser.name,
-        picture: updatedUser.picture,
-        userType: updatedUser.user_type as UserType,
-        username: updatedUser.username,
-        bio: updatedUser.bio,
-        isProfileComplete: userType === 'student', // 수강생은 바로 완료
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.name,
+        picture: currentUser.picture,
+        userType: userType === 'instructor' ? UserType.INSTRUCTOR : UserType.STUDENT,
+        username: currentUser.username,
+        bio: currentUser.bio,
+        isProfileComplete: userType === 'student',
         remaining: 0
       };
 
+      console.log('[handleSelectUserType] New user object:', user);
       setCurrentUser(user);
+      analytics.selectAccountType(userType);
 
-      // 강사는 스튜디오 설정으로, 수강생은 대시보드로
+      // 강사는 setup으로, 학생은 dashboard로
       if (userType === 'instructor') {
-        setCurrentView(ViewState.STUDIO_SETUP);
+        console.log('[handleSelectUserType] Navigating to SETUP');
+        navigateTo(ROUTES.SETUP);
       } else {
-        setCurrentView(ViewState.DASHBOARD);
+        console.log('[handleSelectUserType] Navigating to DASHBOARD');
+        navigateTo(ROUTES.DASHBOARD);
       }
+      console.log('[handleSelectUserType] END');
     } catch (error) {
-      console.error('Failed to select user type:', error);
+      console.error('[handleSelectUserType] ERROR:', error);
       alert('계정 유형 선택에 실패했습니다.');
     }
   };
 
   const handleLogout = async () => {
     try {
-      await signOut(); // Supabase 세션 삭제
+      analytics.logout();
+      await signOut();
       setCurrentUser(null);
-      setCurrentView(ViewState.LANDING);
-      window.history.pushState({}, '', '/');
+      navigateTo(ROUTES.LANDING);
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -238,19 +379,43 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    switch (currentView) {
-      case ViewState.LANDING:
+    const path = currentPath;
+    const route = getCurrentRoute();
+
+    // Route matching (순서 중요 - 구체적인 것부터)
+    switch (path) {
+      case ROUTES.LANDING:
         return (
           <LandingPage
             onLoginSuccess={handleLogin}
-            onShowLogin={() => setCurrentView(ViewState.LOGIN)}
+            onShowLogin={() => navigateTo(ROUTES.LOGIN)}
           />
         );
 
-      case ViewState.LOGIN:
+      case ROUTES.LOGIN:
         return <Login onLogin={handleLogin} />;
 
-      case ViewState.ACCOUNT_TYPE_SELECTION:
+      case ROUTES.PRIVACY:
+        return (
+          <PrivacyPolicy
+            onBack={() => {
+              const backRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+              navigateTo(backRoute);
+            }}
+          />
+        );
+
+      case ROUTES.TERMS:
+        return (
+          <TermsOfService
+            onBack={() => {
+              const backRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+              navigateTo(backRoute);
+            }}
+          />
+        );
+
+      case ROUTES.ONBOARDING:
         return (
           <AccountTypeSelection
             onSelectType={handleSelectUserType}
@@ -258,135 +423,194 @@ const App: React.FC = () => {
           />
         );
 
-      case ViewState.STUDIO_SETUP:
-        if (!currentUser) return null;
+      case ROUTES.SETUP:
+        if (!currentUser) {
+          navigateTo(ROUTES.LOGIN);
+          return null;
+        }
         return (
           <StudioSetup
             user={currentUser}
             onComplete={(updatedUser) => {
               setCurrentUser(updatedUser);
-              setCurrentView(ViewState.DASHBOARD);
+              navigateTo(ROUTES.SUMMARY);
             }}
           />
         );
 
-      case ViewState.DASHBOARD:
-        if (!currentUser) return null;
+      case ROUTES.DASHBOARD:
+      case ROUTES.SUMMARY:
+      case ROUTES.RESERVATIONS:
+      case ROUTES.STUDENTS:
+      case ROUTES.ATTENDANCE:
+      case ROUTES.PACKAGES:
+        if (!currentUser) {
+          navigateTo(ROUTES.LOGIN);
+          return null;
+        }
+
+        // Students on mobile: Use MobileDashboard
+        if (isMobile && currentUser.userType === UserType.STUDENT) {
+          let initialTab: 'home' | 'calendar' | 'reservations' | 'students' | 'attendance' | 'more' | 'profile' = 'home';
+
+          if (route.path === ROUTES.RESERVATIONS) {
+            initialTab = 'reservations';
+          }
+
+          return <MobileDashboard user={currentUser} initialTab={initialTab} />;
+        }
+
+        // Instructors (all screens) and Students (desktop): Use Dashboard with hamburger menu
         return (
           <Dashboard
             user={currentUser}
-            // 강사 선택 단계 없이 바로 예약 화면으로 이동 (단일 강사 모드)
-            onNavigateToReservation={() => setCurrentView(ViewState.RESERVATION)}
-            onNavigateToProfile={() => setCurrentView(ViewState.PROFILE)}
+            onNavigateToReservation={() => {}} // Not used in URL-based routing
+            onNavigateToProfile={() => navigateTo(ROUTES.PROFILE)}
             onLogout={handleLogout}
           />
         );
 
-      case ViewState.INSTRUCTOR_SELECT:
-        // Show coaching list for selected instructor
-        if (!currentInstructor) {
-          return (
-            <div className="min-h-screen flex items-center justify-center p-4">
-              <div className="text-center">
-                <p className="text-slate-600 mb-4">강사 정보가 없습니다.</p>
-                <button
-                  onClick={() => setCurrentView(ViewState.LANDING)}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-                >
-                  홈으로 돌아가기
-                </button>
-              </div>
-            </div>
-          );
+      case ROUTES.PROFILE:
+        if (!currentUser || currentUser.userType !== UserType.INSTRUCTOR) {
+          navigateTo(ROUTES.DASHBOARD);
+          return null;
         }
-        return (
-          <PublicBooking
-            instructor={currentInstructor}
-            user={currentUser}
-            onSelectCoaching={(coachingSlug) => {
-              // Navigate to reservation page with coaching slug
-              window.history.pushState({}, '', `/${coachingSlug}`);
-              setCurrentView(ViewState.RESERVATION);
-            }}
-            onBack={() => setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING)}
-          />
-        );
-
-      case ViewState.RESERVATION:
-        // Public booking page - instructor is required, but user can be null (guest booking)
-        if (!currentInstructor) {
-          return (
-            <div className="min-h-screen flex items-center justify-center p-4">
-              <div className="text-center">
-                <p className="text-slate-600 mb-4">잘못된 접근입니다.</p>
-                <p className="text-sm text-slate-400">URL에 강사 정보(?slug=프로젝트슬러그)가 필요합니다.</p>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <Reservation
-            user={currentUser}
-            instructor={currentInstructor}
-            onBack={() => setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING)}
-            onSuccess={() => {
-              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
-            }}
-          />
-        );
-
-      case ViewState.PROFILE:
-        if (!currentUser || currentUser.userType !== UserType.INSTRUCTOR) return null;
         return (
           <InstructorProfile
             user={currentUser}
-            onUpdate={(updatedUser) => {
-              setCurrentUser(updatedUser);
-            }}
-            onBack={() => setCurrentView(ViewState.DASHBOARD)}
+            onUpdate={(updatedUser) => setCurrentUser(updatedUser)}
+            onBack={() => navigateTo(ROUTES.DASHBOARD)}
             onLogout={handleLogout}
-          />
-        );
-
-      case ViewState.PRIVACY:
-        return (
-          <PrivacyPolicy
-            onBack={() => {
-              window.history.replaceState({}, '', '/');
-              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
-            }}
-          />
-        );
-
-      case ViewState.TERMS:
-        return (
-          <TermsOfService
-            onBack={() => {
-              window.history.replaceState({}, '', '/');
-              setCurrentView(currentUser ? ViewState.DASHBOARD : ViewState.LANDING);
-            }}
           />
         );
 
       default:
-        return <Login onLogin={handleLogin} />;
+        // Dynamic routes: /{coach_id}/{class_slug} or /{class_slug}
+        const coachingSlug = getCurrentProjectSlug();
+        const { coachId, classSlug } = getBookingUrlParams();
+
+        // Check for ?coach=email format
+        if (route.params.coach && currentInstructor) {
+          return (
+            <PublicBooking
+              instructor={currentInstructor}
+              user={currentUser}
+              onSelectCoaching={(slug) => {
+                const bookingUrl = coachId ? `/${coachId}/${slug}` : `/${slug}`;
+                navigateTo(bookingUrl);
+              }}
+              onBack={() => {
+                const backRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+                navigateTo(backRoute);
+              }}
+            />
+          );
+        }
+
+        // Booking page
+        if ((coachingSlug || (coachId && classSlug)) && currentInstructor) {
+          return (
+            <Reservation
+              user={currentUser}
+              instructor={currentInstructor}
+              onBack={() => {
+                const backRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+                navigateTo(backRoute);
+              }}
+              onSuccess={() => {
+                const successRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+                navigateTo(successRoute);
+              }}
+            />
+          );
+        }
+
+        // 404 - redirect to landing
+        navigateTo(ROUTES.LANDING);
+        return null;
     }
   };
 
-  // Full-screen views without Layout (Landing, Dashboard, Profile, Privacy, Terms, AccountTypeSelection)
-  const fullScreenViews = [ViewState.LANDING, ViewState.DASHBOARD, ViewState.PROFILE, ViewState.PRIVACY, ViewState.TERMS, ViewState.ACCOUNT_TYPE_SELECTION];
+  // Full-screen views without Layout
+  const fullScreenPaths = [
+    ROUTES.LANDING,
+    ROUTES.DASHBOARD,
+    ROUTES.SUMMARY,
+    ROUTES.RESERVATIONS,
+    ROUTES.STUDENTS,
+    ROUTES.ATTENDANCE,
+    ROUTES.PACKAGES,
+    ROUTES.PROFILE,
+    ROUTES.PRIVACY,
+    ROUTES.TERMS,
+    ROUTES.ONBOARDING
+  ];
 
-  if (fullScreenViews.includes(currentView)) {
+  const isFullScreen = fullScreenPaths.includes(currentPath);
+
+  if (isFullScreen) {
     return (
       <ErrorBoundary>
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '16px',
+              fontSize: '14px',
+              fontWeight: '500',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
         {renderContent()}
       </ErrorBoundary>
     );
   }
 
-  // Other views wrapped in Layout (Login, Reservation, etc.)
+  // Other views wrapped in Layout
   return (
     <ErrorBoundary>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            borderRadius: '12px',
+            padding: '16px',
+            fontSize: '14px',
+            fontWeight: '500',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <Layout title="예약매니아">
         {renderContent()}
       </Layout>

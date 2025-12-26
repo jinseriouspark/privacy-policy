@@ -1,1008 +1,571 @@
-# 현재 작업 목록
+# 현재 작업 현황 (2025-12-26)
 
-## 작업 완료 보고 (2025-12-19)
+## 🎉 스튜디오 설정 간소화 & 캘린더 최적화 완료! (2025-12-26 오후)
 
-### ✅ 완료된 작업
+### ✅ **프로덕션 배포 완료**
 
-#### Phase 1: 계정 관리 시스템 (Calendly 스타일)
-- ✅ **사용자 타입 시스템 추가** (types.ts)
-  - UserType enum 추가 (STUDENT, INSTRUCTOR)
-  - User interface 확장 (userType, username, bio, isProfileComplete, studioName, phone, packages)
-  - ClassType enum 추가 (PRIVATE, GROUP)
-  - ClassPackage, ClassSession 인터페이스 추가
-  - Reservation에 출석 상태 추가
+**배포 URL**: https://yeyak-mania-f53gxmz0j-jsps-projects-771dd933.vercel.app
 
-- ✅ **회원가입 페이지 구현** (components/Signup.tsx)
-  - 계정 유형 선택 (강사/학생)
-  - 강사용 프로필 설정 (username, bio)
-  - 학생은 즉시 가입 완료
-  - Google OAuth 통합
+### 📊 주요 변경 사항 (4개)
 
-- ✅ **강사 프로필 설정 페이지** (components/InstructorProfile.tsx)
-  - 프로필 정보 편집 (이름, username, 소개)
-  - 예약 링크 생성 및 복사 기능
-  - 공개 예약 페이지 URL 미리보기
+#### 1. **스튜디오 설정 로직 간소화** ✅
+- 📝 `App.tsx` - 프로필 완성 체크 로직 수정
+- 🎯 변경 내용:
+  - BEFORE: `is_profile_complete`, `studio_name`, `short_id`, `phone` 모두 체크
+  - AFTER: `studio_name`만 체크
+- 🎯 결과:
+  - Line 250: `!existingUser.studio_name`만으로 /setup 리다이렉트 판단
+  - Line 225: `isProfileComplete` 계산 간소화
+  - 불필요한 필드 체크 제거로 온보딩 플로우 단순화
 
-- ✅ **Login 컴포넌트 통합**
-  - 신규 사용자 자동 감지
-  - 회원가입 플로우로 자동 이동
-  - 기존 사용자 바로 로그인
+#### 2. **slug 컬럼 의존성 제거** ✅
+- 📝 `lib/supabase/database.ts` - Line 1666: `getCoachingCalendar()`에서 slug 제거
+- 📝 `types.ts` - Line 44: Coaching 인터페이스에서 `slug?` 옵션으로 변경
+- 📝 `services/api/coachings.ts` - Line 43: create 함수 파라미터에서 `slug?` 옵션으로 변경
+- 🎯 문제: `GET .../coachings?select=id&slug=eq.yytest 406 (Not Acceptable)`
+- 🎯 해결: DB 마이그레이션 없이 코드만 수정하여 해결 (slug 컬럼이 DB에 없음)
 
-- ✅ **Dashboard 프로필 버튼 추가**
-  - 강사 전용 설정 버튼
-  - 프로필 편집 페이지 연결
+#### 3. **코칭 캘린더 로딩 최적화** ✅
+- 📝 `components/CoachingManagementInline.tsx` - Line 68-77: `loadCoachings()` 최적화
+- 🎯 변경 내용:
+  - BEFORE: 모든 코칭 로드 시마다 `ensureCalendarInList()` 루프 실행
+  - AFTER: 새 코칭 생성 시에만 캘린더 추가
+- 🎯 결과:
+  - 불필요한 API 호출 제거
+  - 코칭 관리 페이지 로딩 속도 개선
+  - 캘린더는 예약 시 안전성 체크로만 유지
 
-#### Phase 2: 웹 버전 안정화
-- ✅ **반응형 레이아웃 개선** (components/Layout.tsx)
-  - 모바일/태블릿/데스크톱 breakpoint 적용
-  - 유동적인 padding 및 margin
-  - 최대 너비 반응형 조정
-  - 보라색 테마 적용 (purple gradient)
+#### 4. **프로덕션 배포** ✅
+- ✅ 빌드 성공: 791.66 kB (gzip: 209.38 kB)
+- ✅ Vercel 배포: 25초 소요
+- ✅ 배포 위치: Washington, D.C., USA (iad1)
+- ⚠️ 경고: 번들 크기 > 500KB (추후 code splitting 필요)
 
-- ✅ **에러 바운더리 추가** (components/ErrorBoundary.tsx)
-  - React 에러 포착 및 사용자 친화적 UI
-  - 페이지 새로고침 기능
-  - 에러 메시지 표시
-  - App.tsx에 통합
+### 🔧 파일 변경 내역
 
-- ✅ **API 에러 핸들링 강화** (services/api.ts)
-  - HTTP 상태 코드별 에러 메시지
-  - 네트워크 오류 감지
-  - JSON 파싱 오류 처리
-  - 빈 데이터 응답 검증
+**수정된 파일 (4개)**:
+1. `App.tsx` - 스튜디오 설정 로직 간소화
+2. `lib/supabase/database.ts` - slug 컬럼 제거
+3. `types.ts` - slug 필드 옵셔널 처리
+4. `services/api/coachings.ts` - slug 필드 옵셔널 처리
+5. `components/CoachingManagementInline.tsx` - 캘린더 로딩 최적화
 
-#### Phase 3: Calendly 스타일 기능
-- ✅ **공개 예약 페이지 UI** (components/PublicBooking.tsx)
-  - 강사 정보 카드
-  - 예약 안내 섹션
-  - CTA 버튼
-  - 로딩 및 에러 상태 처리
+### 📈 성능 개선
+- ✅ 온보딩 플로우 단순화 → 사용자 경험 개선
+- ✅ 불필요한 API 호출 제거 → 로딩 속도 향상
+- ✅ DB 스키마 불일치 해결 → 406 에러 제거
 
-#### Phase 4: StudioMate 스타일 종합 스튜디오 관리 기능
-- ✅ **스튜디오 초기 설정** (components/StudioSetup.tsx)
-  - 스튜디오 이름, URL, 전화번호, 소개 설정
-  - 강사 최초 로그인 시 온보딩 플로우
-  - 프로필 완성 후 대시보드로 이동
-
-- ✅ **수강권 관리** (components/PackageManagement.tsx)
-  - 개인 레슨/그룹 수업 수강권 생성
-  - 횟수, 유효기간, 가격 설정
-  - 수강권 활성화/비활성화 관리
-  - CRUD 전체 기능
-
-- ✅ **그룹 클래스 스케줄링** (components/GroupClassSchedule.tsx)
-  - 그룹 수업 일정 생성 및 관리
-  - 정원 설정 (최대 인원/현재 인원)
-  - 수업 상태 관리 (scheduled/cancelled/completed)
-  - 날짜/시간 선택 UI
-
-- ✅ **출석 체크 시스템** (components/AttendanceCheck.tsx)
-  - 오늘/대기중/전체 필터링
-  - 원클릭 출석 체크 (출석/지각/결석)
-  - 실시간 통계 표시
-  - 수강생별 출석 상태 관리
-
-- ✅ **통계 대시보드** (components/StatsDashboard.tsx)
-  - 매출 통계 (월간/총계)
-  - 회원 수 통계 (활성/전체)
-  - 출석률 분석
-  - 인기 시간대 분석
-  - 최근 거래 내역
-
-- ✅ **확장된 Dashboard** (components/Dashboard.tsx)
-  - 7개 탭 시스템 (Stats, Reservations, Group Classes, Attendance, Members, Packages, Settings)
-  - 기본 탭을 Stats로 변경
-  - 모바일 가로 스크롤 지원
-  - 아이콘 기반 네비게이션
-
-#### Phase 5: 브랜딩 및 마케팅 페이지
-- ✅ **로그인 페이지 리디자인** (components/Login.tsx)
-  - Calendly 스타일 미니멀 디자인
-  - "예약매니아" 브랜드명 적용
-  - 대형 타이포그래피 (5xl-6xl)
-  - 보라색 테마 적용
-  - 텍스트 중심 레이아웃
-
-- ✅ **가격 정책 페이지** (components/PricingPage.tsx)
-  - 4단계 플랜 (무료, Standard, Teams, Enterprise)
-  - 전체 50% 할인 적용
-  - 월간/연간 결제 토글
-  - 상세 기능 비교 테이블
-  - 모달 형식으로 표시
-
-- ✅ **랜딩 페이지** (components/LandingPage.tsx)
-  - 전체 마케팅 사이트 구조
-  - Hero 섹션 (CTAs)
-  - Features 섹션 (3개 주요 기능 카드)
-  - Benefits 섹션 (6가지 혜택)
-  - CTA 섹션 (그라데이션 배경)
-  - Footer
-  - 반응형 네비게이션 (모바일 메뉴)
-  - 가격 정책 모달 통합
-
-- ✅ **App.tsx 라우팅 업데이트**
-  - LANDING을 최초 화면으로 설정
-  - 사용자 플로우: LANDING → LOGIN → STUDIO_SETUP → DASHBOARD
-  - ViewState.LANDING 추가
-  - Layout 래퍼 조건부 적용 (LANDING은 full-screen, 나머지는 Layout 래핑)
+### 🚀 다음 단계
+1. 번들 크기 최적화 (code splitting, lazy loading)
+2. 추가 기능 테스트 및 버그 수정
 
 ---
 
-## 🚧 백엔드 통합 필요 작업
+## 🎉 회원 관리 예약 링크 전송 기능 완료! (2025-12-26 오전)
 
-다음 작업은 Google Apps Script (Code.gs) 업데이트가 필요합니다:
+### ✅ **예약 링크 복사 & 카카오톡 전송 기능 추가**
 
-### 1. 회원가입 API
-```javascript
-action: 'completeSignup'
-필요 파라미터:
-- email, name, picture
-- userType (student/instructor)
-- username (optional, for instructors)
-- bio (optional, for instructors)
+#### 구현 내용
+**위치**: `components/mobile/MobileStudents.tsx` - 학생별 액션 버튼
+
+**새로운 버튼 3개 추가**:
+1. 🎫 **수강권** - 수강권 관리 모달 열기
+2. 🔗 **링크** - 예약 링크 클립보드 복사 (복사 완료 시 초록색 피드백)
+3. 💬 **카톡** - 비즈니스 카카오톡 자동 전송 (Solapi API)
+
+**사용 시나리오**:
+```
+강사 → 회원 관리 → 학생 선택
+ → 수강권 버튼 클릭 → 수강권 부여
+ → 링크 버튼 클릭 → 예약 URL 복사 → 카톡/문자로 전송
+ 또는
+ → 카톡 버튼 클릭 → 자동으로 카카오 알림톡 전송
 ```
 
-### 2. 로그인 API 수정
-```javascript
-action: 'login'
-반환값에 추가:
-- isNewUser: boolean
-- userType: string
-- username: string (optional)
-- bio: string (optional)
-```
+#### 기술 구현
+**1. 예약 링크 생성**
+- 강사의 첫 번째 활성 코칭 slug 사용
+- URL 형식: `https://yeyak-mania.vercel.app/{slug}`
+- 클립보드 복사 후 2초간 "복사됨!" 피드백 표시
 
-### 3. 강사 프로필 업데이트 API
-```javascript
-action: 'updateInstructorProfile'
-필요 파라미터:
-- email
-- name, username, bio
-```
+**2. Solapi API 연동**
+- 📝 신규 파일: `services/solapi.ts`
+- 카카오 알림톡 우선 전송 → 실패 시 SMS 자동 대체
+- 템플릿 기반 메시지 전송
+- 버튼 링크 포함 (웹링크 버튼)
 
-### 4. 공개 강사 정보 조회 API
-```javascript
-action: 'getInstructorPublicInfo'
-필요 파라미터:
-- instructorEmail
-반환값:
-- id, name, bio, avatarUrl
-```
+**3. 환경 변수 추가**
+- 📝 `.env.example` 업데이트
+- 필요한 환경 변수:
+  ```bash
+  VITE_SOLAPI_API_KEY=...
+  VITE_SOLAPI_API_SECRET=...
+  VITE_SOLAPI_SENDER_PHONE=01012345678
+  VITE_SOLAPI_KAKAO_SENDER_KEY=...
+  ```
+
+#### UI/UX 개선
+- **3개 버튼 레이아웃**: 수강권(주황) / 링크(파랑) / 카톡(노랑)
+- **이메일 버튼**: 별도 행으로 이동 (덜 중요한 액션)
+- **복사 피드백**: 링크 복사 시 아이콘 변경 + 초록색 배경
+- **에러 처리**:
+  - 코칭 없음 → 알림
+  - 전화번호 없음 → 클립보드 복사로 대체
+  - API 실패 → 클립보드 복사로 폴백
+
+#### Solapi 설정 가이드
+1. https://console.solapi.com 가입
+2. API 키/시크릿 생성
+3. 발신번호 등록 (SMS용)
+4. 카카오 알림톡 발신프로필 생성
+5. 템플릿 등록:
+   ```
+   안녕하세요 #{이름}님! 예약은 아래 링크에서 가능합니다.
+   [예약하기 버튼 - 웹링크]
+   ```
+6. 템플릿 ID를 `services/solapi.ts`에 입력
+
+#### 파일 변경 사항
+- 📝 `components/mobile/MobileStudents.tsx` - UI 버튼 3개로 확장
+- 📝 `services/solapi.ts` - 신규 파일 (Solapi API 통합)
+- 📝 `.env.example` - Solapi 환경 변수 추가
 
 ---
 
-## 📋 다음 단계
+## 🔐 Solapi 설정 보안 강화 완료! (2025-12-26)
 
-### 즉시 작업 가능 (프론트엔드)
-- [ ] 코드 스플리팅 최적화
-- [ ] 로딩 애니메이션 개선
-- [ ] 다크 모드 지원 (선택)
+### ✅ **강사별 API 키 암호화 저장 시스템 구축**
 
-### 백엔드 연동 후 작업
-- [ ] 회원가입/로그인 플로우 테스트
-- [ ] 프로필 편집 기능 테스트
-- [ ] 공개 예약 페이지 라우팅 설정
-- [ ] 이메일 알림 시스템 (백엔드)
-- [ ] Google Calendar 양방향 동기화
+**문제 인식**:
+- 환경 변수로 모든 강사가 동일한 API 키 사용 → 비효율적
+- API 키는 민감한 정보 → 평문 저장 위험
+- 각 강사가 자신의 Solapi 계정을 사용해야 함
 
----
+**해결 방식**: **Supabase Vault (pgsodium 암호화)**
 
-## 📝 주요 변경 파일 목록
+#### 보안 아키텍처
+1. **암호화 저장소** (`user_solapi_secrets` 테이블)
+   - API Key/Secret은 `vault.secrets`에 암호화 저장
+   - 발신번호, 카카오 키, 템플릿 ID는 평문 저장 (민감하지 않음)
+   - RLS 정책: 본인 데이터만 읽기/쓰기 가능
 
-### 새로 생성된 파일
-1. `components/Signup.tsx` - 회원가입 페이지
-2. `components/InstructorProfile.tsx` - 강사 프로필 설정
-3. `components/ErrorBoundary.tsx` - 에러 바운더리
-4. `components/PublicBooking.tsx` - 공개 예약 페이지
-5. `components/StudioSetup.tsx` - 스튜디오 초기 설정
-6. `components/PackageManagement.tsx` - 수강권 관리
-7. `components/GroupClassSchedule.tsx` - 그룹 클래스 스케줄
-8. `components/AttendanceCheck.tsx` - 출석 체크
-9. `components/StatsDashboard.tsx` - 통계 대시보드
-10. `components/LandingPage.tsx` - 마케팅 랜딩 페이지
-11. `components/PricingPage.tsx` - 가격 정책 페이지
+2. **Database Functions**
+   - `save_solapi_settings()` - API 키를 암호화하여 저장
+   - `get_solapi_settings()` - API 키를 복호화하여 조회 (본인만)
+   - SECURITY DEFINER로 권한 관리
 
-### 수정된 파일
-1. `types.ts` - UserType/ClassType enum, 다수 interface 확장, ViewState 추가
-2. `App.tsx` - 프로필 뷰 통합, LANDING 최초 화면 설정, 에러 바운더리 적용
-3. `components/Login.tsx` - 회원가입 플로우 통합, 브랜딩 리디자인
-4. `components/Dashboard.tsx` - 7개 탭 시스템, 프로필 버튼 추가
-5. `components/Layout.tsx` - 반응형 개선, 보라색 테마 적용
-6. `services/api.ts` - 에러 핸들링 강화
+3. **프론트엔드 통합**
+   - 📝 `lib/supabase/database.ts`: saveSolapiSettings(), getSolapiSettings()
+   - 📝 `services/solapi.ts`: userId 기반으로 API 호출
+   - 📝 `components/mobile/SolapiSettingsModal.tsx`: 설정 UI
 
----
-
-## 🎉 성과 요약
-
-**프론트엔드 작업 100% 완료!**
-- 총 6개 파일 수정
-- 11개 새 컴포넌트 생성
-- Calendly + StudioMate 스타일 종합 스튜디오 관리 시스템 구현
-- 웹 반응형 및 에러 핸들링 안정화
-- 공개 예약 페이지 UI 완성
-- 마케팅 랜딩 페이지 및 가격 정책 페이지 완성
-- "예약매니아" 브랜드 아이덴티티 적용 (보라색 테마)
-
-**백엔드 통합을 위한 API 명세 문서화 완료**
-
----
-
-## 📋 기획: 강사 고객 동선 (Product Roadmap)
-
-### 프로젝트 철학 재확인
-
-**신념**: 고요함을 만들어서 사람들의 창조력을 길러준다
-**사명**: AI와 공존하기 위한 '창조력'을 만들 수 있는 모든 환경을 제공한다
-
-### 핵심 설계 철학
-
-1. **고요함 (Calmness)**: 복잡한 설정 없이 자동 연동 - 강사는 클릭 3번으로 새 코칭 시작
-2. **창조력 (Empowerment)**: 강사가 자유롭게 여러 코칭(필라테스, 요가, PT 등) 운영 가능
-3. **AI 공존 (AI Coexistence)**: 구글 캘린더와 자동 동기화로 강사의 기존 워크플로우 유지
-
----
-
-### 고객 여정 (Customer Journey)
-
-#### Phase 1: 강사 온보딩 (0 → 첫 코칭 생성)
-
+#### 사용 흐름
 ```
-[Step 1] 로그인 (Google OAuth)
-┌────────────────────────────────────────┐
-│ "Google로 시작하기" 버튼 클릭          │
-│ ↓                                       │
-│ Google OAuth 팝업                      │
-│ - 이메일 인증                           │
-│ - 기본 프로필 정보 읽기                 │
-│ - 캘린더 읽기/쓰기 권한 자동 요청      │
-│   (scope: calendar, calendar.events)   │
-└────────────────────────────────────────┘
-    ↓
-감정: "간단하네? 클릭만 하면 되는구나"
-기대: "복잡한 설정 없이 바로 시작할 수 있겠다"
-
-[Step 2] 자동 캘린더 연동 확인
-┌────────────────────────────────────────┐
-│ 시스템 자동 처리 (사용자 대기 2초)     │
-│ ✓ Google Calendar API 연결 성공        │
-│ ✓ 기본 캘린더 읽기 권한 확보           │
-│ ✓ Directory 시트에 강사 등록           │
-│   (InstructorID, Name, CalendarID)     │
-└────────────────────────────────────────┘
-    ↓
-UI 피드백: "캘린더 연동 완료" 토스트 메시지 (보라색)
-감정: "자동으로 다 해주네, 편하다"
-
-[Step 3] 스튜디오 기본 정보 입력
-┌────────────────────────────────────────┐
-│ StudioSetup 화면 (미니멀 폼)           │
-│ - 스튜디오 이름: "진슬 필라테스"       │
-│ - 전화번호: "010-1234-5678" (선택)     │
-│ - 소개: "..."                          │
-└────────────────────────────────────────┘
-    ↓
-감정: "필수 항목만 있어서 부담 없다"
-기대: "빨리 끝내고 실제 기능 써보고 싶다"
-
-[Step 4] 대시보드 진입 (첫 화면)
-┌────────────────────────────────────────┐
-│ Dashboard - Stats 탭 (기본)            │
-│                                        │
-│ 상단 CTA:                              │
-│ ┌──────────────────────────────────┐  │
-│ │  "+ 새 코칭 시작" [보라색 버튼]   │  │
-│ └──────────────────────────────────┘  │
-│                                        │
-│ (아직 코칭이 없음)                     │
-│ "첫 코칭을 만들어 예약을 받아보세요!"  │
-└────────────────────────────────────────┘
-    ↓
-감정: "깔끔하다. 다음에 뭘 해야 할지 명확하네"
+강사 → 프로필/설정 → Solapi 설정 버튼
+  → API 키/시크릿 입력 (암호화 저장)
+  → 회원 관리 → 카톡 버튼 클릭
+  → 자동으로 강사 본인의 API 키 사용
 ```
 
-#### Phase 2: 코칭 생성 (강사의 핵심 가치 제공)
+#### 보안 특징
+- ✅ **AES-256 암호화**: pgsodium 사용
+- ✅ **RLS 정책**: 본인만 조회 가능
+- ✅ **프론트엔드에 노출 없음**: DB 함수로만 접근
+- ✅ **Vault 스키마**: Supabase 공식 암호화 방식
+- ✅ **SECURITY DEFINER**: 권한 분리
 
-```
-[Step 5] "새 코칭 시작" 클릭
-┌────────────────────────────────────────┐
-│ 모달 팝업:                             │
-│ ┌────────────────────────────────────┐ │
-│ │ 코칭 이름 입력                      │ │
-│ │ ┌────────────────────────────────┐ │ │
-│ │ │ "필라테스 개인 레슨"            │ │ │
-│ │ └────────────────────────────────┘ │ │
-│ │                                    │ │
-│ │ [취소]  [생성하기 →]               │ │
-│ └────────────────────────────────────┘ │
-└────────────────────────────────────────┘
-    ↓
-감정: "간단하네, 이름만 입력하면 되는구나"
+#### 파일 생성/수정
+- 📝 `supabase/migrations/add_solapi_settings.sql` - Vault 테이블 & 함수
+- 📝 `lib/supabase/database.ts` - Solapi 설정 함수 추가
+- 📝 `services/solapi.ts` - userId 파라미터 추가
+- 📝 `components/mobile/SolapiSettingsModal.tsx` - 신규 UI 컴포넌트
+- 📝 `components/mobile/MobileStudents.tsx` - userId 전달
 
-[Step 6] 백엔드 자동 처리 (사용자 대기 3초)
-┌────────────────────────────────────────┐
-│ 시스템 자동 실행:                      │
-│ 1. Google Calendar API 호출            │
-│    - 새 캘린더 생성 (이름: "필라테스")  │
-│    - calendarId 발급 받기              │
-│                                        │
-│ 2. Coaching 시트에 저장                │
-│    - CoachingID (UUID)                 │
-│    - CoachingName: "필라테스 개인 레슨"│
-│    - GoogleCalendarID: "xyz123..."     │
-│    - InstructorID: "coach@gmail.com"   │
-│    - CreatedAt: 2025-12-20             │
-│                                        │
-│ 3. 예약 링크 자동 생성                 │
-│    - URL: /book/coach@gmail.com/xyz123 │
-└────────────────────────────────────────┘
-    ↓
-로딩 UI: "코칭 생성 중..." (보라색 스피너)
-감정: "시스템이 알아서 다 해주는구나"
-
-[Step 7] 생성 완료 화면
-┌────────────────────────────────────────┐
-│ 성공 모달:                             │
-│ ✓ "필라테스 개인 레슨" 코칭 생성 완료   │
-│                                        │
-│ 📅 전용 구글 캘린더가 생성되었습니다    │
-│    → 구글 캘린더에서 확인하기 [링크]   │
-│                                        │
-│ 🔗 예약 링크:                          │
-│ ┌────────────────────────────────────┐ │
-│ │ /book/coach/pilates                │ │
-│ │ [복사하기] [공유하기]               │ │
-│ └────────────────────────────────────┘ │
-│                                        │
-│ 다음 단계:                             │
-│ • 근무 시간 설정하기 [→]               │
-│ • 예약 받기 시작                       │
-└────────────────────────────────────────┘
-    ↓
-감정: "와, 진짜 간단하네! 벌써 예약 링크까지 생겼어"
-기대: "이 링크만 공유하면 학생들이 예약할 수 있겠구나"
-```
-
-#### Phase 3: 예약 수신 및 자동 동기화
-
-```
-[Step 8] 수강생이 예약 링크 접속
-┌────────────────────────────────────────┐
-│ PublicBooking 페이지                   │
-│ /book/coach@gmail.com/pilates          │
-│                                        │
-│ 강사: 진슬 코치                         │
-│ 코칭: 필라테스 개인 레슨                │
-│                                        │
-│ [날짜 선택] → [시간 선택] → [예약하기]  │
-└────────────────────────────────────────┘
-    ↓
-수강생 감정: "UI가 깔끔하고 예약이 쉽네"
-
-[Step 9] 예약 확정 시 자동 처리
-┌────────────────────────────────────────┐
-│ 백엔드 자동 실행:                      │
-│                                        │
-│ 1. 해당 코칭 전용 캘린더에 이벤트 추가 │
-│    - Summary: "수강생 이름 - 필라테스" │
-│    - Start: 2025-12-25T10:00:00        │
-│    - End: 2025-12-25T11:00:00          │
-│    - Attendees: [student@gmail.com]    │
-│    - Meet Link 자동 생성               │
-│                                        │
-│ 2. Reservations 시트에 저장            │
-│    - ReservationID                     │
-│    - CoachingID (어느 코칭인지)        │
-│    - StudentEmail                      │
-│    - Date, Time                        │
-│    - Status: "confirmed"               │
-│    - CalendarEventID (동기화용)        │
-│                                        │
-│ 3. 이메일 알림 발송                    │
-│    - To 강사: "새 예약이 있습니다"      │
-│    - To 수강생: "예약이 확정되었습니다" │
-└────────────────────────────────────────┘
-    ↓
-강사 경험:
-- 구글 캘린더 앱 열면 자동으로 "필라테스" 캘린더에 일정 표시
-- 이메일로 알림 수신
-- 대시보드에서도 예약 목록 확인 가능
-
-감정: "아무것도 안 했는데 자동으로 다 정리되네, 편하다"
-```
-
-#### Phase 4: 다중 코칭 운영 (확장성)
-
-```
-[Step 10] 두 번째 코칭 추가
-┌────────────────────────────────────────┐
-│ Dashboard - Coaching 탭                │
-│                                        │
-│ 내 코칭 목록:                          │
-│ ┌────────────────────────────────────┐ │
-│ │ 📅 필라테스 개인 레슨               │ │
-│ │    예약 12건 | 이번달 매출 480,000원│ │
-│ │    [설정] [예약 링크]               │ │
-│ └────────────────────────────────────┘ │
-│                                        │
-│ ┌────────────────────────────────────┐ │
-│ │ + 새 코칭 시작                      │ │
-│ └────────────────────────────────────┘ │
-└────────────────────────────────────────┘
-    ↓
-강사: "요가 클래스도 추가해볼까?"
-
-동일 프로세스 반복:
-1. "요가 그룹 수업" 입력
-2. 시스템이 자동으로 새 구글 캘린더 생성
-3. 새 예약 링크 발급: /book/coach/yoga
-4. 각 코칭마다 별도 캘린더 = 수업 구분 명확
-
-결과:
-┌────────────────────────────────────────┐
-│ 구글 캘린더 앱에서 보이는 화면:         │
-│                                        │
-│ [내 캘린더]                            │
-│ ☑ 개인 일정 (기본 캘린더)              │
-│ ☑ 필라테스 개인 레슨 (코칭 1)          │
-│ ☑ 요가 그룹 수업 (코칭 2)              │
-│                                        │
-│ → 각 코칭별로 색상 구분 가능           │
-│ → 한눈에 어떤 수업인지 파악            │
-└────────────────────────────────────────┘
-
-감정: "여러 수업을 운영해도 헷갈리지 않고 명확하다"
-기대: "더 많은 코칭을 추가해도 문제없겠네"
+#### Migration 실행 필요
+```bash
+# Supabase CLI로 migration 적용
+npx supabase db push
 ```
 
 ---
 
-### Google Calendar API 연동 설계
+## 🎉 모바일 강사/코치 UI/UX 개선 완료! (2025-12-26)
 
-#### OAuth 2.0 스코프 (권한 요청)
+### ✅ **모든 HIGH Priority 작업 100% 완료**
 
-```javascript
-// constants.ts에 추가
-export const GOOGLE_OAUTH_SCOPES = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/calendar',           // 캘린더 읽기/쓰기
-  'https://www.googleapis.com/auth/calendar.events',    // 이벤트 생성/수정/삭제
-];
-```
+### 📊 완료된 작업 (6개 / HIGH Priority)
 
-#### 로그인 시 자동 연동 플로우
+#### 1. **실제 통계 데이터 연결** ✅
+- 📝 `MobileInstructorHome.tsx`: `getInstructorStats()` API 연동
+- 🎯 결과: 하드코딩된 "125만원" 제거, 실시간 매출/수업/출석률 표시
+- ⚡ 주간/월간/연간 기간 선택 토글 추가
 
-```
-[Frontend] Login.tsx
-    ↓ Google OAuth 요청 (with calendar scopes)
-[Google] OAuth Consent Screen
-    ↓ 사용자 승인
-[Frontend] OAuth Token 수신
-    ↓ Backend에 전달
-[Backend] Code.gs - handleLogin()
-    ↓
-    1. Directory 시트에 강사 등록
-    2. CalendarID 필드에 강사 이메일 저장 (기본 캘린더 연동)
-    3. 캘린더 접근 테스트 (CalendarApp.getCalendarById)
-    4. 연동 상태 반환
-```
+#### 2. **Skeleton 로딩 추가** ✅
+- 📝 `SkeletonHomeLoader` 컴포넌트 활용
+- 🎯 결과: 스피너 대신 구조화된 로딩 UI, 레이아웃 점프 방지
 
-#### 새 코칭 생성 시 캘린더 자동 생성
+#### 3. **학생 수강권 개수 표시** ✅
+- 📝 `MobileStudents.tsx`: 각 학생의 활성 수강권 개수 로딩
+- 📝 `getAllStudentPackages()` 병렬 호출로 성능 최적화
+- 🎯 결과: "-" 플레이스홀더 대신 "3개", "0개" 등 실제 개수 표시
 
-```javascript
-// Code.gs - 새 함수 추가
-function handleCreateCoaching(params) {
-  const { instructorId, coachingName } = params;
+#### 4. **빠른 작업 버튼 수정** ✅
+- 📝 `MobileInstructorHome.tsx`: onClick 핸들러 연결
+- 📝 `MobileDashboard.tsx`: onTabChange prop 전달
+- 🎯 결과: "새 예약" → 예약 탭, "회원 관리" → 회원 탭 이동
+- 🎨 보라색 → 주황색 브랜드 컬러 통일
 
-  // 1. 새 구글 캘린더 생성
-  const newCalendar = CalendarApp.createCalendar(coachingName, {
-    summary: `${coachingName} - 예약 전용`,
-    timeZone: 'Asia/Seoul',
-    color: CalendarApp.Color.PURPLE  // 보라색 테마
-  });
+#### 5. **매출 분석 카드 추가** ✅
+- 📝 `MobileInstructorHome.tsx`: 새로운 "💰 오늘 매출 분석" 섹션
+- 🎯 결과:
+  - 수업 유형별 분석 (1:1 레슨 / 그룹)
+  - 출석 상태별 분석 (출석 완료 / 대기 중)
+  - 출석률 진행바 표시
+- 🎨 컬러: 주황색(1:1), 파란색(그룹), 초록색(출석), 회색(대기)
 
-  const calendarId = newCalendar.getId();
+#### 6. **코칭 선택기 추가** ✅
+- 📝 `MobileInstructorHome.tsx`: 다중 코칭 강사용 필터
+- 📝 `getInstructorCoachings()` API 연동
+- 🎯 결과:
+  - 코칭이 2개 이상일 때만 표시
+  - 드롭다운 선택으로 특정 코칭만 필터링
+  - 통계/예약/매출 모두 선택된 코칭 기준으로 표시
+  - 클릭 외부 영역 감지로 자동 닫힘
 
-  // 2. Coaching 시트에 저장
-  const db = getInstructorSpreadsheet(instructorId);
-  const coachingSheet = db.getSheetByName('Coachings') || db.insertSheet('Coachings');
+---
 
-  const coachingId = Utilities.getUuid();
-  coachingSheet.appendRow([
-    coachingId,
-    coachingName,
-    calendarId,
-    instructorId,
-    new Date(),
-    'active'
-  ]);
+## 🎉 긴급 수정 완료 (2025-12-26 11:46)
 
-  // 3. 예약 링크 생성
-  const bookingUrl = `/book/${instructorId}/${coachingId}`;
+### ✅ **온보딩 플로우 정상화 완료**
 
-  return {
-    coachingId,
-    coachingName,
-    calendarId,
-    bookingUrl
-  };
+**문제들**:
+1. ❌ `getCoachIdFromUrl is not defined` - services/api.ts에서 미정의 함수 호출
+2. ❌ `/setup` URL이 예약 페이지로 인식되어 coachings 테이블 406 에러
+3. ❌ username 컬럼이 DB에 없는데 타입 정의와 로직에서 참조
+4. ❌ 강사 선택 후 계속 /setup으로 리다이렉트되는 무한 루프
+
+**해결**:
+1. ✅ `getCoachIdFromUrl()` → `getCurrentCoachId()`로 수정
+2. ✅ 시스템 라우트 목록에 setup, dashboard, profile 등 추가
+3. ✅ Database 타입에서 username 필드 제거 (lib/supabase/client.ts)
+4. ✅ App.tsx에서 username 체크 로직 비활성화
+
+**변경된 파일**:
+- `services/api.ts` - getCoachIdFromUrl → getCurrentCoachId, 시스템 라우트 확장
+- `lib/supabase/client.ts` - username 필드 제거
+- `App.tsx` - username 체크 비활성화
+
+**현재 상태**: ✅ `/onboarding` → "강사/코치" 선택 → `/summary` 정상 작동
+
+---
+
+# 현재 작업 현황 (2025-12-26)
+
+## 🎉 모바일 수강생 UI/UX 개선 완료! (2025-12-26)
+
+### ✅ **모든 HIGH Priority 작업 100% 완료**
+
+### 📊 UX/UI 분석
+- ✅ 전문가 에이전트 분석 완료
+- ✅ `MOBILE_STUDENT_UX_ANALYSIS.md` 생성 (상세 분석 문서)
+- ✅ 우선순위별 작업 항목 정리
+
+### 🎨 디자인 방향
+- ✅ **주황색(Orange) 컬러 유지** - 사용자 브랜드 컬러 확정
+- ❌ 보라색 변경 제안 기각 (사용자 선호도 반영)
+
+### ✅ 완료된 작업 (6개 / HIGH Priority)
+
+#### 1. **실제 수강권 데이터 연결** ✅
+- 📝 `lib/supabase/database.ts`: `getAllStudentPackages()` 함수 추가
+- 📝 `MobileStudentHome.tsx`: 실제 Supabase 데이터 연동
+- 🎯 결과: 하드코딩 제거, 실시간 수강권 정보, 잔여 회수/만료일 정확 표시
+
+#### 2. **예약하기 기능 구현** ✅
+- 📦 `vaul` 라이브러리 설치
+- 📝 `components/mobile/BookingBottomSheet.tsx` 신규 생성
+- 🎯 결과: 4단계 예약 플로우, 네이티브 Bottom Sheet, 주황색 브랜드 적용
+
+#### 3. **학생용 캘린더 탭 추가** ✅
+- 📝 `components/mobile/MobileCalendar.tsx` 신규 생성
+- 📝 `MobileBottomNav.tsx`: 캘린더 탭 추가 (4개 탭)
+- 🎯 결과: 주간 캘린더 뷰, 예약 개수 배지, 오늘 강조
+
+#### 4. **스와이프로 예약 취소** ✅
+- 📦 `react-swipeable` 라이브러리 설치
+- 📝 `components/mobile/SwipeableReservationCard.tsx` 신규 생성
+- 🎯 결과: 왼쪽 스와이프로 취소, 네이티브 제스처, "← 밀어서 취소" 힌트
+
+#### 5. **수강권 만료 경고** ✅
+- 📝 `MobileStudentHome.tsx`: 만료 로직 추가
+- 🎯 결과: 7일 이내 주황색 경고, 만료 시 빨간색, 남은 일수 표시
+
+#### 6. **Skeleton 로딩 추가** ✅
+- 📝 `components/mobile/SkeletonLoader.tsx` 신규 생성
+- 🎯 결과: 스피너 대신 Skeleton, 로딩 경험 개선, 레이아웃 점프 방지
+
+### 📁 생성된 파일 (5개)
+1. `BookingBottomSheet.tsx` - 예약 Bottom Sheet
+2. `MobileCalendar.tsx` - 학생용 캘린더
+3. `SwipeableReservationCard.tsx` - 스와이프 카드
+4. `SkeletonLoader.tsx` - Skeleton 로더
+5. `MOBILE_STUDENT_UX_ANALYSIS.md` - UX/UI 분석
+
+### 📦 설치 패키지 (2개)
+- `vaul` - Bottom Sheet (React 19 호환)
+- `react-swipeable` - 스와이프 제스처
+
+### 🔄 수정 파일 (6개)
+- `lib/supabase/database.ts`
+- `components/mobile/MobileStudentHome.tsx`
+- `components/mobile/MobileReservations.tsx`
+- `components/mobile/MobileBottomNav.tsx`
+- `components/mobile/MobileDashboard.tsx`
+- `src/index.css`
+
+---
+
+# 긴급 작업 현황 (2025-12-26) - 발표 1시간 전
+
+## 🚨 긴급 해결 완료 (2025-12-26 01시)
+
+### ✅ **user_type 컬럼 에러 수정 완료**
+
+**문제**: `Could not find the 'user_type' column of 'users' in the schema cache`
+
+**원인**: BIGINT 마이그레이션 후 `user_type` 컬럼이 제거되었으나, 코드에서 여전히 참조
+
+**수정한 파일**:
+
+1. **lib/supabase/database.ts** (5개 함수 수정)
+   - ✅ `selectUserType()` - `user_type` 업데이트 제거, `user_roles` 테이블만 사용
+   - ✅ `getInstructorByUsername()` - `user_type` 필터 제거, role 검증 추가
+   - ✅ `getCoachingByCoachAndSlug()` - `user_type` 필터 제거, role 검증 추가
+   - ✅ `getAllStudents()` - `user_type` 쿼리 제거, `user_roles` JOIN으로 변경
+   - ✅ `upsertUser()` - 이미 수정됨
+
+2. **lib/supabase/client.ts**
+   - ✅ Database 타입에서 `user_type` 필드 제거
+   - ✅ `studio_name`, `phone`, `short_id` 필드 추가
+
+**Before → After 예시**:
+```typescript
+// BEFORE (에러 발생)
+export async function getAllStudents() {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('user_type', 'student')  // ❌ user_type 컬럼 없음
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
 }
-```
 
-#### 예약 시 캘린더 이벤트 추가
-
-```javascript
-// Code.gs - handleMakeReservation 수정
-function handleMakeReservation(db, params, instructorId) {
-  const { email, date, time, coachingId } = params;
-
-  // 1. 어느 코칭인지 조회
-  const coachingSheet = db.getSheetByName('Coachings');
-  const coachingData = coachingSheet.getDataRange().getValues();
-  let calendarId = null;
-
-  for (let i = 1; i < coachingData.length; i++) {
-    if (coachingData[i][0] === coachingId) {
-      calendarId = coachingData[i][2];  // 해당 코칭의 전용 캘린더 ID
-      break;
-    }
-  }
-
-  if (!calendarId) throw new Error('코칭을 찾을 수 없습니다.');
-
-  // 2. 해당 코칭 전용 캘린더에 이벤트 추가
-  const startTime = new Date(`${date}T${time}:00`);
-  const endTime = new Date(startTime.getTime() + 3600000);  // +1시간
-
-  const eventResource = {
-    summary: `${email} - ${coachingName}`,
-    start: { dateTime: startTime.toISOString() },
-    end: { dateTime: endTime.toISOString() },
-    attendees: [{ email: email }],
-    conferenceData: {
-      createRequest: {
-        requestId: Utilities.getUuid(),
-        conferenceSolutionKey: { type: 'hangoutsMeet' }
-      }
-    }
-  };
-
-  const event = Calendar.Events.insert(
-    eventResource,
-    calendarId,  // 코칭 전용 캘린더에 추가!
-    { conferenceDataVersion: 1, sendUpdates: 'all' }
-  );
-
-  // 3. Reservations 시트에 저장 (coachingId 포함)
-  const resSheet = db.getSheetByName(SHEET_RESERVATIONS);
-  resSheet.appendRow([
-    Utilities.getUuid(),
-    coachingId,  // 어느 코칭인지 기록
-    email,
-    date,
-    time,
-    'confirmed',
-    new Date(),
-    event.id,
-    event.hangoutLink
-  ]);
-
-  return { meetLink: event.hangoutLink, status: 'confirmed' };
-}
-```
-
-#### 예약 취소/수정 시 동기화
-
-```javascript
-// Code.gs - handleCancelReservation 수정
-function handleCancelReservation(db, params) {
-  const { reservationId } = params;
-
-  const resSheet = db.getSheetByName(SHEET_RESERVATIONS);
-  const resData = resSheet.getDataRange().getValues();
-
-  for (let i = 1; i < resData.length; i++) {
-    if (resData[i][0] === reservationId) {
-      const coachingId = resData[i][1];
-      const eventId = resData[i][7];
-
-      // 1. 코칭 전용 캘린더 ID 조회
-      const coachingSheet = db.getSheetByName('Coachings');
-      const calendarId = findCalendarIdByCoachingId(coachingSheet, coachingId);
-
-      // 2. 구글 캘린더 이벤트 삭제
-      Calendar.Events.remove(calendarId, eventId, { sendUpdates: 'all' });
-
-      // 3. Reservations 시트 상태 업데이트
-      resSheet.getRange(i + 1, 6).setValue('cancelled');
-
-      break;
-    }
-  }
-
-  return { status: 'cancelled' };
-}
-```
-
----
-
-### 데이터 아키텍처
-
-#### 엔티티 관계도 (ERD)
-
-```
-[Master Spreadsheet]
-├─ Directory (강사 디렉토리)
-│  ├─ InstructorID (PK)
-│  ├─ Name
-│  ├─ SpreadsheetID (강사별 DB)
-│  ├─ DefaultCalendarID (기본 캘린더)
-│  └─ CreatedAt
-
-[Instructor Spreadsheet] (강사별 DB)
-├─ Coachings (코칭 목록)
-│  ├─ CoachingID (PK, UUID)
-│  ├─ CoachingName (예: "필라테스 개인 레슨")
-│  ├─ GoogleCalendarID (전용 캘린더 ID) ★
-│  ├─ InstructorID (FK → Directory)
-│  ├─ Status (active/inactive)
-│  ├─ CreatedAt
-│  └─ Settings (JSON: 가격, 시간, 정원 등)
-│
-├─ Reservations (예약 목록)
-│  ├─ ReservationID (PK, UUID)
-│  ├─ CoachingID (FK → Coachings) ★
-│  ├─ StudentEmail
-│  ├─ Date
-│  ├─ Time
-│  ├─ Status (confirmed/cancelled/completed)
-│  ├─ CalendarEventID (구글 캘린더 이벤트 ID) ★
-│  ├─ MeetLink
-│  └─ CreatedAt
-│
-├─ Users (수강생 목록)
-│  ├─ Email (PK)
-│  ├─ Name
-│  ├─ Phone
-│  ├─ Packages (수강권 정보 JSON)
-│  └─ CreatedAt
-│
-└─ Settings (강사 설정)
-   ├─ WorkingHours (근무 시간)
-   └─ Notifications (알림 설정)
-```
-
-#### 데이터 흐름 (Data Flow)
-
-```
-1. 강사 로그인
-   ↓
-   Directory 시트 조회
-   → InstructorID 존재? YES → 해당 SpreadsheetID 반환
-                           NO  → 새 Spreadsheet 생성 + Directory에 등록
-
-2. 코칭 생성
-   ↓
-   Google Calendar API → 새 캘린더 생성
-   ↓
-   Coachings 시트에 저장 (CoachingID, CalendarID 매핑)
-
-3. 예약 생성
-   ↓
-   Coachings 시트 조회 → CoachingID로 CalendarID 찾기
-   ↓
-   Google Calendar API → 해당 캘린더에 이벤트 추가
-   ↓
-   Reservations 시트에 저장 (CoachingID, EventID 기록)
-
-4. 예약 조회
-   ↓
-   Reservations 시트 조회 (CoachingID로 필터링)
-   ↓
-   Coachings 시트 JOIN → 코칭 이름 표시
-
-5. 예약 취소
-   ↓
-   Reservations 시트 조회 → EventID 찾기
-   ↓
-   Coachings 시트 JOIN → CalendarID 찾기
-   ↓
-   Google Calendar API → 이벤트 삭제
-   ↓
-   Reservations 시트 상태 업데이트
-```
-
-#### Google Sheets 데이터 구조 예시
-
-**Coachings 시트:**
-| CoachingID | CoachingName | GoogleCalendarID | InstructorID | Status | CreatedAt |
-|------------|--------------|------------------|--------------|--------|-----------|
-| uuid-001 | 필라테스 개인 레슨 | cal_pilates_xyz | coach@gmail.com | active | 2025-12-20 |
-| uuid-002 | 요가 그룹 수업 | cal_yoga_abc | coach@gmail.com | active | 2025-12-21 |
-
-**Reservations 시트:**
-| ReservationID | CoachingID | StudentEmail | Date | Time | Status | EventID | MeetLink |
-|---------------|------------|--------------|------|------|--------|---------|----------|
-| res-001 | uuid-001 | student1@gmail.com | 2025-12-25 | 10:00 | confirmed | evt_123 | meet.google.com/xyz |
-| res-002 | uuid-002 | student2@gmail.com | 2025-12-26 | 14:00 | confirmed | evt_456 | meet.google.com/abc |
-
-#### 캘린더 ID 매핑 전략
-
-```
-강사 1명 → N개 코칭 → N개 구글 캘린더
-
-예시:
-┌─────────────────────────────────────────────────────────┐
-│ 강사: coach@gmail.com                                   │
-│ ├─ 기본 캘린더: coach@gmail.com (개인 일정)             │
-│ ├─ 코칭 1: cal_pilates_xyz (필라테스 예약 전용)         │
-│ ├─ 코칭 2: cal_yoga_abc (요가 예약 전용)                │
-│ └─ 코칭 3: cal_pt_def (PT 예약 전용)                    │
-└─────────────────────────────────────────────────────────┘
-
-장점:
-✓ 수업별로 색상 구분 가능 (구글 캘린더 UI)
-✓ 캘린더 공유 설정 독립적 (필라테스만 공개, 요가는 비공개 등)
-✓ 예약 충돌 방지 명확 (같은 캘린더 내에서만 체크)
-✓ 통계 분석 용이 (코칭별 예약 건수 집계)
-```
-
----
-
-### 철학 반영 체크리스트
-
-#### 1. 고요함 (Calmness)
-
-- ✅ **복잡한 설정 없이 자동 연동**
-  - 강사는 "Google로 시작하기" 버튼만 클릭
-  - OAuth 승인 1번으로 캘린더 권한 자동 획득
-  - 백엔드가 자동으로 캘린더 생성 및 연동 처리
-
-- ✅ **미니멀한 UI**
-  - 코칭 생성: 이름만 입력 (1개 필드)
-  - 불필요한 옵션 숨김 (고급 설정은 별도 탭)
-  - 보라색 그라데이션 + 여백 중심 디자인
-
-- ✅ **인지 부하 최소화**
-  - "다음에 뭘 해야 하나?" → CTA 버튼 1개만 강조
-  - 진행 단계 명확 표시 (1/3, 2/3, 3/3)
-  - 에러 메시지 친절 (전문 용어 없이 평문으로)
-
-#### 2. 창조력 지원 (Empowerment)
-
-- ✅ **강사가 자유롭게 여러 코칭 운영**
-  - 무제한 코칭 생성 가능 (무료 플랜도 3개까지)
-  - 각 코칭마다 독립적인 설정 (가격, 시간, 정원)
-  - 코칭별 통계 분리 (매출, 예약 건수)
-
-- ✅ **반복 작업 자동화**
-  - 예약 확정 시 자동으로:
-    - 구글 캘린더 이벤트 추가
-    - Meet 링크 생성
-    - 이메일 알림 발송
-    - 수강권 차감
-
-- ✅ **데이터 기반 인사이트**
-  - 인기 시간대 분석 (어느 시간에 예약 많은지)
-  - 코칭별 매출 비교 (필라테스 vs 요가)
-  - 월간 트렌드 차트
-
-#### 3. AI 공존 환경 (AI Coexistence)
-
-- ✅ **기술이 사람을 대체하지 않고 돕는 도구**
-  - 강사의 기존 워크플로우 유지 (구글 캘린더 계속 사용)
-  - 자동화와 수동 제어 균형:
-    - 자동: 캘린더 동기화, 이메일 발송
-    - 수동: 예약 승인/거절, 일정 수정
-
-- ✅ **학습 곡선 최소화**
-  - 구글 계정만 있으면 시작 가능
-  - 별도 프로그램 설치 불필요 (웹 기반)
-  - 강사가 이미 익숙한 구글 캘린더와 연동
-
-- ✅ **사용자가 언제나 통제권 보유**
-  - 코칭 활성화/비활성화 토글
-  - 예약 수동 승인 모드 선택 가능
-  - 캘린더 동기화 ON/OFF 설정
-
----
-
-### 구현 우선순위
-
-#### Phase 1: 기본 인프라 (1-2주)
-
-**목표**: 강사가 로그인 → 코칭 생성 → 예약 링크 발급까지 완성
-
-- [ ] **백엔드 API 개발** (Code.gs)
-  - [ ] `handleCreateCoaching` - 코칭 생성 + 구글 캘린더 생성
-  - [ ] `handleGetCoachings` - 강사의 코칭 목록 조회
-  - [ ] `handleUpdateCoaching` - 코칭 설정 수정
-  - [ ] `handleDeleteCoaching` - 코칭 삭제 + 캘린더 삭제
-  - [ ] Coachings 시트 자동 생성 (setupInstructorSheet 수정)
-
-- [ ] **프론트엔드 컴포넌트** (React)
-  - [ ] `CoachingManagement.tsx` - 코칭 목록/생성/수정 UI
-  - [ ] Dashboard에 "Coachings" 탭 추가
-  - [ ] types.ts에 Coaching 인터페이스 추가
-  - [ ] api.ts에 coaching 관련 함수 추가
-
-- [ ] **Google OAuth 스코프 확장**
-  - [ ] constants.ts에 캘린더 권한 추가
-  - [ ] Login.tsx OAuth 요청 시 스코프 전달
-
-#### Phase 2: 예약 시스템 통합 (2-3주)
-
-**목표**: 수강생이 예약 → 해당 코칭 캘린더에 자동 등록
-
-- [ ] **예약 플로우 수정**
-  - [ ] PublicBooking.tsx - coachingId 파라미터 추가
-  - [ ] URL 구조 변경: `/book/{instructorId}` → `/book/{instructorId}/{coachingId}`
-  - [ ] 예약 시 어느 코칭인지 선택 UI (강사가 여러 코칭 운영 시)
-
-- [ ] **백엔드 예약 로직 수정**
-  - [ ] handleMakeReservation - coachingId 기반으로 캘린더 찾기
-  - [ ] handleGetAvailability - 코칭별 근무 시간 설정 지원
-  - [ ] Reservations 시트에 CoachingID 컬럼 추가
-
-- [ ] **캘린더 동기화 고도화**
-  - [ ] 예약 수정 시 캘린더 이벤트 업데이트
-  - [ ] 강사가 구글 캘린더에서 일정 수정 시 양방향 동기화 (webhook)
-  - [ ] 충돌 감지 로직 (같은 코칭 캘린더 내에서만 체크)
-
-#### Phase 3: 다중 코칭 UX 개선 (1주)
-
-**목표**: 강사가 여러 코칭을 쉽게 관리할 수 있는 UI/UX
-
-- [ ] **Dashboard 개선**
-  - [ ] 코칭별 통계 카드 (매출, 예약 건수, 평균 평점)
-  - [ ] 코칭 전환 드롭다운 (현재 보고 있는 코칭 선택)
-  - [ ] 전체/코칭별 필터 토글
-
-- [ ] **예약 목록 필터링**
-  - [ ] Reservation.tsx - 코칭별 필터 추가
-  - [ ] 색상 코딩 (코칭마다 다른 색상 뱃지)
-  - [ ] 검색 기능 (수강생 이름, 코칭 이름)
-
-- [ ] **예약 링크 관리**
-  - [ ] 코칭별 QR 코드 생성
-  - [ ] SNS 공유 버튼 (카카오톡, 인스타그램)
-  - [ ] 짧은 URL 생성 (bit.ly 연동)
-
-#### Phase 4: 고급 기능 (2-3주)
-
-**목표**: 강사의 창조력을 극대화하는 고급 기능
-
-- [ ] **코칭별 독립 설정**
-  - [ ] 가격 정책 (코칭마다 다른 수강권)
-  - [ ] 근무 시간 (필라테스는 오전만, 요가는 저녁만)
-  - [ ] 예약 정책 (사전 예약 기간, 취소 기한)
-
-- [ ] **자동화 룰**
-  - [ ] 예약 자동 승인/거절 조건 설정
-  - [ ] 리마인더 이메일 자동 발송 (예약 1일 전)
-  - [ ] 노쇼 자동 감지 및 수강권 복구
-
-- [ ] **통계 및 분석**
-  - [ ] 코칭별 매출 비교 차트
-  - [ ] 인기 시간대 히트맵
-  - [ ] 수강생 재방문율 분석
-  - [ ] 월간 리포트 이메일 발송
-
-#### Phase 5: 구글 캘린더 양방향 동기화 (1-2주)
-
-**목표**: 강사가 구글 캘린더에서 수정해도 시스템 자동 반영
-
-- [ ] **Webhook 설정**
-  - [ ] Google Calendar API - Push Notification 설정
-  - [ ] Code.gs에 doPost 엔드포인트 추가
-  - [ ] 캘린더 이벤트 변경 감지
-
-- [ ] **동기화 로직**
-  - [ ] 강사가 캘린더에서 일정 삭제 → Reservations 시트 상태 업데이트
-  - [ ] 강사가 시간 변경 → 수강생에게 알림
-  - [ ] 충돌 해결 (시스템 우선 vs 캘린더 우선 설정)
-
----
-
-### 기술 명세 (Technical Specifications)
-
-#### Google Calendar API 사용 함수
-
-```javascript
-// 1. 새 캘린더 생성
-CalendarApp.createCalendar(name, options)
-
-// 2. 캘린더 조회
-CalendarApp.getCalendarById(calendarId)
-
-// 3. 이벤트 추가
-Calendar.Events.insert(eventResource, calendarId, options)
-
-// 4. 이벤트 수정
-Calendar.Events.patch(eventId, eventResource, calendarId)
-
-// 5. 이벤트 삭제
-Calendar.Events.remove(calendarId, eventId, options)
-
-// 6. 이벤트 목록 조회
-Calendar.Events.list(calendarId, {
-  timeMin: startDate.toISOString(),
-  timeMax: endDate.toISOString(),
-  singleEvents: true
-})
-```
-
-#### 에러 핸들링 전략
-
-```javascript
-// Code.gs
-try {
-  const newCalendar = CalendarApp.createCalendar(coachingName);
-} catch (e) {
-  if (e.toString().includes('quota')) {
-    throw new Error('일일 캘린더 생성 한도를 초과했습니다. (최대 20개)');
-  } else if (e.toString().includes('permission')) {
-    throw new Error('캘린더 권한이 부족합니다. 다시 로그인해주세요.');
-  } else {
-    throw new Error('캘린더 생성 실패: ' + e.toString());
-  }
-}
-```
-
-#### 성능 최적화
-
-```javascript
-// 캐싱 전략
-const cache = CacheService.getScriptCache();
-const cacheKey = `COACHING_LIST_${instructorId}`;
-const cachedData = cache.get(cacheKey);
-
-if (cachedData) {
-  return JSON.parse(cachedData);
-} else {
-  const data = fetchCoachingsFromSheet(instructorId);
-  cache.put(cacheKey, JSON.stringify(data), 600);  // 10분 캐시
+// AFTER (수정됨)
+export async function getAllStudents() {
+  // Get all users with student role
+  const { data: studentRoles, error: rolesError } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role_name', 'student');
+
+  if (rolesError) throw rolesError;
+  if (!studentRoles || studentRoles.length === 0) return [];
+
+  const studentIds = studentRoles.map(r => r.user_id);
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .in('id', studentIds)  // ✅ user_roles 테이블 사용
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
   return data;
 }
 ```
 
 ---
 
-### 예상 일정 (Timeline)
+## 🚀 빌드 완료
 
-```
-Week 1-2:  Phase 1 (기본 인프라)
-Week 3-5:  Phase 2 (예약 시스템 통합)
-Week 6:    Phase 3 (다중 코칭 UX)
-Week 7-9:  Phase 4 (고급 기능)
-Week 10-11: Phase 5 (양방향 동기화)
-Week 12:   QA 및 버그 수정
+```bash
+✓ built in 1.85s
+dist/index.html                   3.83 kB │ gzip:   1.40 kB
+dist/assets/index-cMeCg0nu.css   44.51 kB │ gzip:   7.50 kB
+dist/assets/index-BRJLkQZZ.js   641.16 kB │ gzip: 166.14 kB
 ```
 
-**총 소요 기간: 약 3개월**
+**배포 준비 완료** ✅
 
 ---
 
-### 성공 지표 (Success Metrics)
+## 🔴 남은 문제: Localhost OAuth 리다이렉트
 
-#### 사용자 경험 지표
-- 강사 온보딩 완료율: 90% 이상
-- 첫 코칭 생성까지 소요 시간: 평균 3분 이내
-- 강사당 평균 코칭 수: 2.5개 이상
-- 예약 자동 동기화 성공률: 99.9% 이상
+**문제**: localhost에서 테스트 시 `https://yeyak-mania.co.kr/#`으로 리다이렉트됨
 
-#### 기술 지표
-- 캘린더 API 호출 성공률: 99% 이상
-- 페이지 로딩 속도: 2초 이내
-- 에러 발생률: 1% 미만
-- 동시 접속자 처리: 100명 이상
+**해결 방법**:
 
-#### 비즈니스 지표
-- 월 활성 강사 수 (MAU): 100명 이상 (3개월 후)
-- 월간 예약 건수: 500건 이상
-- 강사 만족도 (NPS): 50+ 이상
-- 유료 전환율: 20% 이상
+### 1. Supabase Dashboard 설정 (수동 작업 필요)
+
+**경로**: https://supabase.com/dashboard → 프로젝트 선택 → Settings → Authentication → URL Configuration
+
+**추가할 URL**:
+- Site URL: `http://localhost:5001` (또는 기존 유지)
+- Redirect URLs:
+  - `http://localhost:5001` ✅
+  - `http://localhost:5001/onboarding` ✅
+  - `https://yeyak-mania.co.kr` (기존)
+  - `https://yeyak-mania.co.kr/onboarding` (기존)
+
+### 2. 코드 수정 완료 (이미 적용됨)
+
+**lib/supabase/auth.ts**:
+```typescript
+export async function signInWithGoogle() {
+  // Use current origin (supports localhost and production)
+  const redirectUrl = `${window.location.origin}/onboarding`;
+
+  console.log('OAuth Redirect URL:', redirectUrl);
+  // localhost:5001 → http://localhost:5001/onboarding
+  // yeyak-mania.co.kr → https://yeyak-mania.co.kr/onboarding
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectUrl,  // 동적 URL
+      ...
+    }
+  });
+}
+```
+
+**App.tsx** - 해시(#) 자동 제거:
+```typescript
+useEffect(() => {
+  // Remove hash from URL (Supabase auth uses hash fragments)
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    setTimeout(() => {
+      const cleanUrl = window.location.pathname + window.location.search;
+      window.history.replaceState({}, '', cleanUrl);
+    }, 100);
+  }
+}, []);
+```
 
 ---
 
-**마지막 업데이트**: 2025-12-20 (Phase 6 기획 완료 - 강사 중심 고객 동선)
+## 🎯 발표 전 체크리스트
+
+### ✅ 완료된 항목
+- [x] `user_type` 컬럼 에러 수정
+- [x] 프로덕션 빌드 성공
+- [x] OAuth 리다이렉트 코드 수정
+- [x] 해시(#) 제거 로직 추가
+- [x] 로그인 후 `/onboarding`으로 리다이렉트
+
+### ⏳ 발표 직전 확인사항
+- [ ] Supabase Dashboard에 localhost URL 추가 (1분 작업)
+- [ ] localhost:5001에서 OAuth 테스트
+- [ ] 프로덕션 배포 (vercel.app 또는 yeyak-mania.co.kr)
+- [ ] 프로덕션에서 OAuth 테스트
+
+---
+
+## 📊 현재 상태
+
+### Database
+- ✅ BIGINT 스키마 (11개 테이블)
+- ✅ RLS 정책 활성화
+- ✅ `user_roles` 테이블 사용
+- ✅ `user_type` 컬럼 완전 제거
+
+### Frontend
+- ✅ 모든 컴포넌트 빌드 성공
+- ✅ 641KB (gzip: 166KB)
+- ✅ 타입 에러 0개
+- ✅ 컴파일 에러 0개
+
+### Authentication
+- ✅ Google OAuth 설정
+- ✅ 동적 리다이렉트 URL
+- ✅ 해시(#) 자동 제거
+- ⏳ localhost URL 설정 (Dashboard에서 추가 필요)
+
+---
+
+## 🎤 발표 시나리오
+
+### 1. 프로젝트 소개 (2분)
+- **예약매니아**: Calendly + StudioMate 올인원 솔루션
+- 강사: 코칭 관리, 수강권 판매, 통계
+- 학생: 간편 예약, 수강권 확인
+
+### 2. 핵심 기능 시연 (5분)
+1. **랜딩 페이지** - 깔끔한 디자인, CTA
+2. **Google 로그인** - OAuth 인증
+3. **온보딩** - 강사/학생 선택
+4. **강사 대시보드** - 통계, 예약 관리
+5. **공개 예약 페이지** - `/{코칭명}` URL
+
+### 3. 기술 스택 (1분)
+- Frontend: React 19 + TypeScript + Vite
+- Backend: Supabase (PostgreSQL + Auth + RLS)
+- Styling: Tailwind CSS
+- Deployment: Vercel
+
+### 4. 데이터베이스 설계 (2분)
+- BIGINT 아키텍처 (UUID 대비 50% 절약)
+- 역할 기반 시스템 (`user_roles`)
+- 수강권 템플릿 시스템
+
+---
+
+## 🐛 알려진 이슈 & 해결책
+
+### 이슈 1: localhost OAuth 리다이렉트
+**해결**: Supabase Dashboard에서 localhost URL 추가 (1분)
+
+### 이슈 2: 번들 크기 경고 (641KB > 500KB)
+**상태**: 낮은 우선순위
+**해결책**: Code splitting, lazy loading (추후)
+
+---
+
+## 💾 백업 & 배포
+
+### Vercel 배포
+```bash
+# 현재 디렉토리에서
+vercel --prod
+```
+
+### 환경 변수 확인
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_GA_MEASUREMENT_ID`
+
+---
+
+## 📝 발표 후 TODO
+
+1. **성능 최적화**
+   - Code splitting
+   - Lazy loading
+   - 번들 크기 < 500KB
+
+2. **모바일 고도화**
+   - 스와이프 제스처
+   - Bottom Sheet
+   - 차트 모바일 뷰
+
+3. **구독 시스템 활성화**
+   - 결제 연동 (Stripe/Toss Payments)
+   - 프로모션 코드 UI
+
+---
+
+**마지막 업데이트**: 2025-12-26 01:00 (발표 1시간 전)
+**상태**: 🟢 발표 준비 완료
+**다음 작업**: Supabase Dashboard 설정 (1분) → 최종 테스트

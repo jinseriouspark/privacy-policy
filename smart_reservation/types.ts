@@ -4,6 +4,8 @@ export enum UserType {
   INSTRUCTOR = 'instructor'
 }
 
+export type UserRole = 'instructor' | 'student';
+
 export interface User {
   id?: string; // Supabase user UUID - optional for backward compatibility
   email: string;
@@ -11,13 +13,21 @@ export interface User {
   remaining: number;
   total?: number; // For coach view
   picture?: string;
-  userType?: UserType;
-  username?: string; // For public booking link (e.g., /book/username)
+
+  // 🆕 Role-based system (사용자는 여러 역할을 가질 수 있음)
+  roles?: UserRole[]; // ['instructor', 'student'] - 강사이면서 학생 가능
+  primaryRole?: UserRole; // 주 역할 (instructor 우선)
+
+  // ⚠️ Deprecated (하위 호환성 유지)
+  userType?: UserType; // primaryRole로 대체됨
+
+  short_id?: string; // For public booking link (e.g., /book/short_id)
   bio?: string; // Instructor bio
   isProfileComplete?: boolean; // Has completed onboarding
-  studioName?: string; // [NEW] 강사용 스튜디오 이름
-  phone?: string; // [NEW] 연락처
-  packages?: ClassPackage[]; // [NEW] 판매 중인 수강권
+  studioName?: string; // 강사용 스튜디오 이름
+  phone?: string; // 연락처
+  packages?: ClassPackage[]; // 판매 중인 수강권
+  created_at?: string; // 가입일
 }
 
 export interface Instructor {
@@ -31,11 +41,14 @@ export interface Coaching {
   id: string;
   instructor_id: string;
   title: string;
-  slug: string;
+  slug?: string; // Optional - not currently used
   type: ClassType;
   description?: string;
+  duration: number;
+  cancellation_hours?: number;
   google_calendar_id?: string;
   status: 'active' | 'inactive';
+  working_hours?: { [key: string]: WorkingHour };
   created_at: string;
   updated_at: string;
 }
@@ -116,15 +129,64 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-export enum ViewState {
-  LANDING = 'LANDING',
-  LOGIN = 'LOGIN',
-  ACCOUNT_TYPE_SELECTION = 'ACCOUNT_TYPE_SELECTION',
-  STUDIO_SETUP = 'STUDIO_SETUP',
-  DASHBOARD = 'DASHBOARD',
-  INSTRUCTOR_SELECT = 'INSTRUCTOR_SELECT',
-  RESERVATION = 'RESERVATION',
-  PROFILE = 'PROFILE',
-  PRIVACY = 'PRIVACY',
-  TERMS = 'TERMS',
+// ViewState enum removed - now using URL-based routing
+// See utils/router.ts for route definitions
+
+// Subscription & Pricing Types
+export type PlanId = 'free' | 'standard' | 'teams' | 'enterprise';
+export type BillingCycle = 'monthly' | 'yearly';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial';
+
+export interface SubscriptionPlan {
+  id: PlanId;
+  name: string;
+  display_name: string;
+  description: string | null;
+  monthly_price: number; // 원 단위
+  yearly_price: number;
+  features: Record<string, boolean>;
+  limits: {
+    max_students: number | null; // null = unlimited
+    max_reservations_per_month: number | null;
+    max_coachings: number | null;
+    max_instructors: number | null;
+  };
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan_id: PlanId;
+  billing_cycle: BillingCycle;
+  status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionUsage {
+  id: string;
+  user_id: string;
+  period_start: string;
+  period_end: string;
+  reservations_count: number;
+  students_count: number;
+  coachings_count: number;
+  instructors_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlanLimitCheck {
+  allowed: boolean;
+  current_count: number;
+  max_limit: number | null;
+  message: string;
 }

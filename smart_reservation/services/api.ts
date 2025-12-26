@@ -2,25 +2,66 @@
 import { GAS_WEB_APP_URL } from '../constants';
 import { ApiResponse } from '../types';
 
-// Helper to get project slug from URL (/{project-slug})
-const getProjectSlugFromUrl = () => {
+// Helper to parse URL: /book/{studio_slug}/{coaching_id} or /{coach_id}/{class_slug} (legacy)
+const parseBookingUrl = () => {
   const path = window.location.pathname;
   const parts = path.split('/').filter(p => p);
 
   // Exclude dashboard/system routes
   const systemRoutes = [
-    'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'setting', 'class',
-    'onboarding', 'privacy-policy', 'terms-of-service', 'login'
+    'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'class',
+    'onboarding', 'privacy-policy', 'terms-of-service', 'login', 'setup', 'dashboard',
+    'reservations', 'students', 'attendance', 'packages', 'profile'
   ];
 
-  if (parts.length > 0 && !systemRoutes.includes(parts[0])) {
-    return parts[0];
+  // New format: /book/{studio_slug}/{coaching_id}
+  if (parts.length >= 3 && parts[0] === 'book') {
+    return {
+      coachId: null,
+      classSlug: parts[2],
+      studioSlug: parts[1]
+    };
   }
 
-  return null;
+  // New format: /book/{studio_slug} (coach selection)
+  if (parts.length === 2 && parts[0] === 'book') {
+    return {
+      coachId: null,
+      classSlug: null,
+      studioSlug: parts[1]
+    };
+  }
+
+  // If first part is system route, not a booking URL
+  if (parts.length > 0 && systemRoutes.includes(parts[0])) {
+    return { coachId: null, classSlug: null, studioSlug: null };
+  }
+
+  // Legacy format: /{coach_id}/{class_slug}
+  if (parts.length >= 2) {
+    return {
+      coachId: parts[0],
+      classSlug: parts[1],
+      studioSlug: null
+    };
+  }
+
+  // Legacy format: /{class_slug} (single slug, backward compat)
+  if (parts.length === 1) {
+    return {
+      coachId: null,
+      classSlug: parts[0],
+      studioSlug: null
+    };
+  }
+
+  return { coachId: null, classSlug: null, studioSlug: null };
 };
 
-export const getCurrentProjectSlug = () => getProjectSlugFromUrl();
+export const getCurrentProjectSlug = () => parseBookingUrl().classSlug;
+export const getCurrentCoachId = () => parseBookingUrl().coachId;
+export const getStudioSlug = () => parseBookingUrl().studioSlug;
+export const getBookingUrlParams = () => parseBookingUrl();
 
 // --- DEMO MODE MOCK DATA ---
 let mockUser = {
@@ -34,7 +75,7 @@ const mockReservations: any[] = [
 ];
 
 export const postToGAS = async <T>(payload: any): Promise<T> => {
-  const coachId = getCoachIdFromUrl();
+  const coachId = getCurrentCoachId();
   const { action } = payload;
 
   // 회원가입/탈퇴/로그인은 coachId 불필요한 액션들

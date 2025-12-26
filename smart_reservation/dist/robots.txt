@@ -1,0 +1,26 @@
+# robots.txt for 예약매니아 (Smart Reservation System)
+# Allow search engines to crawl public pages only
+
+User-agent: *
+
+# Allow public pages
+Allow: /
+Allow: /$
+Allow: /login
+Allow: /privacy-policy
+Allow: /terms-of-service
+
+# Disallow private/authenticated pages
+Disallow: /api/
+Disallow: /onboarding
+Disallow: /summary
+Disallow: /all-reservation
+Disallow: /group
+Disallow: /attend
+Disallow: /student
+Disallow: /membership
+Disallow: /setting
+Disallow: /class
+
+# Sitemap location
+Sitemap: https://yeyak-mania.co.kr/sitemap.xml
