@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FolderOpen, Trash2, CheckCircle2, Calendar, AlertCircle, Edit2 } from 'lucide-react';
-import { Coaching, ClassType, WorkingHour } from '../types';
+import { Coaching, ClassType } from '../types';
 import {
   getInstructorCoachings,
   createCoaching,
@@ -10,7 +10,7 @@ import {
 } from '../lib/supabase/database';
 import { ensureCalendarInList, upgradeCalendarToWriter } from '../lib/google-calendar';
 import { InstructorSetupModal } from './InstructorSetupModal';
-import { WeeklyWorkingHours } from './WeeklyWorkingHours';
+import { TimeBlockSelector } from './TimeBlockSelector';
 
 interface CoachingManagementInlineProps {
   instructorId: string;
@@ -26,20 +26,23 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
   const [coachings, setCoachings] = useState<Coaching[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // 🆕 새로운 블록 기반 working_hours 기본값
   const defaultWorkingHours = {
-    monday: { enabled: true, start: '09:00', end: '18:00' },
-    tuesday: { enabled: true, start: '09:00', end: '18:00' },
-    wednesday: { enabled: true, start: '09:00', end: '18:00' },
-    thursday: { enabled: true, start: '09:00', end: '18:00' },
-    friday: { enabled: true, start: '09:00', end: '18:00' },
-    saturday: { enabled: true, start: '09:00', end: '18:00' },
-    sunday: { enabled: false, start: '09:00', end: '18:00' }
+    monday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    tuesday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    wednesday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    thursday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    friday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    saturday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    sunday: { enabled: false, blocks: [] }
   };
 
   const [newCoachingTitle, setNewCoachingTitle] = useState('');
   const [newCoachingDesc, setNewCoachingDesc] = useState('');
   const [newCoachingDuration, setNewCoachingDuration] = useState(30);
-  const [newWorkingHours, setNewWorkingHours] = useState<{ [key: string]: WorkingHour }>(defaultWorkingHours);
+  const [newWorkingHours, setNewWorkingHours] = useState<any>(defaultWorkingHours);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [selectedCoachingForSetup, setSelectedCoachingForSetup] = useState<Coaching | null>(null);
   const [instructorShortId, setInstructorShortId] = useState<string>('');
@@ -47,11 +50,19 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editDuration, setEditDuration] = useState(30);
-  const [editWorkingHours, setEditWorkingHours] = useState<{ [key: string]: WorkingHour }>({});
+  const [editWorkingHours, setEditWorkingHours] = useState<any>({});
 
   useEffect(() => {
     loadCoachings();
     loadInstructorInfo();
+
+    // 모바일 감지
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, [instructorId]);
 
   const loadInstructorInfo = async () => {
@@ -141,7 +152,6 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
     setEditTitle('');
     setEditDesc('');
     setEditDuration(30);
-    setEditCancellationHours(24);
     setEditWorkingHours({});
   };
 
@@ -263,11 +273,18 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
               </div>
             </div>
 
-            {/* Working Hours */}
+            {/* Working Hours - 🆕 Time Block Selector */}
             <div className="bg-white p-4 rounded-xl border-2 border-orange-200">
-              <WeeklyWorkingHours
+              <h4 className="text-sm font-bold text-slate-900 mb-3">예약 가능 시간 설정</h4>
+              <p className="text-xs text-slate-600 mb-4">
+                {isMobile
+                  ? '요일을 선택하고 시간대를 탭하여 예약 가능 시간을 설정하세요 (30분 단위)'
+                  : '드래그로 시간대를 선택하고, 더블클릭으로 요일을 활성화/비활성화하세요 (30분 단위)'}
+              </p>
+              <TimeBlockSelector
                 workingHours={newWorkingHours}
                 onChange={setNewWorkingHours}
+                isMobile={isMobile}
               />
             </div>
 
@@ -285,7 +302,6 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                   setNewCoachingTitle('');
                   setNewCoachingDesc('');
                   setNewCoachingDuration(30);
-                  setNewCancellationHours(24);
                   setNewWorkingHours(defaultWorkingHours);
                 }}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors"
@@ -363,10 +379,18 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
 
                       </div>
 
+                      {/* Working Hours - 🆕 Time Block Selector */}
                       <div className="bg-white p-4 rounded-xl border-2 border-blue-200">
-                        <WeeklyWorkingHours
+                        <h4 className="text-sm font-bold text-slate-900 mb-3">예약 가능 시간 설정</h4>
+                        <p className="text-xs text-slate-600 mb-4">
+                          {isMobile
+                            ? '요일을 선택하고 시간대를 탭하여 예약 가능 시간을 설정하세요 (30분 단위)'
+                            : '드래그로 시간대를 선택하고, 더블클릭으로 요일을 활성화/비활성화하세요 (30분 단위)'}
+                        </p>
+                        <TimeBlockSelector
                           workingHours={editWorkingHours}
                           onChange={setEditWorkingHours}
+                          isMobile={isMobile}
                         />
                       </div>
 

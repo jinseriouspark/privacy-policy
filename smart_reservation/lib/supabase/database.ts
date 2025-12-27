@@ -2002,74 +2002,94 @@ export async function getAvailableTimeSlots(
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[dayOfWeek];
 
-    // 기본 근무 시간 (오전 9시 ~ 오후 6시)
+    // 기본 근무 시간 (오전 9시 ~ 오후 6시, 레거시 포맷 지원)
     const defaultDayWorkingHours = {
       enabled: dayName !== 'sunday', // 일요일은 기본적으로 비활성화
-      start: '09:00',
-      end: '18:00'
+      blocks: [{ start: '09:00', end: '18:00' }]
     };
 
     // 해당 요일의 근무 시간 가져오기
     let dayWorkingHours = defaultDayWorkingHours;
     if (workingHours && typeof workingHours === 'object' && dayName in workingHours) {
-      dayWorkingHours = workingHours[dayName];
+      const rawDayHours = workingHours[dayName];
+
+      // 🆕 레거시 포맷({ start, end }) vs 새 포맷({ blocks: [...] }) 자동 감지
+      if (rawDayHours.blocks) {
+        // 새 포맷: 여러 시간대 블록
+        dayWorkingHours = rawDayHours;
+      } else if (rawDayHours.start && rawDayHours.end) {
+        // 레거시 포맷: 단일 시간대를 blocks 배열로 변환
+        dayWorkingHours = {
+          enabled: rawDayHours.enabled,
+          blocks: [{ start: rawDayHours.start, end: rawDayHours.end }]
+        };
+      }
+
       console.log(`[getAvailableTimeSlots] Found specific working hours for ${dayName}:`, dayWorkingHours);
     } else {
       console.log(`[getAvailableTimeSlots] Using default working hours for ${dayName}:`, defaultDayWorkingHours);
     }
 
     // 해당 요일에 근무 시간이 없거나 비활성화되어 있으면 빈 배열 반환
-    if (!dayWorkingHours.enabled) {
-      console.log(`[getAvailableTimeSlots] ⚠️ ${dayName} is disabled, returning empty slots`);
+    if (!dayWorkingHours.enabled || !dayWorkingHours.blocks || dayWorkingHours.blocks.length === 0) {
+      console.log(`[getAvailableTimeSlots] ⚠️ ${dayName} is disabled or has no blocks, returning empty slots`);
       return [];
     }
-
-    const [startHour] = dayWorkingHours.start.split(':').map(Number);
-    const [endHour] = dayWorkingHours.end.split(':').map(Number);
 
     console.log(`[getAvailableTimeSlots] Working hours for ${dayName}:`, dayWorkingHours);
 
     const allSlots: { time: string; available: boolean; reason?: string }[] = [];
-
     const now = new Date();
 
-    for (let hour = startHour; hour < endHour; hour++) {
-      const slotTime = `${hour.toString().padStart(2, '0')}:00`;
+    // 🆕 각 시간대 블록에서 30분 단위 슬롯 생성
+    dayWorkingHours.blocks.forEach(block => {
+      const [startHour, startMin] = block.start.split(':').map(Number);
+      const [endHour, endMin] = block.end.split(':').map(Number);
 
-      // 슬롯의 정확한 시작 시간 계산
-      const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, 0, 0, 0);
-      const slotEndDate = new Date(slotDate.getTime() + duration * 60 * 1000);
+      const blockStartMinutes = startHour * 60 + startMin;
+      const blockEndMinutes = endHour * 60 + endMin;
 
-      // 이미 예약된 시간과 겹치는지 확인
-      const isBooked = reservations?.some(reservation => {
-        const resStart = new Date(reservation.start_time);
-        const resEnd = new Date(reservation.end_time);
+      // 30분 단위로 슬롯 생성
+      for (let minutes = blockStartMinutes; minutes < blockEndMinutes; minutes += 30) {
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        const slotTime = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
 
-        // 시간대가 겹치는지 확인
-        return (
-          (slotDate >= resStart && slotDate < resEnd) ||
-          (slotEndDate > resStart && slotEndDate <= resEnd) ||
-          (slotDate <= resStart && slotEndDate >= resEnd)
-        );
-      });
+        // 슬롯의 정확한 시작 시간 계산
+        const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, min, 0, 0);
+        const slotEndDate = new Date(slotDate.getTime() + duration * 60 * 1000);
 
-      // 과거 시간은 예약 불가 (슬롯 시작 시간이 현재보다 이전이면)
-      const isPast = slotDate <= now;
+        // 이미 예약된 시간과 겹치는지 확인
+        const isBooked = reservations?.some(reservation => {
+          const resStart = new Date(reservation.start_time);
+          const resEnd = new Date(reservation.end_time);
 
-      // 이유 설정
-      let reason: string | undefined;
-      if (isPast) {
-        reason = 'past';
-      } else if (isBooked) {
-        reason = 'booked';
+          // 시간대가 겹치는지 확인
+          return (
+            (slotDate >= resStart && slotDate < resEnd) ||
+            (slotEndDate > resStart && slotEndDate <= resEnd) ||
+            (slotDate <= resStart && slotEndDate >= resEnd)
+          );
+        });
+
+        // 과거 시간은 예약 불가 (슬롯 시작 시간이 현재보다 이전이면)
+        const isPast = slotDate <= now;
+
+        // 이유 설정
+        let reason: string | undefined;
+        if (isPast) {
+          reason = 'past';
+        } else if (isBooked) {
+          reason = 'booked';
+        }
+
+        allSlots.push({
+          time: slotTime,
+          available: !isBooked && !isPast,
+          reason
+        });
       }
-
-      allSlots.push({
-        time: slotTime,
-        available: !isBooked && !isPast,
-        reason
-      });
-    }
+    });
 
     return allSlots;
   } catch (error) {
@@ -2138,5 +2158,59 @@ export async function removeStudentFromInstructor(studentId: string, instructorI
     console.error('[removeStudentFromInstructor] ❌ Failed to remove student:', error);
     throw error;
   }
+}
+
+/**
+ * ============================================
+ * Notion Settings Management
+ * ============================================
+ * 강사별 Notion Integration Token 암호화 저장/조회
+ */
+
+export interface NotionSettings {
+  integrationToken: string;
+  databaseId: string;
+  isActive: boolean;
+}
+
+/**
+ * Notion 설정 저장 (암호화)
+ *
+ * @param userId - 강사 ID
+ * @param settings - Notion Integration Token & Database ID
+ */
+export async function saveNotionSettings(
+  userId: number,
+  settings: {
+    integrationToken: string;
+    databaseId: string;
+  }
+): Promise<void> {
+  const { error } = await supabase.rpc("save_notion_settings", {
+    p_user_id: userId,
+    p_integration_token: settings.integrationToken,
+    p_database_id: settings.databaseId,
+  });
+
+  if (error) throw error;
+}
+
+/**
+ * Notion 설정 조회 (복호화)
+ */
+export async function getNotionSettings(userId: number): Promise<NotionSettings | null> {
+  const { data, error } = await supabase.rpc("get_notion_settings", {
+    p_user_id: userId,
+  });
+
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+
+  const settings = data[0];
+  return {
+    integrationToken: settings.integration_token,
+    databaseId: settings.database_id,
+    isActive: settings.is_active !== false,
+  };
 }
 

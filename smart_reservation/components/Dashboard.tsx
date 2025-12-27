@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData, Coaching } from '../types';
 import { postToGAS } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu, FileText } from 'lucide-react';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
 import { StudentInviteModal } from './StudentInviteModal';
 import { CoachingManagementModal } from './CoachingManagementModal';
 import { CoachingManagementInline } from './CoachingManagementInline';
+import NotionSettingsModal from './NotionSettingsModal';
+import ConsultationMemoModal from './ConsultationMemoModal';
 import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
@@ -70,6 +72,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // Coaching Management
   const [currentCoaching, setCurrentCoaching] = useState<Coaching | null>(null);
   const [showCoachingModal, setShowCoachingModal] = useState(false);
+
+  // Notion Integration
+  const [showNotionSettings, setShowNotionSettings] = useState(false);
+  const [showMemoModal, setShowMemoModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
   // Check if user is instructor based on user.userType
   const isCoach = user.userType === 'instructor';
@@ -638,13 +645,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                   )}
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-3 gap-2 mt-3">
+                  <div className="grid grid-cols-4 gap-2 mt-3">
                       <button
                           onClick={() => handleSendKakao(u)}
                           className="flex items-center justify-center gap-1 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-medium hover:bg-yellow-100 transition-colors"
                       >
                           <MessageCircle size={14} />
                           카톡
+                      </button>
+                      <button
+                          onClick={() => {
+                            setSelectedStudent(u);
+                            setShowMemoModal(true);
+                          }}
+                          className="flex items-center justify-center gap-1 py-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors"
+                      >
+                          <FileText size={14} />
+                          메모
                       </button>
                       <button
                           onClick={() => openUserEditor(u)}
@@ -1139,7 +1156,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           )}
         </div>
       </div>
-    </div>
+
+      {/* Notion Settings Modal */}
+      <NotionSettingsModal
+        isOpen={showNotionSettings}
+        onClose={() => setShowNotionSettings(false)}
+        userId={parseInt(user.id)}
+      />
+
+      {/* Consultation Memo Modal */}
+      {selectedStudent && (
+        <ConsultationMemoModal
+          isOpen={showMemoModal}
+          onClose={() => {
+            setShowMemoModal(false);
+            setSelectedStudent(null);
+          }}
+          userId={parseInt(user.id)}
+          student={{
+            id: selectedStudent.id,
+            name: selectedStudent.name,
+            email: selectedStudent.email,
+          }}
+        />
+      )}
+      </div>
     </div>
   );
 };
