@@ -79,17 +79,31 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   };
 
   const loadTimeSlots = async (date: Date) => {
-    console.log('[MobileCalendar] loadTimeSlots called with date:', date);
-    console.log('[MobileCalendar] packages:', packages);
+    console.log('[MobileCalendar] ========== loadTimeSlots START ==========');
+    console.log('[MobileCalendar] Date:', date.toISOString());
+    console.log('[MobileCalendar] Day of week:', ['일', '월', '화', '수', '목', '금', '토'][date.getDay()]);
     console.log('[MobileCalendar] selectedPackageId:', selectedPackageId);
+    console.log('[MobileCalendar] Total packages:', packages.length);
 
     // 선택된 수강권 찾기
     const selectedPackage = packages.find(pkg => pkg.id === selectedPackageId);
 
-    console.log('[MobileCalendar] selectedPackage:', selectedPackage);
+    if (!selectedPackage) {
+      console.log('[MobileCalendar] ❌ No selected package found, clearing slots');
+      setAvailableTimeSlots([]);
+      return;
+    }
 
-    if (!selectedPackage || !selectedPackage.instructor_id) {
-      console.log('[MobileCalendar] No selected package found, clearing slots');
+    console.log('[MobileCalendar] ✅ Selected package:', {
+      id: selectedPackage.id,
+      name: selectedPackage.name,
+      coaching_id: selectedPackage.coaching_id,
+      instructor_id: selectedPackage.instructor_id,
+      coaching: selectedPackage.coaching
+    });
+
+    if (!selectedPackage.instructor_id) {
+      console.log('[MobileCalendar] ❌ No instructor_id, clearing slots');
       setAvailableTimeSlots([]);
       return;
     }
@@ -97,20 +111,21 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
     // coaching_id가 없으면 instructor_id로 코칭 목록 가져오기
     let coachingId = selectedPackage.coaching_id;
     if (!coachingId) {
-      console.log('[MobileCalendar] No coaching_id, fetching instructor coachings...');
+      console.log('[MobileCalendar] ⚠️ No coaching_id, fetching instructor coachings...');
       try {
         const coachings = await getInstructorCoachings(selectedPackage.instructor_id.toString());
+        console.log('[MobileCalendar] Found coachings:', coachings);
         const activeCoaching = coachings.find(c => c.status === 'active');
         if (activeCoaching) {
           coachingId = activeCoaching.id;
-          console.log('[MobileCalendar] Found active coaching:', coachingId);
+          console.log('[MobileCalendar] ✅ Found active coaching:', activeCoaching);
         } else {
-          console.log('[MobileCalendar] No active coaching found');
+          console.log('[MobileCalendar] ❌ No active coaching found');
           setAvailableTimeSlots([]);
           return;
         }
       } catch (error) {
-        console.error('[MobileCalendar] Failed to fetch coachings:', error);
+        console.error('[MobileCalendar] ❌ Failed to fetch coachings:', error);
         setAvailableTimeSlots([]);
         return;
       }
@@ -118,24 +133,34 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
 
     setLoadingTimeSlots(true);
     try {
-      console.log('[MobileCalendar] Fetching slots for:', {
+      console.log('[MobileCalendar] 🔍 Calling getAvailableTimeSlots with:', {
         instructor_id: selectedPackage.instructor_id,
         coaching_id: coachingId,
-        date
+        date: date.toISOString()
       });
+
       const slots = await getAvailableTimeSlots(
         selectedPackage.instructor_id.toString(),
         coachingId.toString(),
         date
       );
-      console.log('[MobileCalendar] Received slots:', slots);
-      console.log('[MobileCalendar] Slots is array?', Array.isArray(slots));
-      console.log('[MobileCalendar] Slots length:', slots?.length);
-      console.log('[MobileCalendar] First slot:', slots?.[0]);
+
+      console.log('[MobileCalendar] 📊 Received slots:', {
+        isArray: Array.isArray(slots),
+        length: slots?.length,
+        slots: slots
+      });
+
+      if (slots && slots.length > 0) {
+        console.log('[MobileCalendar] ✅ Sample slots:', slots.slice(0, 5));
+      } else {
+        console.log('[MobileCalendar] ⚠️ No slots available for this day');
+      }
+
       setAvailableTimeSlots(slots);
-      console.log('[MobileCalendar] After setState, availableTimeSlots should update');
+      console.log('[MobileCalendar] ========== loadTimeSlots END ==========');
     } catch (error) {
-      console.error('Failed to load time slots:', error);
+      console.error('[MobileCalendar] ❌ Failed to load time slots:', error);
       // Fallback to mock data
       console.log('[MobileCalendar] Using fallback mock data');
       setAvailableTimeSlots([
@@ -459,7 +484,6 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
       }).length > 0 && (
         <div className="bg-white border-b border-slate-100 px-6 py-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="text-orange-500 text-lg">📦</div>
             <h3 className="text-base font-bold text-slate-900">내 수강권</h3>
             <p className="text-xs text-slate-500 ml-1">(탭하여 예약 가능 시간 확인)</p>
           </div>

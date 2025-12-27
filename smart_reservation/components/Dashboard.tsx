@@ -1046,6 +1046,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   }
 
   // --- STUDENT VIEW RENDER ---
+  const PACKAGE_CACHE_KEY = `student_packages_${user.id}`;
   const [studentPackages, setStudentPackages] = useState<any[]>([]);
   const [totalRemaining, setTotalRemaining] = useState(0);
 
@@ -1057,6 +1058,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   const loadStudentPackages = async () => {
     try {
+      // 🚀 캐시 먼저 확인 (즉시 UI 표시)
+      const cached = localStorage.getItem(PACKAGE_CACHE_KEY);
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached);
+          if (Date.now() - cachedData.timestamp < 30000) { // 30초 이내 캐시 사용
+            setStudentPackages(cachedData.packages);
+            setTotalRemaining(cachedData.total);
+            console.log('[Student Dashboard] Using cached packages');
+            return; // 캐시가 신선하면 네트워크 요청 생략
+          }
+        } catch (e) { /* 캐시 손상 무시 */ }
+      }
+
+      // 네트워크 요청
       const packages = await getAllStudentPackages(user.id);
       setStudentPackages(packages);
 
@@ -1067,6 +1083,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       );
       const total = activePackages.reduce((sum, p) => sum + p.remaining_sessions, 0);
       setTotalRemaining(total);
+
+      // 🚀 캐시 저장
+      localStorage.setItem(PACKAGE_CACHE_KEY, JSON.stringify({
+        packages,
+        total,
+        timestamp: Date.now()
+      }));
+
       console.log('[Student Dashboard] Active packages:', activePackages);
       console.log('[Student Dashboard] Total remaining:', total);
     } catch (error) {
