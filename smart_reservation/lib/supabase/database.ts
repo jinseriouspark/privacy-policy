@@ -600,9 +600,60 @@ export async function createReservation(data: {
 }) {
   console.log('[createReservation] Creating reservation with data:', data);
 
+  // Get instructor's Google Calendar ID
+  const { data: settings } = await supabase
+    .from('instructor_settings')
+    .select('google_calendar_id')
+    .eq('instructor_id', data.instructor_id)
+    .single();
+
+  const calendarId = settings?.google_calendar_id;
+
+  // Get student info for attendee email
+  const { data: student } = await supabase
+    .from('users')
+    .select('email, name')
+    .eq('id', data.student_id)
+    .single();
+
+  const studentEmail = student?.email;
+  const studentName = student?.name || 'Student';
+
+  let meetLink = data.meet_link;
+  let googleEventId = data.google_event_id;
+
+  // Add event to Google Calendar if calendar ID is set
+  if (calendarId && studentEmail) {
+    try {
+      console.log('[createReservation] Adding event to Google Calendar:', calendarId);
+
+      const { addEventToCalendar } = await import('../google-calendar');
+      const result = await addEventToCalendar({
+        calendarId,
+        title: `${studentName}님과의 수업`,
+        start: data.start_time,
+        end: data.end_time,
+        description: data.notes,
+        attendees: [studentEmail],
+        instructorId: parseInt(data.instructor_id)
+      });
+
+      meetLink = result.meetLink || meetLink;
+      googleEventId = result.id || googleEventId;
+      console.log('[createReservation] Google Calendar event created:', { meetLink, googleEventId });
+    } catch (error) {
+      console.error('[createReservation] Failed to add to Google Calendar:', error);
+      // Continue with reservation creation even if calendar sync fails
+    }
+  }
+
   const { data: reservation, error } = await supabase
     .from('reservations')
-    .insert(data)
+    .insert({
+      ...data,
+      meet_link: meetLink,
+      google_event_id: googleEventId
+    })
     .select()
     .single();
 
