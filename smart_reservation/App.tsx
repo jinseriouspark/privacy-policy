@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentInstructor, setCurrentInstructor] = useState<Instructor | null>(null);
+  const [checking, setChecking] = useState(false); // 🆕 인증 체크 중 상태
 
   // Mobile detection (480px = smartphone only, not tablets)
   const isMobile = useIsMobile(480);
@@ -78,12 +79,14 @@ const App: React.FC = () => {
 
   const checkSessionAndRoute = async () => {
     try {
+      setChecking(true); // 🆕 체크 시작
       const path = window.location.pathname;
       const route = getCurrentRoute();
 
       // Public routes (no auth required)
       if (path === ROUTES.PRIVACY || path === ROUTES.TERMS) {
         setLoading(false);
+        setChecking(false);
         return;
       }
 
@@ -106,6 +109,7 @@ const App: React.FC = () => {
       console.error('Session check error:', error);
     } finally {
       setLoading(false);
+      setChecking(false); // 🆕 체크 완료
     }
   };
 
@@ -325,15 +329,27 @@ const App: React.FC = () => {
       await selectUserType(currentUser.id!, userType);
       console.log('[handleSelectUserType] selectUserType SUCCESS');
 
+      // DB에서 최신 사용자 정보 가져오기
+      const updatedUser = await getUserByEmail(currentUser.email);
+      console.log('[handleSelectUserType] Updated user from DB:', updatedUser);
+
+      if (!updatedUser) {
+        console.error('[handleSelectUserType] Failed to get updated user!');
+        return;
+      }
+
+      // isProfileComplete 판단: 학생이면 항상 true, 강사면 studio_name 체크
+      const isProfileComplete = userType === 'student' || !!updatedUser.studio_name;
+
       const user: User = {
-        id: currentUser.id,
-        email: currentUser.email,
-        name: currentUser.name,
-        picture: currentUser.picture,
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        picture: updatedUser.picture,
         userType: userType === 'instructor' ? UserType.INSTRUCTOR : UserType.STUDENT,
-        username: currentUser.username,
-        bio: currentUser.bio,
-        isProfileComplete: userType === 'student',
+        username: updatedUser.username,
+        bio: updatedUser.bio,
+        isProfileComplete,
         remaining: 0
       };
 
@@ -341,14 +357,11 @@ const App: React.FC = () => {
       setCurrentUser(user);
       analytics.selectAccountType(userType);
 
-      // 강사는 setup으로, 학생은 dashboard로
-      if (userType === 'instructor') {
-        console.log('[handleSelectUserType] Navigating to SETUP');
-        navigateTo(ROUTES.SETUP);
-      } else {
-        console.log('[handleSelectUserType] Navigating to DASHBOARD');
-        navigateTo(ROUTES.DASHBOARD);
-      }
+      // ⭐ Navigate 제거: handleAuthenticatedUser가 알아서 처리하게 함
+      // URL을 바꾸면 useEffect가 checkSessionAndRoute를 호출하고
+      // handleAuthenticatedUser가 적절한 페이지로 보내줌
+      console.log('[handleSelectUserType] Triggering re-route by navigating to DASHBOARD');
+      navigateTo(ROUTES.DASHBOARD);
       console.log('[handleSelectUserType] END');
     } catch (error) {
       console.error('[handleSelectUserType] ERROR:', error);
@@ -367,12 +380,12 @@ const App: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-slate-500">로딩 중...</p>
+          <p className="text-slate-500">{checking ? '인증 확인 중...' : '로딩 중...'}</p>
         </div>
       </div>
     );
@@ -449,8 +462,8 @@ const App: React.FC = () => {
           return null;
         }
 
-        // Students on mobile: Use MobileDashboard
-        if (isMobile && currentUser.userType === UserType.STUDENT) {
+        // Students (all screens): Use MobileDashboard
+        if (currentUser.userType === UserType.STUDENT) {
           let initialTab: 'home' | 'calendar' | 'reservations' | 'students' | 'attendance' | 'more' | 'profile' = 'home';
 
           if (route.path === ROUTES.RESERVATIONS) {
@@ -460,7 +473,7 @@ const App: React.FC = () => {
           return <MobileDashboard user={currentUser} initialTab={initialTab} />;
         }
 
-        // Instructors (all screens) and Students (desktop): Use Dashboard with hamburger menu
+        // Instructors only: Use Dashboard with hamburger menu
         return (
           <Dashboard
             user={currentUser}

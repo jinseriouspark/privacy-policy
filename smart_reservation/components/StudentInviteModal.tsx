@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
-import { X, Mail, Copy, Check, UserPlus, Info } from 'lucide-react';
-import { createInvitation } from '../lib/supabase/database';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Copy, Check, UserPlus, Info, Package } from 'lucide-react';
+import { createInvitation, getClassPackages } from '../lib/supabase/database';
+import { ClassPackage } from '../types';
 
 interface StudentInviteModalProps {
   instructorId: string;
   coachingId: string;
   coachingSlug: string;
+  studioSlug?: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (invitedEmail?: string) => void;
 }
 
 export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
   instructorId,
   coachingId,
   coachingSlug,
+  studioSlug,
   onClose,
   onSuccess
 }) => {
@@ -22,6 +25,25 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [packages, setPackages] = useState<ClassPackage[]>([]);
+  const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadPackages();
+  }, [instructorId]);
+
+  const loadPackages = async () => {
+    try {
+      console.log('[StudentInviteModal] Loading packages for instructor:', instructorId);
+      const data = await getClassPackages(instructorId);
+      console.log('[StudentInviteModal] Loaded packages:', data);
+      const activePackages = data.filter(p => p.isActive);
+      console.log('[StudentInviteModal] Active packages:', activePackages);
+      setPackages(activePackages);
+    } catch (error) {
+      console.error('[StudentInviteModal] Failed to load packages:', error);
+    }
+  };
 
   const handleInvite = async () => {
     if (!email.trim()) {
@@ -39,7 +61,11 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
     setError(null);
 
     try {
-      const invitation = await createInvitation(coachingId, email.toLowerCase());
+      const invitation = await createInvitation(
+        coachingId,
+        email.toLowerCase(),
+        selectedPackageIds.length > 0 ? selectedPackageIds : undefined
+      );
       setInvitationCode(invitation.invitation_code);
     } catch (e: any) {
       console.error(e);
@@ -51,6 +77,11 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
 
   const getInviteLink = () => {
     const baseUrl = window.location.origin;
+    // New format: /book/{studioSlug}/{coachingSlug}?invite={code}
+    if (studioSlug) {
+      return `${baseUrl}/book/${studioSlug}/${coachingSlug}?invite=${invitationCode}`;
+    }
+    // Legacy format fallback
     return `${baseUrl}/${coachingSlug}?invite=${invitationCode}`;
   };
 
@@ -135,6 +166,65 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
                 <p className="text-xs text-slate-500 mt-2">
                   학생이 로그인할 때 사용할 이메일 주소를 입력하세요
                 </p>
+              </div>
+
+              {/* 수강권 선택 */}
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Package size={18} className="text-orange-600" />
+                  <label className="text-sm font-bold text-slate-900">
+                    수강권 미리 연결하기 (선택사항)
+                  </label>
+                </div>
+                <p className="text-xs text-slate-600 mb-3">
+                  학생이 가입 시 자동으로 연결될 수강권을 선택하세요
+                </p>
+
+                {packages.length === 0 ? (
+                  <div className="bg-white border-2 border-dashed border-slate-300 rounded-lg p-4 text-center">
+                    <p className="text-sm text-slate-500">
+                      먼저 수강권을 생성해주세요
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      수강권 관리 탭에서 생성 가능합니다
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {packages.map((pkg) => (
+                        <label
+                          key={pkg.id}
+                          className="flex items-start gap-3 p-3 bg-white rounded-lg cursor-pointer hover:bg-orange-100 transition-colors border border-slate-200"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPackageIds.includes(pkg.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPackageIds([...selectedPackageIds, pkg.id]);
+                              } else {
+                                setSelectedPackageIds(selectedPackageIds.filter(id => id !== pkg.id));
+                              }
+                            }}
+                            className="mt-1 w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium text-slate-900">{pkg.name}</p>
+                            <p className="text-xs text-slate-600">
+                              {pkg.credits}회 · {pkg.validDays}일 유효 · {pkg.price.toLocaleString()}원
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {selectedPackageIds.length > 0 && (
+                      <p className="text-xs text-orange-700 font-medium mt-3">
+                        ✓ {selectedPackageIds.length}개 수강권 선택됨
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {error && (
@@ -224,12 +314,39 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
                 </div>
               </div>
 
+              {/* 선택된 수강권 표시 */}
+              {selectedPackageIds.length > 0 && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                  <p className="text-sm font-bold text-green-900 mb-2">
+                    ✓ 자동으로 연결될 수강권
+                  </p>
+                  <div className="space-y-2">
+                    {selectedPackageIds.map(pkgId => {
+                      const pkg = packages.find(p => p.id === pkgId);
+                      if (!pkg) return null;
+                      return (
+                        <div key={pkgId} className="text-sm text-green-800 bg-white p-2 rounded-lg">
+                          <span className="font-medium">{pkg.name}</span>
+                          <span className="text-xs text-green-600 ml-2">
+                            ({pkg.credits}회 · {pkg.validDays}일)
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-green-700 mt-3">
+                    학생이 로그인하면 자동으로 위 수강권이 할당됩니다
+                  </p>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button
                   onClick={() => {
                     setEmail('');
                     setInvitationCode(null);
                     setError(null);
+                    setSelectedPackageIds([]);
                   }}
                   className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium transition-colors"
                 >
@@ -237,7 +354,7 @@ export const StudentInviteModal: React.FC<StudentInviteModalProps> = ({
                 </button>
                 <button
                   onClick={() => {
-                    onSuccess();
+                    onSuccess(email);
                     onClose();
                   }}
                   className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold transition-all"
