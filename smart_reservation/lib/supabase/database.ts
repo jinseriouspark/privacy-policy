@@ -2018,7 +2018,7 @@ export async function removeStudentFromInstructor(studentId: string, instructorI
     // 2. Delete student's packages from this instructor
     console.log('[removeStudentFromInstructor] Step 2: Deleting packages...');
     const { data: deletedPackages, error: packagesError } = await supabase
-      .from('student_packages')
+      .from('packages')
       .delete()
       .eq('student_id', studentId)
       .eq('instructor_id', instructorId)
