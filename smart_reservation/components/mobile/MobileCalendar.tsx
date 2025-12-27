@@ -17,6 +17,7 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [packages, setPackages] = useState<any[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<{ time: string; available: boolean; reason?: string }[]>([]);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState<{ isOpen: boolean; time: string; date: Date | null; selectedPackage: string | null }>({
@@ -40,10 +41,10 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   }, [user.id]);
 
   useEffect(() => {
-    if (packages.length > 0 && selectedDate) {
+    if (packages.length > 0 && selectedDate && selectedPackageId) {
       loadTimeSlots(selectedDate);
     }
-  }, [packages.length, selectedDate.getTime()]);
+  }, [packages.length, selectedDate.getTime(), selectedPackageId]);
 
   const loadReservations = async () => {
     try {
@@ -61,6 +62,17 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
       const studentPackages = await getAllStudentPackages(user.id);
       console.log('[MobileCalendar] All packages:', studentPackages);
       setPackages(studentPackages);
+
+      // 첫 번째 유효한 수강권을 자동 선택
+      const firstValidPackage = studentPackages.find(pkg => {
+        const expiresAt = new Date(pkg.expires_at);
+        const isNotExpired = expiresAt > new Date();
+        const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+        return isNotExpired && hasRemainingCredits;
+      });
+      if (firstValidPackage) {
+        setSelectedPackageId(firstValidPackage.id);
+      }
     } catch (error) {
       console.error('Failed to load packages:', error);
     }
@@ -69,38 +81,25 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   const loadTimeSlots = async (date: Date) => {
     console.log('[MobileCalendar] loadTimeSlots called with date:', date);
     console.log('[MobileCalendar] packages:', packages);
+    console.log('[MobileCalendar] selectedPackageId:', selectedPackageId);
 
-    // 유효한 수강권 찾기
-    const validPackage = packages.find(pkg => {
-      const expiresAt = new Date(pkg.expires_at);
-      const isNotExpired = expiresAt > new Date();
-      const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
-      console.log('[MobileCalendar] Package check:', {
-        name: pkg.name,
-        expires_at: pkg.expires_at,
-        isNotExpired,
-        remaining_sessions: pkg.remaining_sessions,
-        hasRemainingCredits,
-        coaching_id: pkg.coaching_id,
-        instructor_id: pkg.instructor_id
-      });
-      return isNotExpired && hasRemainingCredits;
-    });
+    // 선택된 수강권 찾기
+    const selectedPackage = packages.find(pkg => pkg.id === selectedPackageId);
 
-    console.log('[MobileCalendar] validPackage:', validPackage);
+    console.log('[MobileCalendar] selectedPackage:', selectedPackage);
 
-    if (!validPackage || !validPackage.instructor_id) {
-      console.log('[MobileCalendar] No valid package found, clearing slots');
+    if (!selectedPackage || !selectedPackage.instructor_id) {
+      console.log('[MobileCalendar] No selected package found, clearing slots');
       setAvailableTimeSlots([]);
       return;
     }
 
     // coaching_id가 없으면 instructor_id로 코칭 목록 가져오기
-    let coachingId = validPackage.coaching_id;
+    let coachingId = selectedPackage.coaching_id;
     if (!coachingId) {
       console.log('[MobileCalendar] No coaching_id, fetching instructor coachings...');
       try {
-        const coachings = await getInstructorCoachings(validPackage.instructor_id.toString());
+        const coachings = await getInstructorCoachings(selectedPackage.instructor_id.toString());
         const activeCoaching = coachings.find(c => c.status === 'active');
         if (activeCoaching) {
           coachingId = activeCoaching.id;
@@ -120,12 +119,12 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
     setLoadingTimeSlots(true);
     try {
       console.log('[MobileCalendar] Fetching slots for:', {
-        instructor_id: validPackage.instructor_id,
+        instructor_id: selectedPackage.instructor_id,
         coaching_id: coachingId,
         date
       });
       const slots = await getAvailableTimeSlots(
-        validPackage.instructor_id.toString(),
+        selectedPackage.instructor_id.toString(),
         coachingId.toString(),
         date
       );
@@ -153,21 +152,13 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   };
 
   const handleTimeSlotClick = (time: string) => {
-    if (!selectedDate) return;
-
-    // Open confirmation modal with first package selected by default
-    const firstValidPackage = packages.find(pkg => {
-      const expiresAt = new Date(pkg.expires_at);
-      const isNotExpired = expiresAt > new Date();
-      const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
-      return isNotExpired && hasRemainingCredits;
-    });
+    if (!selectedDate || !selectedPackageId) return;
 
     setConfirmationModal({
       isOpen: true,
       time: time,
       date: selectedDate,
-      selectedPackage: firstValidPackage?.id || null
+      selectedPackage: selectedPackageId
     });
   };
 
@@ -470,6 +461,7 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
           <div className="flex items-center gap-2 mb-3">
             <div className="text-orange-500 text-lg">📦</div>
             <h3 className="text-base font-bold text-slate-900">내 수강권</h3>
+            <p className="text-xs text-slate-500 ml-1">(탭하여 예약 가능 시간 확인)</p>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
             {packages
@@ -483,27 +475,45 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
                 const expiresAt = new Date(pkg.expires_at);
                 const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                 const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
+                const isSelected = selectedPackageId === pkg.id;
 
                 return (
-                  <div
+                  <button
                     key={pkg.id}
-                    className="flex-shrink-0 w-48 p-5 rounded-2xl bg-white shadow-md"
+                    onClick={() => setSelectedPackageId(pkg.id)}
+                    className={`flex-shrink-0 w-48 p-5 rounded-2xl transition-all ${
+                      isSelected
+                        ? 'bg-orange-500 shadow-lg scale-105'
+                        : 'bg-white shadow-md'
+                    }`}
                   >
-                    <p className="text-sm font-semibold mb-3 truncate text-slate-900">
+                    <p className={`text-sm font-semibold mb-3 truncate text-left ${
+                      isSelected ? 'text-white' : 'text-slate-900'
+                    }`}>
                       {pkg.name || pkg.coaching?.title || '수강권'}
                     </p>
                     <div className="flex items-baseline gap-1 mb-3">
-                      <p className="text-4xl font-bold text-slate-900">
+                      <p className={`text-4xl font-bold ${
+                        isSelected ? 'text-white' : 'text-slate-900'
+                      }`}>
                         {pkg.remaining_sessions}
                       </p>
-                      <p className="text-base text-slate-500">
+                      <p className={`text-base ${
+                        isSelected ? 'text-orange-100' : 'text-slate-500'
+                      }`}>
                         / {pkg.total_sessions}회
                       </p>
                     </div>
-                    <p className={`text-xs ${isExpiringSoon ? 'text-orange-500 font-medium' : 'text-slate-500'}`}>
+                    <p className={`text-xs ${
+                      isSelected
+                        ? 'text-orange-100'
+                        : isExpiringSoon
+                        ? 'text-orange-500 font-medium'
+                        : 'text-slate-500'
+                    }`}>
                       {isExpiringSoon ? `⏰ ${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     </p>
-                  </div>
+                  </button>
                 );
               })}
           </div>
@@ -554,8 +564,15 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
       {/* Available Time Slots */}
       <div className="px-6 mt-6 pb-6">
         <h3 className="text-lg font-bold text-slate-900 mb-2">
-          {selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })} 예약 가능한 시간
+          {selectedDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })}
         </h3>
+        {selectedPackageId && (
+          <p className="text-sm text-slate-600 mb-3">
+            <span className="font-semibold text-orange-600">
+              {packages.find(p => p.id === selectedPackageId)?.name || packages.find(p => p.id === selectedPackageId)?.coaching?.title || '수강권'}
+            </span> 예약 가능 시간
+          </p>
+        )}
 
         {/* Cancellation Policy Notice */}
         {packages.length > 0 && packages.find(pkg => {
