@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, User, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, User, Plus, Package } from 'lucide-react';
 import { User as UserType, Reservation } from '../../types';
 import { getReservations, getAllStudentPackages, getInstructorCoachings, getAvailableTimeSlots, createReservation, deductPackageCredit, getCoachingCalendar } from '../../lib/supabase/database';
 import { addEventToCalendar, addEventToStudentCalendar, ensureCalendarInList } from '../../lib/google-calendar';
@@ -19,11 +19,13 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   const [packages, setPackages] = useState<any[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<{ time: string; available: boolean; reason?: string }[]>([]);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
-  const [confirmationModal, setConfirmationModal] = useState<{ isOpen: boolean; time: string; date: Date | null }>({
+  const [confirmationModal, setConfirmationModal] = useState<{ isOpen: boolean; time: string; date: Date | null; selectedPackage: string | null }>({
     isOpen: false,
     time: '',
-    date: null
+    date: null,
+    selectedPackage: null
   });
+  const [isBooking, setIsBooking] = useState(false);
 
   function getWeekStart(date: Date): Date {
     const d = new Date(date);
@@ -153,28 +155,50 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
   const handleTimeSlotClick = (time: string) => {
     if (!selectedDate) return;
 
-    // Open confirmation modal
-    setConfirmationModal({
-      isOpen: true,
-      time: time,
-      date: selectedDate
-    });
-  };
-
-  const handleConfirmBooking = async () => {
-    const { time, date } = confirmationModal;
-    if (!date || !time) return;
-
-    const validPackage = packages.find(pkg => {
+    // Open confirmation modal with first package selected by default
+    const firstValidPackage = packages.find(pkg => {
       const expiresAt = new Date(pkg.expires_at);
       const isNotExpired = expiresAt > new Date();
       const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
       return isNotExpired && hasRemainingCredits;
     });
 
+    setConfirmationModal({
+      isOpen: true,
+      time: time,
+      date: selectedDate,
+      selectedPackage: firstValidPackage?.id || null
+    });
+  };
+
+  const handleConfirmBooking = async () => {
+    // 중복 클릭 방지
+    if (isBooking) {
+      console.log('[MobileCalendar] Already booking, ignoring duplicate click');
+      return;
+    }
+
+    const { time, date, selectedPackage: selectedPkgId } = confirmationModal;
+    if (!date || !time || !selectedPkgId) {
+      toast.error('수강권을 선택해주세요.');
+      return;
+    }
+
+    const validPackage = packages.find(pkg => pkg.id === selectedPkgId);
+
     if (!validPackage) {
-      toast.error('사용 가능한 수강권이 없습니다.');
-      setConfirmationModal({ isOpen: false, time: '', date: null });
+      toast.error('선택한 수강권을 찾을 수 없습니다.');
+      setConfirmationModal({ isOpen: false, time: '', date: null, selectedPackage: null });
+      return;
+    }
+
+    const expiresAt = new Date(validPackage.expires_at);
+    const isNotExpired = expiresAt > new Date();
+    const hasRemainingCredits = (validPackage.remaining_sessions || 0) > 0;
+
+    if (!isNotExpired || !hasRemainingCredits) {
+      toast.error('선택한 수강권을 사용할 수 없습니다.');
+      setConfirmationModal({ isOpen: false, time: '', date: null, selectedPackage: null });
       return;
     }
 
@@ -197,6 +221,8 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
         return;
       }
     }
+
+    setIsBooking(true);
 
     try {
       const [hours, minutes] = time.split(':').map(Number);
@@ -294,6 +320,8 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
         toast.error('예약에 실패했습니다.');
       }
       setConfirmationModal({ isOpen: false, time: '', date: null });
+    } finally {
+      setIsBooking(false);
     }
   };
 
@@ -431,6 +459,57 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
         </div>
       </div>
 
+      {/* My Packages - Compact Horizontal Scroll */}
+      {packages.filter(pkg => {
+        const expiresAt = new Date(pkg.expires_at);
+        const isNotExpired = expiresAt > new Date();
+        const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+        return isNotExpired && hasRemainingCredits;
+      }).length > 0 && (
+        <div className="bg-white border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="text-orange-500 text-lg">📦</div>
+            <h3 className="text-base font-bold text-slate-900">내 수강권</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
+            {packages
+              .filter(pkg => {
+                const expiresAt = new Date(pkg.expires_at);
+                const isNotExpired = expiresAt > new Date();
+                const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+                return isNotExpired && hasRemainingCredits;
+              })
+              .map(pkg => {
+                const expiresAt = new Date(pkg.expires_at);
+                const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
+
+                return (
+                  <div
+                    key={pkg.id}
+                    className="flex-shrink-0 w-48 p-5 rounded-2xl bg-white shadow-md"
+                  >
+                    <p className="text-sm font-semibold mb-3 truncate text-slate-900">
+                      {pkg.name || pkg.coaching?.title || '수강권'}
+                    </p>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <p className="text-4xl font-bold text-slate-900">
+                        {pkg.remaining_sessions}
+                      </p>
+                      <p className="text-base text-slate-500">
+                        / {pkg.total_sessions}회
+                      </p>
+                    </div>
+                    <p className={`text-xs ${isExpiringSoon ? 'text-orange-500 font-medium' : 'text-slate-500'}`}>
+                      {isExpiringSoon ? `⏰ ${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Week Grid */}
       <div className="px-4 pt-4">
         <div className="grid grid-cols-7 gap-2 mb-4">
@@ -543,6 +622,29 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
             <h3 className="text-xl font-bold text-slate-900 mb-4">예약 확인</h3>
 
+            {/* Package Selection */}
+            <div className="mb-4">
+              <label className="text-sm font-semibold text-slate-900 mb-2 block">수강권 선택</label>
+              <select
+                value={confirmationModal.selectedPackage || ''}
+                onChange={(e) => setConfirmationModal({ ...confirmationModal, selectedPackage: e.target.value })}
+                className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                {packages
+                  .filter(pkg => {
+                    const expiresAt = new Date(pkg.expires_at);
+                    const isNotExpired = expiresAt > new Date();
+                    const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+                    return isNotExpired && hasRemainingCredits;
+                  })
+                  .map(pkg => (
+                    <option key={pkg.id} value={pkg.id}>
+                      {pkg.name || pkg.coaching?.title || '수강권'} ({pkg.remaining_sessions}/{pkg.total_sessions}회)
+                    </option>
+                  ))}
+              </select>
+            </div>
+
             <div className="bg-slate-50 rounded-xl p-4 mb-6">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-orange-50 rounded-lg">
@@ -560,22 +662,20 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
               </div>
             </div>
 
-            <p className="text-slate-600 text-sm mb-6">
-              이 시간에 예약하시겠습니까?
-            </p>
-
             <div className="flex gap-3">
               <button
-                onClick={() => setConfirmationModal({ isOpen: false, time: '', date: null })}
-                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                onClick={() => setConfirmationModal({ isOpen: false, time: '', date: null, selectedPackage: null })}
+                disabled={isBooking}
+                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmBooking}
-                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors"
+                disabled={isBooking}
+                className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                예약 확정
+                {isBooking ? '대기중...' : '예약 확정'}
               </button>
             </div>
           </div>

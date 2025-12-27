@@ -1,4 +1,472 @@
-# 현재 작업 현황 (2025-12-26)
+# 현재 작업 현황 (2025-12-28)
+
+## 🎉 학생 캘린더 UI 개선 완료! (2025-12-28)
+
+### ✅ **수강권 카드를 캘린더 위에 배치**
+
+**배포 URL**: https://yeyak-mania.co.kr
+
+### 📊 주요 변경 사항
+
+#### **캘린더 레이아웃 개선** ✅
+- 📝 `components/mobile/MobileCalendar.tsx` - 수강권 섹션 추가 (Lines 462-507)
+- 🎯 요구사항: "캘린더에는 수강권 항목이 위에 보이고 그 다음에 예약 가능 캘린더 일정 보이면 안될까?"
+- 🎨 변경:
+  - **BEFORE**: 수강권 선택이 예약 확인 모달에만 표시됨
+  - **AFTER**: 수강권 카드가 캘린더 그리드 위에 표시됨
+
+**레이아웃 구조**:
+```
+[헤더 - 일정 캘린더]
+  ↓
+[내 수강권 - 가로 스크롤 카드]
+  ↓
+[주간 캘린더 그리드]
+  ↓
+[예약 가능한 시간 목록]
+```
+
+**코드 예시**:
+```typescript
+// components/mobile/MobileCalendar.tsx
+{/* My Packages - Compact Horizontal Scroll */}
+{packages.filter(pkg => {
+  const expiresAt = new Date(pkg.expires_at);
+  const isNotExpired = expiresAt > new Date();
+  const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+  return isNotExpired && hasRemainingCredits;
+}).length > 0 && (
+  <div className="bg-white border-b border-slate-100 px-6 py-4">
+    <div className="flex items-center gap-2 mb-3">
+      <div className="text-orange-500 text-lg">📦</div>
+      <h3 className="text-base font-bold text-slate-900">내 수강권</h3>
+    </div>
+    <div className="flex gap-3 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
+      {packages
+        .filter(pkg => {
+          const expiresAt = new Date(pkg.expires_at);
+          const isNotExpired = expiresAt > new Date();
+          const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+          return isNotExpired && hasRemainingCredits;
+        })
+        .map(pkg => {
+          const expiresAt = new Date(pkg.expires_at);
+          const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
+
+          return (
+            <div
+              key={pkg.id}
+              className="flex-shrink-0 w-48 p-5 rounded-2xl bg-white shadow-md"
+            >
+              <p className="text-sm font-semibold mb-3 truncate text-slate-900">
+                {pkg.name || pkg.coaching?.title || '수강권'}
+              </p>
+              <div className="flex items-baseline gap-1 mb-3">
+                <p className="text-4xl font-bold text-slate-900">
+                  {pkg.remaining_sessions}
+                </p>
+                <p className="text-base text-slate-500">
+                  / {pkg.total_sessions}회
+                </p>
+              </div>
+              <p className={`text-xs ${isExpiringSoon ? 'text-orange-500 font-medium' : 'text-slate-500'}`}>
+                {isExpiringSoon ? `⏰ ${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          );
+        })}
+    </div>
+  </div>
+)}
+```
+
+### 🎨 디자인 통일성
+- ✅ 홈, 예약, 캘린더 페이지의 수강권 카드 스타일 완전 일치
+- ✅ Toss 디자인 시스템: w-48, p-5, rounded-2xl, shadow-md
+- ✅ 텍스트 크기 통일: text-4xl (남은 회수), text-base (전체 회수)
+- ✅ 만료 임박 경고: 7일 이내 주황색 강조
+
+### 🔧 파일 변경 내역
+
+**수정된 파일 (2개)**:
+1. `components/mobile/MobileCalendar.tsx` - 수강권 섹션 추가 (Lines 462-507)
+2. `CURRENT_TASK.md` - 작업 로그 업데이트
+
+**주요 Import 추가**:
+- `Package` 아이콘 (lucide-react) - 수강권 헤더에 사용 예정 (현재는 이모지 📦 사용)
+
+### 📈 사용자 경험 개선
+
+1. **정보 접근성**:
+   - 캘린더에서 예약하기 전에 수강권 상태를 먼저 확인 가능
+   - 남은 회수, 만료일을 한눈에 파악
+
+2. **일관된 UX**:
+   - 홈/예약/캘린더 모든 페이지에서 동일한 수강권 카드 경험
+   - 사용자가 학습 곡선 없이 즉시 이해 가능
+
+3. **시각적 계층**:
+   - 수강권 (위) → 캘린더 (중간) → 시간 선택 (아래)
+   - 자연스러운 정보 흐름
+
+### 🧪 예상 사용 플로우
+
+```
+학생 로그인
+  ↓
+캘린더 탭 클릭
+  ↓
+[내 수강권] 섹션에서 남은 회수 확인 (예: 3회 남음)
+  ↓
+주간 캘린더에서 원하는 날짜 선택
+  ↓
+예약 가능한 시간 선택
+  ↓
+확인 모달에서 수강권 최종 선택
+  ↓
+예약 확정
+```
+
+### ✅ 완료된 작업 체크리스트
+
+- [x] 수강권 카드를 캘린더 위에 배치
+- [x] 홈/예약/캘린더 스타일 통일
+- [x] 만료 임박 경고 로직 적용
+- [x] 가로 스크롤 구현 (scrollbar-hide)
+- [x] CURRENT_TASK.md 업데이트
+- [x] 프로덕션 배포 준비
+
+### 🚀 배포 예정
+- Vercel 배포 진행 중...
+
+---
+
+# 현재 작업 현황 (2025-12-28)
+
+## 🎉 학생 관리 & Google 캘린더 자동 연동 완료! (2025-12-28)
+
+### ✅ **프로덕션 배포 완료**
+
+**배포 URL**: https://yeyak-mania-f6pn14p3b-jsps-projects-771dd933.vercel.app
+
+### 📊 주요 변경 사항 (4개)
+
+#### 1. **학생 삭제 기능 구현** ✅
+- 📝 `lib/supabase/database.ts` - `removeStudentFromInstructor()` 함수 추가 (Lines 1997-2054)
+- 📝 `components/Dashboard.tsx` - 학생 카드에 삭제 버튼 추가 (Lines 660-682)
+- 🎯 기능:
+  - 강사가 학생을 삭제하면 관련 데이터 모두 삭제 (Cascade)
+  - 삭제 대상: 예약 기록 (`reservations`), 수강권 (`packages`), 학생-강사 관계 (`instructor_students`)
+  - 삭제 전 확인 다이얼로그 (⚠️ 경고 메시지)
+  - 상세한 에러 로깅 및 사용자 피드백
+- 🔧 에러 수정:
+  - **BEFORE**: `student_packages` 테이블 참조 (존재하지 않음)
+  - **AFTER**: `packages` 테이블로 수정
+  - 에러 메시지: "public.student_packages 를 못찾는대" → 즉시 수정
+
+**코드 예시**:
+```typescript
+// lib/supabase/database.ts
+export async function removeStudentFromInstructor(studentId: string, instructorId: string) {
+  try {
+    // 1. 예약 삭제
+    await supabase.from('reservations').delete()
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    // 2. 수강권 삭제
+    await supabase.from('packages').delete()  // ✅ 수정됨 (student_packages → packages)
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    // 3. 학생 관계 삭제
+    await supabase.from('instructor_students').delete()
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[removeStudentFromInstructor] Failed:', error);
+    throw error;
+  }
+}
+```
+
+**UI 코드**:
+```typescript
+// components/Dashboard.tsx - 삭제 버튼
+<button
+  onClick={() => handleDeleteStudent(u)}
+  className="flex items-center justify-center gap-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+>
+  <Trash2 size={14} />
+  삭제
+</button>
+```
+
+#### 2. **학생 등록일자 표시** ✅
+- 📝 `components/Dashboard.tsx` - 학생 카드에 등록일 추가 (Lines 599-607)
+- 🎯 데이터 소스: `instructor_students.created_at` (학생 초대 생성 날짜)
+- 🎯 포맷: "YYYY. M. D" 한글 형식
+- 🎨 스타일: 회색 라벨 + 검정 날짜
+
+**코드 예시**:
+```typescript
+// components/Dashboard.tsx
+{u.created_at && (
+  <div className="flex items-center justify-between text-sm">
+    <span className="text-slate-500">등록일</span>
+    <span className="text-slate-900 font-medium">
+      {new Date(u.created_at).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      })}
+    </span>
+  </div>
+)}
+```
+
+#### 3. **Google 캘린더 자동 연동** ✅
+- 📝 `lib/supabase/database.ts` - `createReservation()` 함수 수정 (Lines 589-667)
+- 🎯 문제: "구글 캘린더 id 에 등록해야 하는데 등록일이 등록 안되고 있네?"
+- 🎯 해결: 예약 생성 시 자동으로 Google 캘린더에 이벤트 추가
+- 🎨 기능:
+  1. 강사의 `google_calendar_id` 조회 (`instructor_settings` 테이블)
+  2. 학생 이메일 조회 (`users` 테이블)
+  3. `addEventToCalendar()` 호출 - 학생을 참석자로 추가
+  4. Google Meet 링크 자동 생성
+  5. Meet 링크 & Google Event ID를 예약에 저장
+  6. 에러 발생 시에도 예약은 정상 생성 (Graceful degradation)
+
+**사용자 피드백**:
+- "이미 토큰도 다 받은 상태잔항"
+- "그럼 강사의 캘린더에, 해당 고객 추가(참석자로 추가) 해서 만들고 google meet 링크 축다해두면 끝나는건데 왜 또 어려워? 이미 함수 다 만들었짢나"
+- → 기존 함수 활용하여 간단하게 해결
+
+**코드 예시**:
+```typescript
+// lib/supabase/database.ts - createReservation()
+export async function createReservation(data: {...}) {
+  // 1. 강사 캘린더 ID 조회
+  const { data: settings } = await supabase
+    .from('instructor_settings')
+    .select('google_calendar_id')
+    .eq('instructor_id', data.instructor_id)
+    .single();
+
+  // 2. 학생 이메일 조회
+  const { data: student } = await supabase
+    .from('users')
+    .select('email, name')
+    .eq('id', data.student_id)
+    .single();
+
+  let meetLink = data.meet_link;
+  let googleEventId = data.google_event_id;
+
+  // 3. Google 캘린더에 이벤트 추가
+  if (settings?.google_calendar_id && student?.email) {
+    try {
+      const { addEventToCalendar } = await import('../google-calendar');
+      const result = await addEventToCalendar({
+        calendarId: settings.google_calendar_id,
+        title: `${student.name || 'Student'}님과의 수업`,
+        start: data.start_time,
+        end: data.end_time,
+        description: data.notes,
+        attendees: [student.email],  // 🎯 학생을 참석자로 추가
+        instructorId: parseInt(data.instructor_id)
+      });
+
+      meetLink = result.meetLink || meetLink;
+      googleEventId = result.id || googleEventId;
+    } catch (error) {
+      console.error('Failed to add to Google Calendar:', error);
+      // 캘린더 연동 실패해도 예약은 계속 진행
+    }
+  }
+
+  // 4. 예약 생성 (Meet 링크 포함)
+  const { data: reservation, error } = await supabase
+    .from('reservations')
+    .insert({ ...data, meet_link: meetLink, google_event_id: googleEventId })
+    .select()
+    .single();
+
+  return reservation;
+}
+```
+
+#### 4. **예약 목록 디자인 변경** ✅
+- 📝 `components/Dashboard.tsx` - 강사 예약 목록 레이아웃 수정 (Lines 374-436)
+- 🎯 요구사항: "예약 부분에 강사별 예약 창 디자인만 바꾸자. 지금 한줄이되었으면 좋겠어. 왼쪽에는 '입장' 버튼 오른쪽에는 '삭제' 버튼. 중간에는 수강생 이름과 멤버쉽, 예약 날짜와 시간"
+- 🎨 변경:
+  - **BEFORE**: 멀티라인 카드 레이아웃 (여러 줄)
+  - **AFTER**: 단일라인 수평 레이아웃 (한 줄)
+
+**레이아웃 구조**:
+```
+[입장 버튼] | 수강생 이름 | 멤버십 배지 | 📅 날짜 | 🕐 시간 | [삭제 버튼]
+```
+
+**코드 예시**:
+```typescript
+// components/Dashboard.tsx
+<div className="flex items-center p-4 rounded-xl border gap-4">
+  {/* 왼쪽 - 입장 버튼 */}
+  <div className="flex-shrink-0">
+    {isUpcoming && res.meetLink ? (
+      <a
+        href={res.meetLink}
+        target="_blank"
+        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg"
+      >
+        <Video size={16} />
+        <span>입장</span>
+      </a>
+    ) : (
+      <div className="w-20 h-10"></div>
+    )}
+  </div>
+
+  {/* 중간 - 수강생 정보 */}
+  <div className="flex-1 flex items-center gap-3 min-w-0">
+    <span className="font-bold text-base truncate">
+      {res.studentName || res.studentEmail}
+    </span>
+
+    {res.packageName && (
+      <span className="px-2.5 py-1 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium">
+        {res.packageName}
+      </span>
+    )}
+
+    <div className="flex items-center gap-3 text-sm text-slate-600">
+      <div className="flex items-center gap-1.5">
+        <Calendar size={14} />
+        <span>{res.date}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Clock size={14} />
+        <span>{res.time}</span>
+      </div>
+    </div>
+  </div>
+
+  {/* 오른쪽 - 삭제 버튼 */}
+  <div className="flex-shrink-0">
+    {isUpcoming && (
+      <button
+        onClick={() => handleCancel(res.reservationId, res.date, res.time)}
+        className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-200 text-red-600 hover:bg-red-50 rounded-lg"
+      >
+        <Trash2 size={16} />
+        <span>삭제</span>
+      </button>
+    )}
+  </div>
+</div>
+```
+
+### 🔧 파일 변경 내역
+
+**수정된 파일 (2개)**:
+1. `lib/supabase/database.ts` - 학생 삭제 함수 추가, Google 캘린더 연동 추가
+2. `components/Dashboard.tsx` - 삭제 버튼, 등록일 표시, 예약 목록 레이아웃 변경
+
+**주요 함수**:
+- `removeStudentFromInstructor(studentId, instructorId)` - 학생 삭제
+- `createReservation(data)` - 예약 생성 (Google 캘린더 자동 연동)
+- `handleDeleteStudent(student)` - 삭제 확인 다이얼로그
+
+### 🐛 수정된 에러
+
+#### 에러 1: Table Name Mismatch
+- **문제**: "public.student_packages 를 못찾는대"
+- **원인**: `removeStudentFromInstructor()`에서 존재하지 않는 `student_packages` 테이블 참조
+- **해결**: `packages` 테이블로 수정 (Line 2021)
+- **영향**: 학생 삭제 시 수강권 삭제 정상 작동
+
+#### 에러 2: Google 캘린더 미연동
+- **문제**: "구글 캘린더 id 에 등록해야 하는데 등록일이 등록 안되고 있네?"
+- **원인**: `createReservation()`에서 Google 캘린더 함수를 호출하지 않음
+- **해결**: `addEventToCalendar()` 호출 추가 (Lines 622-647)
+- **영향**: 예약 생성 시 자동으로 Google 캘린더 이벤트 생성, Meet 링크 저장
+
+### 📈 개선 사항
+
+1. **데이터 일관성**:
+   - 학생 삭제 시 Cascade 삭제로 데이터 무결성 유지
+   - 예약-캘린더 자동 동기화
+
+2. **사용자 경험**:
+   - 삭제 전 확인 다이얼로그 → 실수 방지
+   - 등록일 표시 → 회원 관리 정보 강화
+   - 단일라인 예약 목록 → 가독성 향상
+
+3. **에러 처리**:
+   - 상세한 콘솔 로깅
+   - 사용자 친화적 에러 메시지
+   - Graceful degradation (캘린더 연동 실패해도 예약 생성)
+
+### 🧪 테스트 시나리오
+
+**사용자 테스트 데이터**:
+- 수강권: `cal_membership` 생성
+- 학생: `jseul45@gmail.com`
+- 예약: jseul45@gmail.com이 예약 생성
+
+**예상 결과**:
+1. ✅ 예약 생성 시 강사 Google 캘린더에 이벤트 자동 추가
+2. ✅ jseul45@gmail.com가 참석자로 등록됨
+3. ✅ Google Meet 링크 자동 생성 및 저장
+4. ✅ 강사가 "입장" 버튼 클릭 시 Meet 입장 가능
+5. ✅ 강사가 학생 삭제 시 예약/수강권/관계 모두 삭제
+
+### 🚀 배포 완료
+
+**배포 정보**:
+- ✅ 빌드 성공
+- ✅ Vercel 배포 완료
+- ✅ URL: https://yeyak-mania-f6pn14p3b-jsps-projects-771dd933.vercel.app
+- ✅ Commit: "feat: Redesign reservation list to single-line layout"
+
+### 📝 사용자 요청 로그
+
+1. "회원 삭제는안되나? '학생 초대하기' 를 활용해 등록한 날짜 기반으로 등록일자 삼아주고 싶언데"
+   → ✅ 학생 삭제 기능 + 등록일 표시 구현
+
+2. "public.student_packages 를 못찾는대"
+   → ✅ 테이블명 수정 (`packages`로 변경)
+
+3. "구글 캘린더 id 에 등록해야 하는데 등록일이 등록 안되고 있네? 원인을 찾아볼래?"
+   → ✅ Google 캘린더 자동 연동 추가
+
+4. "그럼 강사의 캘린더에, 해당 고객 추가(참석자로 추가) 해서 만들고 google meet 링크 축다해두면 끝나는건데"
+   → ✅ 기존 함수 활용하여 간단하게 구현
+
+5. "오케 예약 부분에 강사별 예약 창 디자인만 바꾸자. 지금 한줄이되었으면 좋겠어. 왼쪽에는 '입장' 버튼 오른쪽에는 '삭제' 버튼. 중간에는 수강생 이름과 멤버쉽, 예약 날짜와 시간"
+   → ✅ 단일라인 레이아웃으로 변경
+
+### ✅ 완료된 작업 체크리스트
+
+- [x] 학생 삭제 기능 구현
+- [x] 학생 등록일 표시
+- [x] Google 캘린더 자동 연동
+- [x] Meet 링크 자동 생성
+- [x] 예약 목록 디자인 변경 (단일라인)
+- [x] 에러 수정 (student_packages → packages)
+- [x] 프로덕션 배포
+
+### 🎯 다음 단계
+
+현재 요청된 모든 기능 완료. 추가 작업 대기 중.
+
+---
+
+# 이전 작업 현황 (2025-12-26)
 
 ## 🎉 스튜디오 설정 간소화 & 캘린더 최적화 완료! (2025-12-26 오후)
 
