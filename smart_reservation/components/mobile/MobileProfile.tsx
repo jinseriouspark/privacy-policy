@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { User, Mail, Calendar, LogOut, Settings, Bell, HelpCircle, Shield, X } from 'lucide-react';
+import { User, Mail, Calendar, LogOut, Settings, Bell, HelpCircle, Shield, X, RefreshCw } from 'lucide-react';
 import { User as UserType } from '../../types';
+import { navigateTo, ROUTES } from '../../utils/router';
 
 interface MobileProfileProps {
   user: UserType;
@@ -24,7 +25,13 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
   };
 
   const handlePrivacyPolicy = () => {
-    window.open('/privacy', '_blank');
+    window.location.href = '/privacy-policy';
+  };
+
+  const handleChangeRole = () => {
+    if (confirm('역할을 변경하시겠습니까? (강사 ↔ 수강생)')) {
+      navigateTo(ROUTES.ONBOARDING);
+    }
   };
 
   return (
@@ -111,10 +118,22 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
 
           <button
             onClick={() => setShowAppSettings(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
           >
             <Settings size={20} className="text-slate-400" />
             <span className="flex-1 text-left text-slate-700">환경 설정</span>
+            <span className="text-slate-400">›</span>
+          </button>
+
+          <button
+            onClick={handleChangeRole}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+          >
+            <RefreshCw size={20} className="text-slate-400" />
+            <span className="flex-1 text-left text-slate-700">역할 변경</span>
+            <span className="text-xs text-slate-500">
+              {user.user_type === 'instructor' ? '강사 → 수강생' : '수강생 → 강사'}
+            </span>
             <span className="text-slate-400">›</span>
           </button>
         </div>

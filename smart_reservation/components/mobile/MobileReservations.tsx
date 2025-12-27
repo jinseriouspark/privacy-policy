@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Package } from 'lucide-react';
 import { User as UserType, Reservation } from '../../types';
-import { getReservations, cancelReservation } from '../../lib/supabase/database';
+import { getReservations, cancelReservation, getAllStudentPackages } from '../../lib/supabase/database';
 import { SwipeableReservationCard } from './SwipeableReservationCard';
 import { SkeletonReservationsLoader } from './SkeletonLoader';
 import toast from 'react-hot-toast';
+
+interface StudentPackage {
+  id: string;
+  name?: string;
+  template_id: number;
+  student_id: number;
+  coaching_id: number;
+  instructor_id: number;
+  total_sessions: number;
+  remaining_sessions: number;
+  start_date: string;
+  expires_at: string;
+  status: string;
+  created_at: string;
+  package_template?: {
+    name: string;
+    type: string;
+  };
+  coaching?: {
+    title: string;
+  };
+  instructor?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
 
 interface MobileReservationsProps {
   user: UserType;
@@ -12,12 +39,28 @@ interface MobileReservationsProps {
 
 export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [packages, setPackages] = useState<StudentPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
 
   useEffect(() => {
-    loadReservations();
+    loadData();
   }, [user.id]);
+
+  const loadData = async () => {
+    try {
+      const [reservationsData, packagesData] = await Promise.all([
+        getReservations(user.id, user.user_type),
+        getAllStudentPackages(user.id)
+      ]);
+      setReservations(reservationsData);
+      setPackages(packagesData);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadReservations = async () => {
     try {
@@ -25,8 +68,6 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
       setReservations(data);
     } catch (error) {
       console.error('Failed to load reservations:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -73,6 +114,70 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
           총 {filteredReservations.length}개
         </p>
       </div>
+
+      {/* My Packages - Compact Horizontal Scroll */}
+      {packages.filter(pkg => {
+        const expiresAt = new Date(pkg.expires_at);
+        const isNotExpired = expiresAt > new Date();
+        const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+        return isNotExpired && hasRemainingCredits;
+      }).length > 0 && (
+        <div className="bg-white border-b border-slate-200 px-6 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Package size={16} className="text-orange-600" />
+            <h3 className="text-sm font-bold text-slate-900">내 수강권</h3>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
+            {packages
+              .filter(pkg => {
+                const expiresAt = new Date(pkg.expires_at);
+                const isNotExpired = expiresAt > new Date();
+                const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+                return isNotExpired && hasRemainingCredits;
+              })
+              .map(pkg => {
+                const expiresAt = new Date(pkg.expires_at);
+                const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
+
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`flex-shrink-0 w-40 p-3 rounded-xl border ${
+                      isExpiringSoon
+                        ? 'bg-orange-50 border-orange-200'
+                        : 'bg-indigo-50 border-indigo-200'
+                    }`}
+                  >
+                    <p className={`text-xs font-medium mb-1 truncate ${
+                      isExpiringSoon ? 'text-orange-900' : 'text-indigo-900'
+                    }`}>
+                      {pkg.name || pkg.coaching?.title || '수강권'}
+                    </p>
+                    <div className="flex items-baseline gap-1">
+                      <p className={`text-2xl font-bold ${
+                        isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                      }`}>
+                        {pkg.remaining_sessions}
+                      </p>
+                      <p className={`text-xs ${
+                        isExpiringSoon ? 'text-orange-500' : 'text-indigo-500'
+                      }`}>
+                        / {pkg.total_sessions}회
+                      </p>
+                    </div>
+                    <p className={`text-xs mt-1 ${
+                      isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                    }`}>
+                      {isExpiringSoon && `${daysLeft}일 남음`}
+                      {!isExpiringSoon && expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="bg-white border-b border-slate-200 px-6 py-3 sticky top-[73px] z-10">

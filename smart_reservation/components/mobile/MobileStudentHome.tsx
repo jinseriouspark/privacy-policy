@@ -46,6 +46,7 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
   const [isBookingSheetOpen, setIsBookingSheetOpen] = useState(false);
   const [isPackageDetailOpen, setIsPackageDetailOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
 
   const loadTodayData = async () => {
     try {
@@ -178,6 +179,155 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
           }
         }}
       >
+        {/* My Packages - Horizontal Scroll with Selection */}
+        {packages.filter(pkg => {
+          const expiresAt = new Date(pkg.expires_at);
+          const isNotExpired = expiresAt > new Date();
+          const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+          return isNotExpired && hasRemainingCredits;
+        }).length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-slate-900">내 수강권</h2>
+              <button
+                onClick={() => setSelectedPackageId(null)}
+                className={`text-xs px-2 py-1 rounded-lg transition-colors ${
+                  selectedPackageId === null
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                전체
+              </button>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
+              {packages
+                .filter(pkg => {
+                  const expiresAt = new Date(pkg.expires_at);
+                  const isNotExpired = expiresAt > new Date();
+                  const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
+                  return isNotExpired && hasRemainingCredits;
+                })
+                .map(pkg => {
+                  const expiresAt = new Date(pkg.expires_at);
+                  const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                  const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
+                  const isSelected = selectedPackageId === pkg.id;
+
+                  // Count today's reservations for this package
+                  const packageTodayCount = todayReservations.filter(r => r.package_id === parseInt(pkg.id)).length;
+
+                  return (
+                    <button
+                      key={pkg.id}
+                      onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
+                      className={`flex-shrink-0 w-44 p-4 rounded-xl border-2 transition-all ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-50 shadow-md'
+                          : isExpiringSoon
+                          ? 'border-orange-200 bg-orange-50'
+                          : 'border-indigo-200 bg-indigo-50'
+                      }`}
+                    >
+                      <p className={`text-sm font-medium mb-2 truncate text-left ${
+                        isSelected ? 'text-orange-900' :
+                        isExpiringSoon ? 'text-orange-900' : 'text-indigo-900'
+                      }`}>
+                        {pkg.name || pkg.coaching?.title || '수강권'}
+                      </p>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <p className={`text-3xl font-bold ${
+                          isSelected ? 'text-orange-600' :
+                          isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                        }`}>
+                          {pkg.remaining_sessions}
+                        </p>
+                        <p className={`text-sm ${
+                          isSelected ? 'text-orange-500' :
+                          isExpiringSoon ? 'text-orange-500' : 'text-indigo-500'
+                        }`}>
+                          / {pkg.total_sessions}회
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <p className={
+                          isSelected ? 'text-orange-600' :
+                          isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                        }>
+                          {isExpiringSoon ? `${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </p>
+                        {packageTodayCount > 0 && (
+                          <span className={`px-2 py-0.5 rounded-full ${
+                            isSelected ? 'bg-orange-600 text-white' :
+                            'bg-orange-100 text-orange-700'
+                          }`}>
+                            오늘 {packageTodayCount}건
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* Today's Classes - Filtered by selected package */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-slate-900">
+              오늘 수업
+              {selectedPackageId && packages.find(p => p.id === selectedPackageId) && (
+                <span className="text-sm font-normal text-slate-500 ml-2">
+                  ({packages.find(p => p.id === selectedPackageId)?.name || '선택한 수강권'})
+                </span>
+              )}
+            </h2>
+            {(() => {
+              const filteredReservations = selectedPackageId
+                ? todayReservations.filter(r => r.package_id === parseInt(selectedPackageId))
+                : todayReservations;
+
+              return filteredReservations.length > 0 && (
+                <span className="text-sm text-slate-500">
+                  {filteredReservations.length}개
+                </span>
+              );
+            })()}
+          </div>
+
+          <TodayClassCards
+            classes={(() => {
+              const filteredReservations = selectedPackageId
+                ? todayReservations.filter(r => r.package_id === parseInt(selectedPackageId))
+                : todayReservations;
+
+              return filteredReservations.map(r => {
+                const startTime = new Date(r.start_time);
+                const endTime = new Date(r.end_time);
+
+                return {
+                  id: r.id,
+                  time: startTime.toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  }),
+                  endTime: endTime.toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  }),
+                  studentName: r.instructor?.name || '강사님',
+                  isGroup: r.coaching?.type === 'group',
+                  participantCount: r.coaching?.type === 'group' ? 1 : undefined,
+                  meetLink: r.meet_link || '#'
+                };
+              });
+            })()}
+          />
+        </div>
+
         {/* Today's Summary Card */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
@@ -209,136 +359,6 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
               </div>
               <p className="text-2xl font-bold">{todayReservations.length}건</p>
             </div>
-          </div>
-        </div>
-
-        {/* Today's Classes */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-900">오늘 수업</h2>
-            {todayReservations.length > 0 && (
-              <span className="text-sm text-slate-500">
-                {todayReservations.length}개
-              </span>
-            )}
-          </div>
-
-          <TodayClassCards
-            classes={todayReservations.map(r => {
-              const startTime = new Date(r.start_time);
-              const endTime = new Date(r.end_time);
-
-              return {
-                id: r.id,
-                time: startTime.toLocaleTimeString('ko-KR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false
-                }),
-                endTime: endTime.toLocaleTimeString('ko-KR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: false
-                }),
-                studentName: r.instructor?.name || '강사님',
-                isGroup: r.coaching?.type === 'group',
-                participantCount: r.coaching?.type === 'group' ? 1 : undefined,
-                meetLink: r.meet_link || '#'
-              };
-            })}
-          />
-        </div>
-
-        {/* My Packages */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-slate-900">내 수강권</h2>
-          </div>
-
-          <div className="space-y-3">
-            {packages.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-slate-500 text-sm">아직 수강권이 없습니다</p>
-                <button className="mt-3 text-sm text-orange-600 font-medium hover:underline">
-                  수강권 구매하기
-                </button>
-              </div>
-            ) : (
-              packages
-                .filter(pkg => {
-                  // 만료되지 않고 잔여 횟수가 있는 수강권만 표시
-                  const expiresAt = new Date(pkg.expires_at);
-                  const isNotExpired = expiresAt > new Date();
-                  const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
-                  return isNotExpired && hasRemainingCredits;
-                })
-                .map(pkg => {
-                  const expiresAt = new Date(pkg.expires_at);
-                  const daysLeft = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                  const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
-                  const isExpired = daysLeft <= 0;
-
-                  return (
-                    <div
-                      key={pkg.id}
-                      className={`flex items-center justify-between p-4 rounded-xl ${
-                        isExpired ? 'bg-red-50 border border-red-200' :
-                        isExpiringSoon ? 'bg-orange-50 border border-orange-200' :
-                        'bg-indigo-50 border border-indigo-200'
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className={`font-medium ${
-                            isExpired ? 'text-slate-900' :
-                            isExpiringSoon ? 'text-slate-900' :
-                            'text-indigo-900'
-                          }`}>
-                            {pkg.name || pkg.coaching?.title || '수강권'}
-                          </p>
-                          {isExpiringSoon && (
-                            <span className="text-xs px-2 py-0.5 bg-orange-600 text-white rounded-full">
-                              곧 만료
-                            </span>
-                          )}
-                          {isExpired && (
-                            <span className="text-xs px-2 py-0.5 bg-red-600 text-white rounded-full">
-                              만료됨
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-sm ${
-                          isExpired ? 'text-slate-500' :
-                          isExpiringSoon ? 'text-slate-500' :
-                          'text-indigo-600'
-                        }`}>
-                          만료일: {expiresAt.toLocaleDateString('ko-KR')}
-                          {isExpiringSoon && ` (${daysLeft}일 남음)`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-2xl font-bold ${
-                          isExpired ? 'text-red-600' :
-                          isExpiringSoon ? 'text-orange-600' :
-                          'text-indigo-600'
-                        }`}>
-                          {pkg.remaining_sessions}회
-                        </p>
-                        <p className={`text-xs ${
-                          isExpired ? 'text-slate-500' :
-                          isExpiringSoon ? 'text-slate-500' :
-                          'text-indigo-500'
-                        }`}>/ {pkg.total_sessions}회</p>
-                      </div>
-                    </div>
-                  );
-                })
-            )}
-            {packages.filter(pkg => pkg.status === 'active').length > 2 && (
-              <button className="w-full text-center text-sm text-slate-600 hover:text-orange-600 py-2">
-                +{packages.filter(pkg => pkg.status === 'active').length - 2}개 더 보기
-              </button>
-            )}
           </div>
         </div>
 

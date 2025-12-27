@@ -15,6 +15,7 @@ import { logActivity, type TabName } from '../lib/supabase/database';
 import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages } from '../lib/supabase/database';
 import { sendBookingLinkToStudent } from '../services/solapi';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
+import { navigateTo, ROUTES } from '../utils/router';
 
 interface DashboardProps {
   user: User;
@@ -63,6 +64,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [coachings, setCoachings] = useState<any[]>([]);
   const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
+  const [searchEmail, setSearchEmail] = useState('');
+  const [reservationSort, setReservationSort] = useState<'asc' | 'desc'>('desc'); // 시간 정렬
 
   // Coaching Management
   const [currentCoaching, setCurrentCoaching] = useState<Coaching | null>(null);
@@ -331,12 +334,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   // --- Sub Views ---
 
-  const renderCoachReservations = () => (
+  const renderCoachReservations = () => {
+    // 예약 정렬
+    const sortedReservations = data?.reservations ? [...data.reservations].sort((a, b) => {
+      const dateTimeA = new Date(`${a.date} ${a.time}`).getTime();
+      const dateTimeB = new Date(`${b.date} ${b.time}`).getTime();
+      return reservationSort === 'asc' ? dateTimeA - dateTimeB : dateTimeB - dateTimeA;
+    }) : [];
+
+    return (
     <div className="space-y-3">
         {loading && !data ? (
         <div className="text-center py-8 text-slate-400 text-sm">데이터를 불러오는 중...</div>
-        ) : data?.reservations && data.reservations.length > 0 ? (
-        data.reservations.map((res, idx) => {
+        ) : sortedReservations && sortedReservations.length > 0 ? (
+        sortedReservations.map((res, idx) => {
             const isUpcoming = res.status === '확정됨';
             const isCanceling = cancelingId === res.reservationId;
             return (
@@ -432,7 +443,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
         </div>
         )}
     </div>
-  );
+    );
+  };
 
   const openUserEditor = async (u: User) => {
     console.log('Opening editor for user:', u);
@@ -462,10 +474,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     }
   };
 
-  const renderCoachUsers = () => (
+  const renderCoachUsers = () => {
+    // 이메일 검색 필터링
+    const filteredUsers = users.filter(u =>
+      u.email.toLowerCase().includes(searchEmail.toLowerCase()) ||
+      u.name.toLowerCase().includes(searchEmail.toLowerCase())
+    );
+
+    return (
       <div>
-          {/* 학생 초대 버튼 */}
-          <div className="flex justify-end mb-4">
+          {/* 검색 & 초대 버튼 */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            {/* 이메일 검색 */}
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="이메일 또는 이름으로 검색..."
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+
+            {/* 학생 초대 버튼 */}
             <button
               onClick={() => {
                 if (!currentCoaching) {
@@ -474,7 +505,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 }
                 setShowInviteModal(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg whitespace-nowrap"
             >
               <Users size={18} />
               학생 초대하기
@@ -483,9 +514,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
           {usersLoading ? (
                <div className="text-center py-8 text-slate-400 text-sm">사용자 목록 로딩 중...</div>
+          ) : filteredUsers.length === 0 ? (
+               <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-sm">
+                 {searchEmail ? '검색 결과가 없습니다' : '등록된 학생이 없습니다'}
+               </div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {users.map((u: any, idx) => {
+          {filteredUsers.map((u: any, idx) => {
             const pkg = u.activePackage;
             const expiresAt = pkg?.expiresAt ? new Date(pkg.expiresAt) : null;
             const isExpiringSoon = expiresAt && expiresAt.getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -616,7 +651,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           </div>
           )}
       </div>
-  );
+    );
+  };
 
   const handleCreateCalendar = async () => {
     const calendarName = prompt('생성할 캘린더 이름을 입력하세요:', '코칭 예약');
@@ -660,7 +696,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // renderCoachSettings 함수 제거됨 - 설정 탭 삭제
 
   const Header = () => (
-    <div className="flex justify-between items-center gap-3">
+    <div className="sticky top-0 z-20 bg-slate-50 pb-3 pt-2 -mt-2">
+      <div className="flex justify-between items-center gap-3">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           {user.picture ? (
             <img src={user.picture} alt={user.name} className="w-10 h-10 rounded-full border border-slate-200 flex-shrink-0" />
@@ -672,9 +709,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-slate-900 leading-tight truncate">{user.name}</h2>
-                {isCoach && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase flex-shrink-0">Coach</span>
-                )}
+                <button
+                  onClick={() => {
+                    if (confirm('역할을 변경하시겠습니까? (강사 ↔ 수강생)')) {
+                      navigateTo(ROUTES.ONBOARDING);
+                    }
+                  }}
+                  className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-bold rounded-full uppercase flex-shrink-0 hover:bg-orange-200 transition-colors cursor-pointer"
+                  title="클릭하여 역할 변경"
+                >
+                  {isCoach ? 'Coach' : 'Student'}
+                </button>
             </div>
             <p className="text-xs text-slate-500 truncate">{user.email}</p>
           </div>
@@ -689,6 +734,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 <LogOut size={18} />
             </button>
         </div>
+      </div>
     </div>
   );
 
@@ -738,7 +784,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
             {/* Coach Tabs - Desktop & Mobile */}
             {/* Mobile: Hamburger Menu + Current Tab Title */}
-            <div className="lg:hidden">
+            <div className="lg:hidden sticky top-[72px] z-10 bg-slate-50 pb-3">
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm">
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -835,7 +881,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             </div>
 
             {/* Desktop: Original Horizontal Tabs */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto sticky top-[72px] z-10 bg-slate-50 pb-3">
                 <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl min-w-max">
                     <button
                         onClick={() => handleTabChange('stats')}
@@ -898,9 +944,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                             <h3 className="text-xl font-bold text-slate-900 flex items-center">
                                 <Calendar size={22} className="mr-2 text-orange-500"/> 전체 예약
                             </h3>
-                            <button onClick={fetchDashboard} className="text-slate-400 hover:text-orange-500 transition-colors">
-                                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* 정렬 버튼 */}
+                                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setReservationSort('desc')}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                                            reservationSort === 'desc'
+                                                ? 'bg-white text-slate-900 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        최신순
+                                    </button>
+                                    <button
+                                        onClick={() => setReservationSort('asc')}
+                                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                                            reservationSort === 'asc'
+                                                ? 'bg-white text-slate-900 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        오래된순
+                                    </button>
+                                </div>
+                                <button onClick={fetchDashboard} className="text-slate-400 hover:text-orange-500 transition-colors">
+                                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
                         </div>
                         {renderCoachReservations()}
                     </>
