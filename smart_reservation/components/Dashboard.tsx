@@ -12,7 +12,7 @@ import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
 import { logActivity, type TabName } from '../lib/supabase/database';
-import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages } from '../lib/supabase/database';
+import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor } from '../lib/supabase/database';
 import { sendBookingLinkToStudent } from '../services/solapi';
 import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
 import { navigateTo, ROUTES } from '../utils/router';
@@ -238,6 +238,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     } catch (error) {
       console.error('Failed to send kakao:', error);
       alert('전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+  };
+
+  const handleDeleteStudent = async (student: any) => {
+    const confirmed = confirm(
+      `⚠️ 정말로 ${student.name}님을 삭제하시겠습니까?\n\n삭제 시 다음 데이터가 함께 삭제됩니다:\n- 예약 기록\n- 수강권 정보\n- 학생 관계\n\n이 작업은 되돌릴 수 없습니다.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await removeStudentFromInstructor(student.id, user.id);
+      alert(`✅ ${student.name}님이 삭제되었습니다.`);
+      // Reload users list
+      await fetchUsers();
+    } catch (error) {
+      console.error('Failed to delete student:', error);
+      alert('학생 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -578,6 +596,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
                   {/* Quick Info */}
                   <div className="space-y-2 pt-3 border-t border-slate-100">
+                      {/* 등록일자 */}
+                      {u.created_at && (
+                          <div className="flex items-center justify-between text-sm">
+                              <span className="text-slate-500">등록일</span>
+                              <span className="text-slate-900 font-medium">
+                                  {new Date(u.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' })}
+                              </span>
+                          </div>
+                      )}
+
                       {pkg ? (
                           <>
                               <div className="flex items-center justify-between text-sm">
@@ -629,7 +657,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                   )}
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="grid grid-cols-3 gap-2 mt-3">
                       <button
                           onClick={() => handleSendKakao(u)}
                           className="flex items-center justify-center gap-1 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-medium hover:bg-yellow-100 transition-colors"
@@ -643,6 +671,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                       >
                           <Edit size={14} />
                           편집
+                      </button>
+                      <button
+                          onClick={() => handleDeleteStudent(u)}
+                          className="flex items-center justify-center gap-1 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+                      >
+                          <Trash2 size={14} />
+                          삭제
                       </button>
                   </div>
               </div>

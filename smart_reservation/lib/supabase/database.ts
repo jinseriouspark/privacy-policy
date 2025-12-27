@@ -1991,3 +1991,54 @@ export async function getAvailableTimeSlots(
   }
 }
 
+/**
+ * Remove a student from an instructor (delete instructor-student relationship and related data)
+ */
+export async function removeStudentFromInstructor(studentId: string, instructorId: string) {
+  try {
+    console.log('[removeStudentFromInstructor] Removing student:', studentId, 'from instructor:', instructorId);
+
+    // 1. Delete student's reservations with this instructor
+    const { error: reservationsError } = await supabase
+      .from('reservations')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    if (reservationsError) {
+      console.error('[removeStudentFromInstructor] Failed to delete reservations:', reservationsError);
+      throw reservationsError;
+    }
+
+    // 2. Delete student's packages from this instructor
+    const { error: packagesError } = await supabase
+      .from('student_packages')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    if (packagesError) {
+      console.error('[removeStudentFromInstructor] Failed to delete packages:', packagesError);
+      throw packagesError;
+    }
+
+    // 3. Delete instructor-student relationship
+    const { error: relationError } = await supabase
+      .from('instructor_students')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('instructor_id', instructorId);
+
+    if (relationError) {
+      console.error('[removeStudentFromInstructor] Failed to delete relationship:', relationError);
+      throw relationError;
+    }
+
+    console.log('[removeStudentFromInstructor] Successfully removed student from instructor');
+    return { success: true };
+  } catch (error) {
+    console.error('[removeStudentFromInstructor] Failed to remove student:', error);
+    throw error;
+  }
+}
+
