@@ -23,9 +23,8 @@ export const MobileBottomNav: React.FC<BottomNavProps> = ({
   ];
 
   const studentTabs = [
-    { id: 'home' as TabId, icon: Home, label: '홈' },
+    { id: 'reservations' as TabId, icon: Home, label: '홈' },
     { id: 'calendar' as TabId, icon: Calendar, label: '캘린더' },
-    { id: 'reservations' as TabId, icon: CheckCircle, label: '예약' },
     { id: 'profile' as TabId, icon: User, label: '내정보' }
   ];
 

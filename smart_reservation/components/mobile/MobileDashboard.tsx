@@ -19,9 +19,11 @@ interface MobileDashboardProps {
   initialTab?: TabId; // 🆕 Optional initial tab from URL
 }
 
-export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialTab = 'home' }) => {
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialTab }) => {
   const isInstructor = user.user_type === 'instructor';
+  // 학생은 'reservations'를 홈으로, 강사는 'home'을 홈으로
+  const defaultTab = isInstructor ? 'home' : 'reservations';
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab || defaultTab);
 
   // Update URL when tab changes (students only)
   useEffect(() => {
@@ -29,11 +31,11 @@ export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialT
       const urlMap: Record<TabId, string> = {
         home: ROUTES.STUDENT_HOME,
         calendar: ROUTES.STUDENT_CALENDAR,
-        reservations: ROUTES.STUDENT_RESERVATIONS,
+        reservations: ROUTES.STUDENT_HOME, // 예약 = 홈
         profile: ROUTES.STUDENT_PROFILE,
-        students: ROUTES.STUDENTS, // Not used for students
-        attendance: ROUTES.ATTENDANCE, // Not used for students
-        more: ROUTES.PROFILE, // Not used for students
+        students: ROUTES.STUDENTS,
+        attendance: ROUTES.ATTENDANCE,
+        more: ROUTES.PROFILE,
       };
 
       const targetUrl = urlMap[activeTab];
@@ -57,9 +59,7 @@ export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialT
       case 'home':
         return isInstructor ? (
           <MobileInstructorHome user={user} onTabChange={setActiveTab} />
-        ) : (
-          <MobileStudentHome user={user} />
-        );
+        ) : null;
 
       case 'calendar':
         return <MobileCalendar user={user} />;
