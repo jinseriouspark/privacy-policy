@@ -371,88 +371,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             const isUpcoming = res.status === '확정됨';
             const isCanceling = cancelingId === res.reservationId;
             return (
-            <div key={idx} className={`flex p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-4`}>
-                {/* Left Side - Action Buttons */}
-                <div className="flex flex-col gap-2 items-center justify-center">
-                    {isUpcoming && res.meetLink && (
+            <div key={idx} className={`flex items-center p-4 rounded-xl border ${isUpcoming ? 'border-orange-100 bg-white' : 'border-slate-100 bg-slate-50'} shadow-sm gap-4`}>
+                {/* 왼쪽 - 입장 버튼 */}
+                <div className="flex-shrink-0">
+                    {isUpcoming && res.meetLink ? (
                         <a
                             href={res.meetLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex flex-col items-center justify-center px-3 py-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg text-xs font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm min-w-[70px]"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
                         >
-                            <Video size={18} className="mb-1" />
+                            <Video size={16} />
                             <span>입장</span>
                         </a>
+                    ) : (
+                        <div className="w-20 h-10"></div>
                     )}
+                </div>
+
+                {/* 중간 - 수강생 정보 */}
+                <div className="flex-1 flex items-center gap-3 min-w-0">
+                    {/* 수강생 이름 */}
+                    <span className={`font-bold text-base ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'} truncate`}>
+                        {res.studentName || res.studentEmail}
+                    </span>
+
+                    {/* 멤버십 */}
+                    {res.packageName && (
+                        <span className="px-2.5 py-1 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium truncate max-w-[150px]">
+                            {res.packageName}
+                        </span>
+                    )}
+
+                    {/* 날짜 & 시간 */}
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                            <Calendar size={14} className="text-slate-400" />
+                            <span className="font-medium whitespace-nowrap">{res.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Clock size={14} className="text-slate-400" />
+                            <span className="font-medium whitespace-nowrap">{res.time}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 오른쪽 - 삭제 버튼 */}
+                <div className="flex-shrink-0">
                     {isUpcoming && (
                         <button
                             onClick={() => handleCancel(res.reservationId, res.date, res.time)}
                             disabled={isCanceling}
-                            className="flex flex-col items-center justify-center px-3 py-2 bg-white border border-slate-200 text-slate-600 hover:text-red-500 hover:border-red-300 hover:bg-red-50 rounded-lg transition-all text-xs font-medium min-w-[70px]"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-lg transition-all text-sm font-semibold"
                         >
                             {isCanceling ? (
-                                <Loader2 size={18} className="animate-spin mb-1" />
+                                <Loader2 size={16} className="animate-spin" />
                             ) : (
-                                <XCircle size={18} className="mb-1" />
+                                <Trash2 size={16} />
                             )}
                             <span>{isCanceling ? '취소중' : '삭제'}</span>
                         </button>
                     )}
-                </div>
-
-                {/* Right Side - Details */}
-                <div className="flex-1 flex flex-col gap-2">
-                    {/* Student Info - Single Line */}
-                    <div className="flex items-center gap-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isUpcoming ? 'bg-orange-50 text-orange-500' : 'bg-slate-200 text-slate-400'}`}>
-                            {res.studentName ? res.studentName.charAt(0) : 'S'}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                            <span className={`font-bold text-sm ${isUpcoming ? 'text-slate-900' : 'text-slate-400 line-through'}`}>
-                                {res.studentName || res.studentEmail}
-                            </span>
-                            <span className="text-slate-300">•</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                res.packageType === 'group'
-                                    ? 'bg-purple-50 text-purple-600'
-                                    : 'bg-blue-50 text-blue-600'
-                            }`}>
-                                {res.packageType === 'group' ? '그룹' : '개인'}
-                            </span>
-                            {res.packageName && (
-                                <>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold truncate">
-                                        {res.packageName}
-                                    </span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Date & Time */}
-                    <div className="flex items-center gap-3 text-sm text-slate-600 border-t border-slate-100 pt-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                            <Calendar size={14} className="text-slate-400" />
-                            <span className="font-medium">{res.date}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Clock size={14} className="text-slate-400" />
-                            <span className="font-medium">{res.time}</span>
-                        </div>
-                        {isUpcoming && res.meetLink && (
-                            <a
-                                href={res.meetLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md transition-colors ml-auto"
-                            >
-                                <Video size={14} />
-                                <span className="font-medium text-xs">Meet 입장</span>
-                            </a>
-                        )}
-                    </div>
                 </div>
             </div>
             );
