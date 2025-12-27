@@ -810,6 +810,29 @@ export async function getTodayReservations(instructorId: string) {
 }
 
 /**
+ * 앞둔 예약 목록 조회 (현재 시각 이후의 모든 예약, 최신순)
+ */
+export async function getUpcomingReservations(userId: string) {
+  const now = new Date();
+
+  const { data, error } = await supabase
+    .from('reservations')
+    .select(`
+      *,
+      coaching:coaching_id(*),
+      instructor:instructor_id(*),
+      package:package_id(*)
+    `)
+    .eq('student_id', userId)
+    .gte('start_time', now.toISOString())
+    .in('status', ['confirmed', 'pending'])
+    .order('start_time', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
  * 모든 사용자 목록 조회 (학생만)
  */
 export async function getAllStudents() {
@@ -1955,11 +1978,21 @@ export async function getAvailableTimeSlots(
     // 코칭 정보 조회하여 기본 근무 시간 가져오기
     const { data: coaching, error: coachingError } = await supabase
       .from("coachings")
-      .select("duration, working_hours")
+      .select("duration, working_hours, title")
       .eq("id", coachingId)
       .single();
 
-    if (coachingError) throw coachingError;
+    if (coachingError) {
+      console.error('[getAvailableTimeSlots] Failed to get coaching:', coachingError);
+      throw coachingError;
+    }
+
+    console.log('[getAvailableTimeSlots] Coaching info:', {
+      id: coachingId,
+      title: coaching?.title,
+      duration: coaching?.duration,
+      working_hours: coaching?.working_hours
+    });
 
     const duration = coaching?.duration || 60;
     const workingHours = coaching?.working_hours;
@@ -1980,11 +2013,14 @@ export async function getAvailableTimeSlots(
     let dayWorkingHours = defaultDayWorkingHours;
     if (workingHours && typeof workingHours === 'object' && dayName in workingHours) {
       dayWorkingHours = workingHours[dayName];
+      console.log(`[getAvailableTimeSlots] Found specific working hours for ${dayName}:`, dayWorkingHours);
+    } else {
+      console.log(`[getAvailableTimeSlots] Using default working hours for ${dayName}:`, defaultDayWorkingHours);
     }
 
     // 해당 요일에 근무 시간이 없거나 비활성화되어 있으면 빈 배열 반환
     if (!dayWorkingHours.enabled) {
-      console.log(`[getAvailableTimeSlots] ${dayName} is disabled`);
+      console.log(`[getAvailableTimeSlots] ⚠️ ${dayName} is disabled, returning empty slots`);
       return [];
     }
 
