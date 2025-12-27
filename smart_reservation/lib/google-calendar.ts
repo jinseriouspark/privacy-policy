@@ -312,11 +312,7 @@ export async function addEventToCalendar(params: {
         }
       },
       reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 },
-          { method: 'popup', minutes: 30 }
-        ]
+        useDefault: true  // ✅ Use Google Calendar's default reminder settings
       }
     };
 

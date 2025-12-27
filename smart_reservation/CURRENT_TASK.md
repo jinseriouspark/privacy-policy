@@ -1,5 +1,105 @@
 # 현재 작업 현황 (2025-12-28)
 
+## 🎉 Google Calendar 알림 설정 개선 완료! (2025-12-28)
+
+### ✅ **강사별 맞춤 알림 자동 적용**
+
+**배포 URL**: https://yeyak-mania-gq1kg24zw-jsps-projects-771dd933.vercel.app
+
+### 📊 주요 변경 사항
+
+#### **Google Calendar 기본 알림 사용** ✅
+- 📝 `lib/google-calendar.ts` - reminders 설정 변경 (Line 314-316)
+- 🎯 변경:
+  - **BEFORE**: 하드코딩된 알림 (1일 전 이메일, 30분 전 팝업)
+  - **AFTER**: `useDefault: true` - 강사가 Google Calendar에서 설정한 알림 자동 적용
+
+**코드 변경**:
+```typescript
+// BEFORE (하드코딩)
+reminders: {
+  useDefault: false,
+  overrides: [
+    { method: 'email', minutes: 24 * 60 },  // 고정: 1일 전 이메일
+    { method: 'popup', minutes: 30 }        // 고정: 30분 전 팝업
+  ]
+}
+
+// AFTER (구글 설정 사용)
+reminders: {
+  useDefault: true  // ✅ Google Calendar의 기본 알림 설정 사용
+}
+```
+
+### 🔔 알림 채널 (Google Calendar 제공)
+
+강사가 Google Calendar에서 설정한 대로 자동 발송:
+
+1. **Email** (이메일) - Gmail로 알림
+2. **Popup** (팝업) - 데스크톱 브라우저 알림
+3. **Mobile Push** (모바일 푸시) - Google Calendar 앱 알림
+4. **SMS** (문자) - 선택적 (유료)
+
+### 📈 개선 사항
+
+1. **강사별 맞춤 설정**:
+   - 각 강사가 Google Calendar 앱에서 원하는 알림 시간 설정 가능
+   - 예: 1시간 전, 30분 전, 10분 전 등 자유롭게 조합
+
+2. **코드 단순화**:
+   - DB에 별도 알림 설정 필드 불필요
+   - 하드코딩 제거로 유지보수 용이
+
+3. **사용자 경험**:
+   - 강사가 익숙한 Google Calendar UI 사용
+   - 변경 사항 즉시 반영 (별도 설정 페이지 불필요)
+
+### 🔧 파일 변경 내역
+
+**수정된 파일 (1개)**:
+- `lib/google-calendar.ts` - reminders 설정 변경 (Line 314-316)
+
+### 🧪 작동 방식
+
+```
+예약 생성
+  ↓
+createReservation() 호출
+  ↓
+addEventToCalendar() - Google Calendar API 호출
+  ↓
+reminders: { useDefault: true }
+  ↓
+강사의 Google Calendar 기본 알림 설정 적용
+  ↓
+강사 & 학생에게 알림 발송 (Email + Popup + Push)
+```
+
+### 💡 강사 설정 방법
+
+강사가 알림 시간을 변경하려면:
+1. Google Calendar 앱 열기 (웹 또는 모바일)
+2. 설정 > [캘린더 이름] > 이벤트 알림
+3. 원하는 알림 시간 추가/수정
+   - 예: 1시간 전, 30분 전, 10분 전
+   - 방법: Email, 팝업, 모바일 알림 선택
+
+### ✅ 완료된 작업 체크리스트
+
+- [x] Google Calendar useDefault 설정 적용
+- [x] 하드코딩된 알림 제거
+- [x] 빌드 및 배포
+- [x] CURRENT_TASK.md 업데이트
+
+### 🚀 배포 완료
+
+**배포 정보**:
+- ✅ 빌드 성공 (815.60 kB, gzip: 214.76 kB)
+- ✅ Vercel 배포 완료 (19초 소요)
+- ✅ URL: https://yeyak-mania-gq1kg24zw-jsps-projects-771dd933.vercel.app
+
+---
+
 ## 🎉 학생 캘린더 UI 개선 완료! (2025-12-28)
 
 ### ✅ **수강권 카드를 캘린더 위에 배치**
