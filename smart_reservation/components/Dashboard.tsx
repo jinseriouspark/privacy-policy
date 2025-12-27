@@ -249,13 +249,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     if (!confirmed) return;
 
     try {
+      console.log('[handleDeleteStudent] Deleting student:', student.id, 'instructor:', user.id);
       await removeStudentFromInstructor(student.id, user.id);
       alert(`✅ ${student.name}님이 삭제되었습니다.`);
       // Reload users list
       await fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete student:', error);
-      alert('학생 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      const errorMessage = error?.message || error?.toString() || '알 수 없는 오류';
+      alert(`학생 삭제에 실패했습니다.\n\n오류: ${errorMessage}\n\n브라우저 콘솔을 확인해주세요.`);
     }
   };
 

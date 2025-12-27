@@ -1996,48 +1996,59 @@ export async function getAvailableTimeSlots(
  */
 export async function removeStudentFromInstructor(studentId: string, instructorId: string) {
   try {
-    console.log('[removeStudentFromInstructor] Removing student:', studentId, 'from instructor:', instructorId);
+    console.log('[removeStudentFromInstructor] Starting deletion...');
+    console.log('[removeStudentFromInstructor] Student ID:', studentId);
+    console.log('[removeStudentFromInstructor] Instructor ID:', instructorId);
 
     // 1. Delete student's reservations with this instructor
-    const { error: reservationsError } = await supabase
+    console.log('[removeStudentFromInstructor] Step 1: Deleting reservations...');
+    const { data: deletedReservations, error: reservationsError } = await supabase
       .from('reservations')
       .delete()
       .eq('student_id', studentId)
-      .eq('instructor_id', instructorId);
+      .eq('instructor_id', instructorId)
+      .select();
 
     if (reservationsError) {
       console.error('[removeStudentFromInstructor] Failed to delete reservations:', reservationsError);
-      throw reservationsError;
+      throw new Error(`예약 삭제 실패: ${reservationsError.message}`);
     }
+    console.log('[removeStudentFromInstructor] Deleted reservations:', deletedReservations?.length || 0);
 
     // 2. Delete student's packages from this instructor
-    const { error: packagesError } = await supabase
+    console.log('[removeStudentFromInstructor] Step 2: Deleting packages...');
+    const { data: deletedPackages, error: packagesError } = await supabase
       .from('student_packages')
       .delete()
       .eq('student_id', studentId)
-      .eq('instructor_id', instructorId);
+      .eq('instructor_id', instructorId)
+      .select();
 
     if (packagesError) {
       console.error('[removeStudentFromInstructor] Failed to delete packages:', packagesError);
-      throw packagesError;
+      throw new Error(`수강권 삭제 실패: ${packagesError.message}`);
     }
+    console.log('[removeStudentFromInstructor] Deleted packages:', deletedPackages?.length || 0);
 
     // 3. Delete instructor-student relationship
-    const { error: relationError } = await supabase
+    console.log('[removeStudentFromInstructor] Step 3: Deleting relationship...');
+    const { data: deletedRelation, error: relationError } = await supabase
       .from('instructor_students')
       .delete()
       .eq('student_id', studentId)
-      .eq('instructor_id', instructorId);
+      .eq('instructor_id', instructorId)
+      .select();
 
     if (relationError) {
       console.error('[removeStudentFromInstructor] Failed to delete relationship:', relationError);
-      throw relationError;
+      throw new Error(`학생 관계 삭제 실패: ${relationError.message}`);
     }
+    console.log('[removeStudentFromInstructor] Deleted relationship:', deletedRelation?.length || 0);
 
-    console.log('[removeStudentFromInstructor] Successfully removed student from instructor');
+    console.log('[removeStudentFromInstructor] ✅ Successfully removed student from instructor');
     return { success: true };
-  } catch (error) {
-    console.error('[removeStudentFromInstructor] Failed to remove student:', error);
+  } catch (error: any) {
+    console.error('[removeStudentFromInstructor] ❌ Failed to remove student:', error);
     throw error;
   }
 }
