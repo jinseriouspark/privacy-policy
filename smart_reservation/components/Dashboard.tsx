@@ -1017,6 +1017,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             </div>
           </div>
         </div>
+
+        {/* Notion Settings Modal */}
+        <NotionSettingsModal
+          isOpen={showNotionSettings}
+          onClose={() => setShowNotionSettings(false)}
+          userId={parseInt(user.id)}
+        />
+
+        {/* Consultation Memo Modal */}
+        {selectedStudent && (
+          <ConsultationMemoModal
+            isOpen={showMemoModal}
+            onClose={() => {
+              setShowMemoModal(false);
+              setSelectedStudent(null);
+            }}
+            userId={parseInt(user.id)}
+            student={{
+              id: selectedStudent.id,
+              name: selectedStudent.name,
+              email: selectedStudent.email,
+            }}
+          />
+        )}
         </>
       );
   }
@@ -1156,31 +1180,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           )}
         </div>
       </div>
-
-      {/* Notion Settings Modal */}
-      <NotionSettingsModal
-        isOpen={showNotionSettings}
-        onClose={() => setShowNotionSettings(false)}
-        userId={parseInt(user.id)}
-      />
-
-      {/* Consultation Memo Modal */}
-      {selectedStudent && (
-        <ConsultationMemoModal
-          isOpen={showMemoModal}
-          onClose={() => {
-            setShowMemoModal(false);
-            setSelectedStudent(null);
-          }}
-          userId={parseInt(user.id)}
-          student={{
-            id: selectedStudent.id,
-            name: selectedStudent.name,
-            email: selectedStudent.email,
-          }}
-        />
-      )}
-      </div>
+    </div>
     </div>
   );
 };

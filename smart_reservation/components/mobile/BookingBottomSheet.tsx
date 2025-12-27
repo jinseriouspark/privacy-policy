@@ -34,7 +34,7 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
   onSuccess,
   initialDate
 }) => {
-  const [step, setStep] = useState<'package' | 'date' | 'time' | 'confirm'>('date');
+  const [step, setStep] = useState<'package' | 'date' | 'time' | 'confirm'>('package');
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate || null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -42,22 +42,17 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<{ time: string; available: boolean }[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isProcessing, setIsProcessing] = useState(false); // 중복 호출 방지
 
-  // 수강권 자동 선택 및 날짜가 있으면 시간대 로드
+  // Reset when opening/closing
   useEffect(() => {
-    if (isOpen && packages.length > 0 && !selectedPackage) {
-      // 수강권이 1개 이상이면 첫번째 것 자동 선택
-      setSelectedPackage(packages[0].id);
+    if (!isOpen) {
+      setStep('package');
+      setSelectedPackage(null);
+      setSelectedDate(initialDate || null);
+      setSelectedTime(null);
     }
-    if (initialDate && isOpen && packages.length > 0) {
-      setSelectedDate(initialDate);
-      // initialDate가 있으면 바로 시간대 로드
-      const selectedPkg = packages[0];
-      if (selectedPkg?.coaching_id) {
-        loadTimeSlotsForDate(initialDate, selectedPkg.coaching_id);
-      }
-    }
-  }, [isOpen, packages, initialDate]);
+  }, [isOpen, initialDate]);
 
   const loadTimeSlotsForDate = async (date: Date, coachingId: string) => {
     setLoadingTimeSlots(true);
@@ -108,6 +103,12 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
   };
 
   const handleConfirm = async () => {
+    // 중복 호출 방지
+    if (isProcessing) {
+      console.log('[BookingBottomSheet] Already processing, ignoring duplicate call');
+      return;
+    }
+
     if (!selectedPackage || !selectedDate || !selectedTime) {
       toast.error('예약 정보를 모두 선택해주세요.');
       return;
@@ -124,6 +125,7 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
       return;
     }
 
+    setIsProcessing(true);
     setLoading(true);
 
     try {
@@ -227,6 +229,7 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
       }
     } finally {
       setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -493,7 +496,7 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
 
                   <button
                     onClick={handleConfirm}
-                    disabled={loading}
+                    disabled={loading || isProcessing}
                     className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? '예약 중...' : '예약 확정하기'}

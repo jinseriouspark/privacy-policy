@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Users, Clock, Link2, Copy, Check } from 'lucide-react';
 import { User, Reservation } from '../../types';
-import { getTodayReservations, getAllStudentPackages, getInstructorCoachings } from '../../lib/supabase/database';
+import { getUpcomingReservations, getAllStudentPackages, getInstructorCoachings } from '../../lib/supabase/database';
 import { TodayClassCards } from './TodayClassCards';
 import { BookingBottomSheet } from './BookingBottomSheet';
 import { PackageDetailBottomSheet } from './PackageDetailBottomSheet';
@@ -58,8 +58,8 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
         name: user.name
       });
 
-      // Load today's reservations
-      const reservations = await getTodayReservations(user.id);
+      // Load upcoming reservations
+      const reservations = await getUpcomingReservations(user.id);
       setTodayReservations(reservations);
 
       // Load student packages
@@ -137,14 +137,9 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
     <div className="pb-20 bg-slate-50 min-h-screen">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              {getGreeting()}, {user.name}님!
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">{today}</p>
-          </div>
-        </div>
+        <h1 className="text-xl font-bold text-slate-900">
+          {getGreeting()}, {user.name}님!
+        </h1>
       </div>
 
       {/* Pull to Refresh Indicator */}
@@ -187,14 +182,14 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
           return isNotExpired && hasRemainingCredits;
         }).length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-slate-900">내 수강권</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-900">내 수강권</h2>
               <button
                 onClick={() => setSelectedPackageId(null)}
-                className={`text-xs px-2 py-1 rounded-lg transition-colors ${
+                className={`text-sm px-4 py-2 rounded-xl font-semibold transition-all ${
                   selectedPackageId === null
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-slate-100 text-slate-600'
+                    ? 'bg-orange-500 text-white shadow-md'
+                    : 'bg-white text-slate-600 border border-slate-200 shadow-sm'
                 }`}
               >
                 전체
@@ -221,47 +216,41 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
                     <button
                       key={pkg.id}
                       onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
-                      className={`flex-shrink-0 w-44 p-4 rounded-xl border-2 transition-all ${
+                      className={`flex-shrink-0 w-48 p-5 rounded-2xl transition-all ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-50 shadow-md'
-                          : isExpiringSoon
-                          ? 'border-orange-200 bg-orange-50'
-                          : 'border-indigo-200 bg-indigo-50'
+                          ? 'bg-orange-500 shadow-lg scale-105'
+                          : 'bg-white shadow-md'
                       }`}
                     >
-                      <p className={`text-sm font-medium mb-2 truncate text-left ${
-                        isSelected ? 'text-orange-900' :
-                        isExpiringSoon ? 'text-orange-900' : 'text-indigo-900'
+                      <p className={`text-sm font-semibold mb-3 truncate text-left ${
+                        isSelected ? 'text-white' : 'text-slate-900'
                       }`}>
                         {pkg.name || pkg.coaching?.title || '수강권'}
                       </p>
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <p className={`text-3xl font-bold ${
-                          isSelected ? 'text-orange-600' :
-                          isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                      <div className="flex items-baseline gap-1 mb-3">
+                        <p className={`text-4xl font-bold ${
+                          isSelected ? 'text-white' : 'text-slate-900'
                         }`}>
                           {pkg.remaining_sessions}
                         </p>
-                        <p className={`text-sm ${
-                          isSelected ? 'text-orange-500' :
-                          isExpiringSoon ? 'text-orange-500' : 'text-indigo-500'
+                        <p className={`text-base ${
+                          isSelected ? 'text-orange-100' : 'text-slate-500'
                         }`}>
                           / {pkg.total_sessions}회
                         </p>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <p className={
-                          isSelected ? 'text-orange-600' :
-                          isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
+                          isSelected ? 'text-orange-100' : 'text-slate-500'
                         }>
-                          {isExpiringSoon ? `${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          {isExpiringSoon ? `⏰ ${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                         </p>
                         {packageTodayCount > 0 && (
-                          <span className={`px-2 py-0.5 rounded-full ${
-                            isSelected ? 'bg-orange-600 text-white' :
-                            'bg-orange-100 text-orange-700'
+                          <span className={`px-2 py-1 rounded-full font-medium ${
+                            isSelected ? 'bg-white/20 text-white' :
+                            'bg-orange-100 text-orange-600'
                           }`}>
-                            오늘 {packageTodayCount}건
+                            오늘 {packageTodayCount}
                           </span>
                         )}
                       </div>
@@ -272,11 +261,11 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
           </div>
         )}
 
-        {/* Today's Classes - Filtered by selected package */}
+        {/* Upcoming Classes - Filtered by selected package */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-900">
-              오늘 수업
+              앞둔 수업
               {selectedPackageId && packages.find(p => p.id === selectedPackageId) && (
                 <span className="text-sm font-normal text-slate-500 ml-2">
                   ({packages.find(p => p.id === selectedPackageId)?.name || '선택한 수강권'})
@@ -326,40 +315,6 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
               });
             })()}
           />
-        </div>
-
-        {/* Today's Summary Card */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold">오늘의 일정</h2>
-            <span className="text-sm bg-white/20 px-3 py-1 rounded-full">
-              {todayReservations.length}건
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="mb-1 text-orange-100">
-                <span className="text-xs">수업 시간</span>
-              </div>
-              <p className="text-2xl font-bold">
-                {todayReservations.length > 0
-                  ? new Date(todayReservations[0].start_time).toLocaleTimeString('ko-KR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
-                    })
-                  : '-'}
-              </p>
-            </div>
-
-            <div>
-              <div className="mb-1 text-orange-100">
-                <span className="text-xs">남은 수업</span>
-              </div>
-              <p className="text-2xl font-bold">{todayReservations.length}건</p>
-            </div>
-          </div>
         </div>
 
       </div>

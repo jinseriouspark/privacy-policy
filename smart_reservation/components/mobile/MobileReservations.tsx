@@ -122,12 +122,12 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
         const hasRemainingCredits = (pkg.remaining_sessions || 0) > 0;
         return isNotExpired && hasRemainingCredits;
       }).length > 0 && (
-        <div className="bg-white border-b border-slate-200 px-6 py-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Package size={16} className="text-orange-600" />
-            <h3 className="text-sm font-bold text-slate-900">내 수강권</h3>
+        <div className="bg-white border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Package size={18} className="text-orange-500" />
+            <h3 className="text-base font-bold text-slate-900">내 수강권</h3>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-6 px-6 scrollbar-hide">
             {packages
               .filter(pkg => {
                 const expiresAt = new Date(pkg.expires_at);
@@ -143,34 +143,21 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
                 return (
                   <div
                     key={pkg.id}
-                    className={`flex-shrink-0 w-40 p-3 rounded-xl border ${
-                      isExpiringSoon
-                        ? 'bg-orange-50 border-orange-200'
-                        : 'bg-indigo-50 border-indigo-200'
-                    }`}
+                    className="flex-shrink-0 w-48 p-5 rounded-2xl bg-white shadow-md"
                   >
-                    <p className={`text-xs font-medium mb-1 truncate ${
-                      isExpiringSoon ? 'text-orange-900' : 'text-indigo-900'
-                    }`}>
+                    <p className="text-sm font-semibold mb-3 truncate text-slate-900">
                       {pkg.name || pkg.coaching?.title || '수강권'}
                     </p>
-                    <div className="flex items-baseline gap-1">
-                      <p className={`text-2xl font-bold ${
-                        isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
-                      }`}>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <p className="text-4xl font-bold text-slate-900">
                         {pkg.remaining_sessions}
                       </p>
-                      <p className={`text-xs ${
-                        isExpiringSoon ? 'text-orange-500' : 'text-indigo-500'
-                      }`}>
+                      <p className="text-base text-slate-500">
                         / {pkg.total_sessions}회
                       </p>
                     </div>
-                    <p className={`text-xs mt-1 ${
-                      isExpiringSoon ? 'text-orange-600' : 'text-indigo-600'
-                    }`}>
-                      {isExpiringSoon && `${daysLeft}일 남음`}
-                      {!isExpiringSoon && expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                    <p className={`text-xs ${isExpiringSoon ? 'text-orange-500 font-medium' : 'text-slate-500'}`}>
+                      {isExpiringSoon ? `⏰ ${daysLeft}일 남음` : expiresAt.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
                 );
@@ -180,34 +167,34 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
       )}
 
       {/* Filter Tabs */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 sticky top-[73px] z-10">
+      <div className="bg-white border-b border-slate-100 px-6 py-4 sticky top-[73px] z-10">
         <div className="flex gap-2">
           <button
             onClick={() => setFilter('upcoming')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
               filter === 'upcoming'
-                ? 'bg-orange-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 shadow-sm'
             }`}
           >
             예정
           </button>
           <button
             onClick={() => setFilter('past')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
               filter === 'past'
-                ? 'bg-orange-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 shadow-sm'
             }`}
           >
             지난 예약
           </button>
           <button
             onClick={() => setFilter('all')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all ${
               filter === 'all'
-                ? 'bg-orange-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 shadow-sm'
             }`}
           >
             전체
@@ -216,11 +203,11 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
       </div>
 
       {/* Reservations List */}
-      <div className="px-6 pt-4 space-y-3">
+      <div className="px-6 pt-6 space-y-3">
         {filteredReservations.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center mt-8">
-            <p className="text-slate-600 font-medium">예약이 없습니다</p>
-            <p className="text-sm text-slate-400 mt-2">
+          <div className="bg-white shadow-md rounded-2xl p-10 text-center mt-8">
+            <p className="text-slate-900 font-semibold text-lg">예약이 없습니다</p>
+            <p className="text-sm text-slate-500 mt-2">
               {filter === 'upcoming' && '새로운 예약을 추가해보세요'}
               {filter === 'past' && '아직 지난 예약이 없습니다'}
               {filter === 'all' && '첫 예약을 만들어보세요'}
