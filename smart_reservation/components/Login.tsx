@@ -97,7 +97,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         name: existingUser.name,
         picture: existingUser.picture,
         userType: existingUser.user_type,
-        username: existingUser.username,
+        short_id: existingUser.short_id,
         bio: existingUser.bio,
         isProfileComplete: true
       } as User);

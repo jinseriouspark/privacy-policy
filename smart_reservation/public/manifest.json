@@ -1,0 +1,12 @@
+{
+  "name": "예약매니아 - 스마트 예약 관리",
+  "short_name": "예약매니아",
+  "description": "강사와 수강생을 위한 스마트 예약 관리 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait",
+  "icons": [],
+  "categories": ["productivity", "education"]
+}

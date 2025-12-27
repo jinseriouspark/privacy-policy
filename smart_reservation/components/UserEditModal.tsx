@@ -48,6 +48,12 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     try {
       const data = await getCoachings(instructorId);
       setCoachings(data || []);
+
+      // 코칭이 있으면 자동으로 첫 번째 활성 코칭 선택
+      if (data && data.length > 0 && !newPackage.coaching_id) {
+        const activeCoaching = data.find(c => c.status === 'active') || data[0];
+        setNewPackage(prev => ({ ...prev, coaching_id: activeCoaching.id }));
+      }
     } catch (e) {
       console.error('Failed to load coachings:', e);
       setCoachings([]);
@@ -56,10 +62,12 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 
   const loadClassPackages = async () => {
     try {
+      console.log('[UserEditModal] Loading class packages for instructor:', instructorId);
       const data = await getClassPackages(instructorId);
+      console.log('[UserEditModal] Class packages loaded:', data);
       setClassPackages(data || []);
     } catch (e) {
-      console.error('Failed to load class packages:', e);
+      console.error('[UserEditModal] Failed to load class packages:', e);
       setClassPackages([]);
     }
   };
@@ -71,7 +79,27 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   };
 
   const handleClassPackageSelect = (classPackageId: string) => {
-    const selected = classPackages.find(cp => cp.id === classPackageId);
+    console.log('[handleClassPackageSelect] Selected ID:', classPackageId, 'type:', typeof classPackageId);
+    console.log('[handleClassPackageSelect] Available packages:', classPackages);
+
+    if (!classPackageId) {
+      // Reset to empty form
+      setNewPackage({
+        class_package_id: '',
+        coaching_id: '',
+        name: '',
+        total_sessions: 10,
+        remaining_sessions: 10,
+        start_date: new Date().toISOString().split('T')[0],
+        validity_days: 30
+      });
+      return;
+    }
+
+    // ID를 string과 number 모두 비교
+    const selected = classPackages.find(cp => cp.id == classPackageId || cp.id === parseInt(classPackageId));
+    console.log('[handleClassPackageSelect] Found package:', selected);
+
     if (selected) {
       setNewPackage({
         ...newPackage,
@@ -90,9 +118,17 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
       return;
     }
 
+    // coaching_id 필수 체크
+    if (!newPackage.coaching_id) {
+      alert('코칭을 선택해주세요.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const selectedCoaching = coachings.find(c => c.id === newPackage.coaching_id);
+      const coachingId = newPackage.coaching_id;
+
+      const selectedCoaching = coachings.find(c => c.id === coachingId);
       const packageName = newPackage.name || selectedCoaching?.title || '수강권';
       const expiresAt = calculateExpiryDate(newPackage.start_date, newPackage.validity_days);
 
@@ -100,14 +136,14 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         student: { id: user.id, email: user.email, name: user.name },
         instructorId,
         packageName,
-        coaching_id: newPackage.coaching_id,
+        coaching_id: coachingId,
         expiresAt
       });
 
       await createPackage({
         student_id: user.id,
         instructor_id: instructorId,
-        coaching_id: newPackage.coaching_id || undefined,
+        coaching_id: coachingId,
         name: packageName,
         total_sessions: newPackage.total_sessions,
         remaining_sessions: newPackage.remaining_sessions,
@@ -284,7 +320,10 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                   </label>
                   <select
                     value={newPackage.class_package_id}
-                    onChange={(e) => handleClassPackageSelect(e.target.value)}
+                    onChange={(e) => {
+                      console.log('[Select onChange] New value:', e.target.value);
+                      handleClassPackageSelect(e.target.value);
+                    }}
                     className="w-full px-3 py-2 border-2 border-orange-300 bg-orange-50 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-medium text-slate-900"
                   >
                     <option value="">직접 입력하기</option>
@@ -295,7 +334,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                     ))}
                   </select>
                   <p className="text-xs text-slate-500 mt-1">
-                    💡 수강권 탭에서 미리 만든 템플릿을 선택하면 자동으로 입력됩니다
+                    💡 코칭 목록에서 가져옴 (총 {classPackages.length}개)
                   </p>
                 </div>
 
@@ -310,19 +349,19 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">코칭 연결 (선택사항)</label>
-                  <select
-                    value={newPackage.coaching_id}
-                    onChange={(e) => setNewPackage({ ...newPackage, coaching_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  >
-                    <option value="">선택 안함</option>
-                    {coachings.map(c => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* 코칭 자동 연결 - UI 숨김 */}
+                {newPackage.coaching_id && coachings.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      📎 {coachings.find(c => c.id === newPackage.coaching_id)?.title || '코칭'}에 자동 연결됩니다
+                    </p>
+                  </div>
+                )}
+                {coachings.length === 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-600">⚠️ 먼저 코칭을 생성해주세요</p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -371,23 +410,6 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                 <p className="text-xs text-slate-500">
                   만료일: {new Date(calculateExpiryDate(newPackage.start_date, newPackage.validity_days)).toLocaleDateString()}
                 </p>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddPackage}
-                    disabled={loading}
-                    className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium disabled:opacity-50"
-                  >
-                    <Save size={16} className="inline mr-1" />
-                    저장
-                  </button>
-                  <button
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium"
-                  >
-                    취소
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -395,12 +417,31 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 
         {/* Footer */}
         <div className="border-t border-slate-200 p-4 bg-slate-50">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
-          >
-            닫기
-          </button>
+          {showAddForm ? (
+            <div className="space-y-3">
+              <button
+                onClick={handleAddPackage}
+                disabled={loading}
+                className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-lg disabled:opacity-50 transition-colors flex items-center justify-center shadow-md"
+              >
+                <Save size={20} className="mr-2" />
+                수강권 지급
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+            >
+              닫기
+            </button>
+          )}
         </div>
       </div>
     </div>

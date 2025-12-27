@@ -151,65 +151,43 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
       <div className="bg-white rounded-xl border border-slate-200 p-6">
         <h3 className="font-bold text-lg text-slate-900 mb-4">인기 시간대</h3>
         {!stats.popularTimeSlots || stats.popularTimeSlots.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-8">데이터가 없습니다</p>
+          <p className="text-sm text-slate-400 text-center py-8">아직 예약 데이터가 없습니다</p>
         ) : (
-          <div className="space-y-6">
-            {/* Chart Container */}
-            <div className="relative h-64 flex items-end justify-between gap-2 px-4">
-              {stats.popularTimeSlots.slice(0, 10).map((slot, index) => {
-                const maxCount = Math.max(...stats.popularTimeSlots.map(s => s.count));
-                const heightPercentage = (slot.count / maxCount) * 100;
+          <div className="space-y-3">
+            {stats.popularTimeSlots.slice(0, 10).map((slot, index) => {
+              const maxCount = Math.max(...stats.popularTimeSlots.map(s => s.count));
+              const widthPercentage = (slot.count / maxCount) * 100;
 
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center justify-end group">
-                    {/* Bar */}
-                    <div className="w-full flex flex-col items-center justify-end" style={{ height: '240px' }}>
-                      {/* Count Label */}
-                      <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+              return (
+                <div key={index} className="flex items-center gap-3">
+                  {/* Time Label */}
+                  <div className="w-16 text-sm font-medium text-slate-700">
+                    {slot.time}
+                  </div>
+                  {/* Bar */}
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full flex items-center justify-end pr-3 transition-all duration-500"
+                        style={{ width: `${Math.max(widthPercentage, 3)}%` }}
+                      >
+                        <span className="text-xs font-bold text-white">
                           {slot.count}회
                         </span>
                       </div>
-                      {/* Bar */}
-                      <div
-                        className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500 hover:from-orange-600 hover:to-orange-500 relative"
-                        style={{ height: `${heightPercentage}%`, minHeight: slot.count > 0 ? '8px' : '0px' }}
-                      >
-                        {/* Subtle top highlight */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/30 rounded-t-lg"></div>
-                      </div>
-                    </div>
-                    {/* X-axis Label */}
-                    <div className="mt-2 text-xs font-medium text-slate-600 whitespace-nowrap">
-                      {slot.time}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Y-axis Reference Lines */}
-            <div className="relative -mt-6 px-4 pointer-events-none">
-              <div className="absolute inset-x-0 top-0 flex flex-col justify-between" style={{ height: '240px' }}>
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="border-t border-slate-100 relative">
-                    <span className="absolute -left-8 -top-2 text-xs text-slate-400">
-                      {Math.round((Math.max(...stats.popularTimeSlots.map(s => s.count)) * (4 - i)) / 4)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Recent Transactions */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h3 className="font-bold text-lg text-slate-900 mb-4">최근 거래 내역</h3>
-        {!stats.recentTransactions || stats.recentTransactions.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-8">거래 내역이 없습니다</p>
-        ) : (
+      {/* Recent Transactions - Only show if data exists */}
+      {stats.recentTransactions && stats.recentTransactions.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="font-bold text-lg text-slate-900 mb-4">최근 거래 내역</h3>
           <div className="space-y-3">
             {stats.recentTransactions.map((transaction) => (
               <div
@@ -229,8 +207,8 @@ const StatsDashboard: React.FC<StatsDashboardProps> = ({ instructorEmail, instru
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

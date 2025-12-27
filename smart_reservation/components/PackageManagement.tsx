@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ClassPackage, ClassType } from '../types';
-import { getClassPackages, createClassPackage, updateClassPackage, deleteClassPackage } from '../lib/supabase/database';
+import { getClassPackages, createClassPackage, updateClassPackage, deleteClassPackage, getInstructorCoachings } from '../lib/supabase/database';
 import { Package, Plus, Edit2, Trash2, Save, X, Loader2, DollarSign, Calendar, Users } from 'lucide-react';
 
 interface PackageManagementProps {
@@ -8,24 +8,33 @@ interface PackageManagementProps {
   instructorId?: string;
 }
 
+interface Coaching {
+  id: string;
+  title: string;
+  type: string;
+}
+
 const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, instructorId }) => {
   const [packages, setPackages] = useState<ClassPackage[]>([]);
+  const [coachings, setCoachings] = useState<Coaching[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   // Form state
-  const [formData, setFormData] = useState<Partial<ClassPackage>>({
+  const [formData, setFormData] = useState<Partial<ClassPackage & { coachingId?: string }>>({
     name: '',
     type: ClassType.PRIVATE,
     credits: 10,
     validDays: 30,
     price: 0,
-    isActive: true
+    isActive: true,
+    coachingId: ''
   });
 
   useEffect(() => {
     fetchPackages();
+    fetchCoachings();
   }, []);
 
   const fetchPackages = async () => {
@@ -41,6 +50,16 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
     }
   };
 
+  const fetchCoachings = async () => {
+    if (!instructorId) return;
+    try {
+      const result = await getInstructorCoachings(instructorId);
+      setCoachings(result);
+    } catch (err) {
+      console.error('Failed to fetch coachings:', err);
+    }
+  };
+
   const handleCreate = () => {
     setIsCreating(true);
     setFormData({
@@ -49,7 +68,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
       credits: 10,
       validDays: 30,
       price: 0,
-      isActive: true
+      isActive: true,  // 항상 활성화
+      coachingId: ''
     });
   };
 
@@ -59,8 +79,18 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.price || !instructorId) {
-      alert('수강권 이름과 가격을 입력해주세요.');
+    if (!formData.name || !instructorId) {
+      alert('수강권 이름을 입력해주세요.');
+      return;
+    }
+
+    if (!formData.coachingId) {
+      alert('연결할 코칭을 선택해주세요.');
+      return;
+    }
+
+    if (formData.price === undefined || formData.price === null || formData.price < 0) {
+      alert('가격을 입력해주세요.');
       return;
     }
 
@@ -103,13 +133,10 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
 
   const renderForm = () => (
     <div className="bg-white border-2 border-orange-200 rounded-xl p-6 space-y-4 shadow-md">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <h3 className="font-bold text-lg text-slate-900">
           {editingId ? '수강권 수정' : '새 수강권 추가'}
         </h3>
-        <button onClick={handleCancel} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-          <X size={20} />
-        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,6 +149,27 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
             placeholder="예: 개인 레슨 10회권"
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">연결할 코칭 선택 *</label>
+          <select
+            value={formData.coachingId || ''}
+            onChange={(e) => setFormData({ ...formData, coachingId: e.target.value })}
+            className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
+          >
+            <option value="">코칭을 선택하세요</option>
+            {coachings.map((coaching) => (
+              <option key={coaching.id} value={coaching.id}>
+                {coaching.title} ({coaching.type === 'private' ? '개인' : '그룹'})
+              </option>
+            ))}
+          </select>
+          {coachings.length === 0 && (
+            <p className="text-sm text-orange-600 mt-1">
+              먼저 코칭 관리에서 코칭을 생성해주세요.
+            </p>
+          )}
         </div>
 
         <div>
@@ -140,8 +188,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
           <label className="block text-sm font-medium text-slate-700 mb-2">횟수 *</label>
           <input
             type="number"
-            value={formData.credits || 0}
-            onChange={(e) => setFormData({ ...formData, credits: parseInt(e.target.value) })}
+            value={formData.credits}
+            onChange={(e) => setFormData({ ...formData, credits: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             min="1"
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
           />
@@ -151,8 +199,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
           <label className="block text-sm font-medium text-slate-700 mb-2">유효기간 (일) *</label>
           <input
             type="number"
-            value={formData.validDays || 0}
-            onChange={(e) => setFormData({ ...formData, validDays: parseInt(e.target.value) })}
+            value={formData.validDays}
+            onChange={(e) => setFormData({ ...formData, validDays: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             min="1"
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
           />
@@ -162,8 +210,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
           <label className="block text-sm font-medium text-slate-700 mb-2">가격 (원) *</label>
           <input
             type="number"
-            value={formData.price || 0}
-            onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+            value={formData.price}
+            onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             min="0"
             step="1000"
             className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
@@ -171,30 +219,19 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 pt-2">
-        <input
-          type="checkbox"
-          id="isActive"
-          checked={formData.isActive}
-          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-          className="w-4 h-4 rounded text-orange-500 focus:ring-orange-400"
-        />
-        <label htmlFor="isActive" className="text-sm text-slate-700">판매 활성화</label>
-      </div>
-
-      <div className="flex space-x-3 pt-4">
-        <button
-          onClick={handleCancel}
-          className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors"
-        >
-          취소
-        </button>
+      <div className="space-y-3 pt-4">
         <button
           onClick={handleSave}
-          className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center"
+          className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition-colors flex items-center justify-center shadow-md"
         >
-          <Save size={18} className="mr-2" />
-          저장
+          <Save size={20} className="mr-2" />
+          {editingId ? '수정 완료' : '저장'}
+        </button>
+        <button
+          onClick={handleCancel}
+          className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors"
+        >
+          취소
         </button>
       </div>
     </div>

@@ -200,6 +200,24 @@ const App: React.FC = () => {
       console.log('[handleAuthenticatedUser] New user created:', existingUser);
     }
 
+    // 🆕 Save Google tokens for calendar access
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.provider_token) {
+        console.log('[handleAuthenticatedUser] Saving Google tokens');
+        const { saveGoogleTokens } = await import('./lib/supabase/database');
+        await saveGoogleTokens(existingUser.id, {
+          access_token: session.provider_token,
+          refresh_token: session.provider_refresh_token,
+          expires_at: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : undefined,
+        });
+        console.log('[handleAuthenticatedUser] Google tokens saved');
+      }
+    } catch (error) {
+      console.error('[handleAuthenticatedUser] Failed to save Google tokens:', error);
+      // Don't block login if token save fails
+    }
+
     // Handle invitation acceptance
     if (route.params.invite) {
       try {
@@ -457,6 +475,10 @@ const App: React.FC = () => {
       case ROUTES.STUDENTS:
       case ROUTES.ATTENDANCE:
       case ROUTES.PACKAGES:
+      case ROUTES.STUDENT_HOME:
+      case ROUTES.STUDENT_CALENDAR:
+      case ROUTES.STUDENT_RESERVATIONS:
+      case ROUTES.STUDENT_PROFILE:
         if (!currentUser) {
           navigateTo(ROUTES.LOGIN);
           return null;
@@ -466,8 +488,14 @@ const App: React.FC = () => {
         if (currentUser.userType === UserType.STUDENT) {
           let initialTab: 'home' | 'calendar' | 'reservations' | 'students' | 'attendance' | 'more' | 'profile' = 'home';
 
-          if (route.path === ROUTES.RESERVATIONS) {
+          if (route.path === ROUTES.RESERVATIONS || route.path === ROUTES.STUDENT_RESERVATIONS) {
             initialTab = 'reservations';
+          } else if (route.path === ROUTES.STUDENT_CALENDAR) {
+            initialTab = 'calendar';
+          } else if (route.path === ROUTES.STUDENT_PROFILE) {
+            initialTab = 'profile';
+          } else if (route.path === ROUTES.STUDENT_HOME) {
+            initialTab = 'home';
           }
 
           return <MobileDashboard user={currentUser} initialTab={initialTab} />;
@@ -554,6 +582,10 @@ const App: React.FC = () => {
     ROUTES.ATTENDANCE,
     ROUTES.PACKAGES,
     ROUTES.PROFILE,
+    ROUTES.STUDENT_HOME,
+    ROUTES.STUDENT_CALENDAR,
+    ROUTES.STUDENT_RESERVATIONS,
+    ROUTES.STUDENT_PROFILE,
     ROUTES.PRIVACY,
     ROUTES.TERMS,
     ROUTES.ONBOARDING

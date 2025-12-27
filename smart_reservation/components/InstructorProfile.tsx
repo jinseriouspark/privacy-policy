@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, UserType } from '../types';
 import { updateUser } from '../lib/supabase/database';
-import { ArrowLeft, Settings, Save, Copy, Share2, Loader2, CheckCircle2, User as UserIcon, Mail } from 'lucide-react';
+import { ArrowLeft, Settings, Save, Loader2, CheckCircle2, User as UserIcon, Mail } from 'lucide-react';
 
 interface InstructorProfileProps {
   user: User;
@@ -16,10 +16,6 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}?coach=${user.email}`
-    : '';
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -46,12 +42,6 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
     } finally {
       setLoading(false);
     }
-  };
-
-  const copyLink = (link: string) => {
-    navigator.clipboard.writeText(link).then(() => {
-      alert('링크가 복사되었습니다!');
-    });
   };
 
   if (success) {
@@ -144,28 +134,6 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
               />
             </div>
 
-            {/* Share Link Section */}
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 rounded-xl p-6">
-              <h3 className="font-bold text-slate-900 mb-1 flex items-center gap-2">
-                <Share2 size={18} className="text-orange-600" />
-                예약 링크
-              </h3>
-              <p className="text-sm text-slate-600 mb-4">
-                학생들에게 이 링크를 공유하세요
-              </p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white border-2 border-orange-200 rounded-lg px-4 py-3 font-mono text-sm text-slate-700 truncate">
-                  {shareUrl}
-                </div>
-                <button
-                  onClick={() => copyLink(shareUrl)}
-                  className="px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-2 font-semibold"
-                >
-                  <Copy size={16} />
-                  복사
-                </button>
-              </div>
-            </div>
 
             {error && (
               <div className="p-4 bg-red-50 text-red-700 rounded-lg border-2 border-red-200 font-medium">

@@ -12,6 +12,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
   }
 });
 
@@ -25,9 +35,10 @@ export type Database = {
           email: string;
           name: string;
           picture?: string;
-          user_type: 'instructor' | 'student';
-          username?: string;
           bio?: string;
+          studio_name?: string;
+          phone?: string;
+          short_id?: string;
           created_at: string;
           updated_at: string;
         };

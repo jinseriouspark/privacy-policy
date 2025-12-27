@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, Calendar, Loader2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
+import { Check, Calendar, Loader2, Settings as SettingsIcon, ExternalLink, LogOut } from 'lucide-react';
 import { createCoachingCalendar } from '../lib/google-calendar';
 import { updateCoachingCalendar } from '../lib/supabase/database';
+import { requestCalendarPermissions } from '../lib/supabase/auth';
 
 interface InstructorSetupModalProps {
   adminEmail: string;
@@ -24,9 +25,18 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
   const [calendarName, setCalendarName] = useState(defaultCalendarName || '코칭 예약');
   const [createdCalendarId, setCreatedCalendarId] = useState<string | null>(null);
 
+  // 🔧 DEBUG: Log received props
+  console.log('[InstructorSetupModal] Props:', { instructorId, coachingId, defaultCalendarName });
+
   const handleCreateCalendar = async () => {
     if (!calendarName.trim()) {
       setError('캘린더 이름을 입력해주세요.');
+      return;
+    }
+
+    // 🔧 Validate coachingId
+    if (!coachingId || coachingId === 'undefined') {
+      setError('코칭 ID가 올바르지 않습니다. 페이지를 새로고침해주세요.');
       return;
     }
 
@@ -41,9 +51,9 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
       console.log('[InstructorSetupModal] Calendar created:', calendar);
 
       // CHANGED: Supabase에 코칭별로 캘린더 ID 저장 (instructor settings가 아님)
-      console.log('[InstructorSetupModal] Saving calendar_id to coaching:', {
+      console.log('[InstructorSetupModal] Saving google_calendar_id to coaching:', {
         coachingId,
-        calendar_id: calendar.id
+        google_calendar_id: calendar.id
       });
 
       await updateCoachingCalendar(coachingId, calendar.id);
@@ -146,15 +156,21 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
                     <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">
                         <p className="font-bold mb-1">⚠️ 오류 발생</p>
                         <p>{error}</p>
-                        {error.includes('insufficient') || error.includes('scopes') ? (
-                            <div className="mt-3 p-3 bg-white rounded-lg border border-red-300">
-                                <p className="font-bold text-slate-900 mb-2">🔑 권한 재설정이 필요합니다</p>
-                                <ol className="text-xs text-slate-700 space-y-1 list-decimal list-inside">
-                                    <li>우측 상단 프로필에서 <b>로그아웃</b></li>
-                                    <li>다시 <b>Google로 로그인</b></li>
-                                    <li>캘린더 권한 요청 시 <b>허용</b> 클릭</li>
-                                    <li>이 화면에서 다시 <b>생성하기</b> 버튼 클릭</li>
-                                </ol>
+                        {error.includes('권한') || error.includes('토큰') || error.includes('insufficient') || error.includes('scopes') ? (
+                            <div className="mt-3 space-y-3">
+                                <div className="p-3 bg-white rounded-lg border border-red-300">
+                                    <p className="font-bold text-slate-900 mb-2">🔑 캘린더 권한이 필요합니다</p>
+                                    <p className="text-xs text-slate-700 mb-3">
+                                        Google 캘린더를 생성하려면 다시 로그인하여 캘린더 권한을 허용해야 합니다.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => requestCalendarPermissions()}
+                                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                                >
+                                    <LogOut size={20} />
+                                    <span>로그아웃 후 다시 로그인</span>
+                                </button>
                             </div>
                         ) : (
                             <p className="text-xs text-slate-600 mt-2">

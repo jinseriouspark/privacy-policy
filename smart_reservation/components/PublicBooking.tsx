@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, Coaching } from '../types';
 import { Calendar, Clock, Loader2, CheckCircle2, Mail, User as UserIcon, AlertTriangle, BookOpen, ChevronRight } from 'lucide-react';
-import { getInstructorCoachings } from '../lib/supabase/database';
+import { getInstructorCoachings, getUserById } from '../lib/supabase/database';
 
 interface PublicBookingProps {
   instructor: Instructor;
@@ -14,10 +14,23 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ instructor, user, onSelec
   const [coachings, setCoachings] = useState<Coaching[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [instructorShortId, setInstructorShortId] = useState<string>('');
 
   useEffect(() => {
     fetchCoachings();
+    fetchInstructorInfo();
   }, [instructor.id]);
+
+  const fetchInstructorInfo = async () => {
+    try {
+      const instructorData = await getUserById(instructor.id);
+      if (instructorData && instructorData.short_id) {
+        setInstructorShortId(instructorData.short_id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch instructor info:', err);
+    }
+  };
 
   const fetchCoachings = async () => {
     setLoading(true);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, UserType } from '../types';
-import { postToGAS } from '../services/api';
+import { updateUser } from '../lib/supabase/database';
 import { Building2, Save, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface StudioSetupProps {
@@ -10,28 +10,39 @@ interface StudioSetupProps {
 
 const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
   const [studioName, setStudioName] = useState(user.studioName || '');
-  const [username, setUsername] = useState(user.username || '');
+  const [studioSlug, setStudioSlug] = useState(user.short_id || '');
+  const [displayName, setDisplayName] = useState(user.name || '');
   const [bio, setBio] = useState(user.bio || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const validateSlug = (slug: string): boolean => {
+    const slugRegex = /^[a-z0-9-]+$/;
+    return slugRegex.test(slug);
+  };
+
+  const handleSlugChange = (value: string) => {
+    const lowerValue = value.toLowerCase().replace(/\s+/g, '-');
+    setStudioSlug(lowerValue);
+  };
+
   const handleSubmit = async () => {
     if (!studioName.trim()) {
       setError('스튜디오 이름을 입력해주세요.');
       return;
     }
-    if (!username.trim()) {
-      setError('사용자 이름을 입력해주세요.');
+    if (!studioSlug.trim()) {
+      setError('URL 주소를 입력해주세요.');
       return;
     }
-    if (username.length < 3) {
-      setError('사용자 이름은 3자 이상이어야 합니다.');
+    if (!validateSlug(studioSlug)) {
+      setError('URL 주소는 영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.');
       return;
     }
-    if (!/^[a-z0-9_-]+$/.test(username)) {
-      setError('사용자 이름은 영문 소문자, 숫자, -, _ 만 사용 가능합니다.');
+    if (!displayName.trim()) {
+      setError('이름을 입력해주세요.');
       return;
     }
 
@@ -39,27 +50,31 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
     setError(null);
 
     try {
-      const result = await postToGAS<User>({
-        action: 'updateStudioProfile',
-        email: user.email,
-        studioName: studioName.trim(),
-        username: username.trim(),
+      const updateData: any = {
+        studio_name: studioName.trim(),
+        short_id: studioSlug.trim(),
+        name: displayName.trim(),
         bio: bio.trim(),
-        phone: phone.trim()
-      });
+        phone: phone.trim(),
+        is_profile_complete: true
+      };
+
+      const updatedUser = await updateUser(user.id, updateData);
 
       setSuccess(true);
       setTimeout(() => {
         onComplete({
           ...user,
-          studioName,
-          username,
-          bio,
-          phone,
+          studioName: studioName.trim(),
+          short_id: studioSlug.trim(),
+          name: displayName.trim(),
+          bio: bio.trim(),
+          phone: phone.trim(),
           isProfileComplete: true
         });
       }, 1500);
     } catch (err: any) {
+      console.error('[StudioSetup] Error:', err);
       setError(err.message || '저장에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -107,23 +122,36 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
 
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-2">
-            사용자 이름 (URL) <span className="text-red-500">*</span>
+            URL 주소 <span className="text-red-500">*</span>
           </label>
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              placeholder="studio-name"
-              className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all font-mono text-sm"
-            />
-            <p className="text-xs text-slate-400">
-              예약 링크: <span className="font-mono text-slate-600">yoursite.com/?coach={username || 'username'}</span>
+          <input
+            type="text"
+            value={studioSlug}
+            onChange={(e) => handleSlugChange(e.target.value)}
+            placeholder="예: gangnam-pilates"
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all text-base font-mono"
+          />
+          <p className="text-xs text-slate-500 mt-2">
+            영문 소문자, 숫자, 하이픈(-)만 사용 가능합니다
+          </p>
+          {studioSlug && (
+            <p className="text-xs text-orange-600 mt-1">
+              예약 링크: /book/{studioSlug}
             </p>
-            <p className="text-xs text-slate-400">
-              영문 소문자, 숫자, -, _ 만 사용 가능 (최소 3자)
-            </p>
-          </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-2">
+            이름 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="홍길동"
+            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all text-base"
+          />
         </div>
 
         <div>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Instructor, AvailabilityData } from '../types';
-import { getInstructorAvailability, createReservation, getStudentPackages, getInstructorSettings, deductPackageCredit } from '../lib/supabase/database';
+import { getInstructorAvailability, createReservation, getStudentPackages, getInstructorSettings, deductPackageCredit, getCoachingCalendar } from '../lib/supabase/database';
 import { signInWithGoogle } from '../lib/supabase/auth';
-import { addEventToCalendar } from '../lib/google-calendar';
+import { addEventToCalendar, addEventToStudentCalendar, ensureCalendarInList } from '../lib/google-calendar';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, CheckCircle2, Calendar as CalendarIcon, Sun, Moon, ExternalLink, Package } from 'lucide-react';
 
 interface ReservationProps {
@@ -176,51 +176,97 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
         throw new Error('수강권 잔여 횟수가 부족합니다.');
       }
 
-      const startTime = new Date(`${selectedDateStr}T${selectedTime}:00`);
-      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour duration
-
-      // Get instructor's calendar ID
-      console.log('[Reservation] Fetching instructor settings for:', instructor.id);
-      const instructorSettings = await getInstructorSettings(instructor.id);
-      console.log('[Reservation] Instructor settings:', instructorSettings);
-
-      if (!instructorSettings?.calendar_id) {
-        console.error('[Reservation] No calendar_id found in settings:', instructorSettings);
-        throw new Error('강사의 캘린더가 설정되지 않았습니다. 강사에게 문의해주세요.');
+      // Get coaching_id from package
+      const coachingId = selectedPackage.coaching_id;
+      if (!coachingId) {
+        throw new Error('수강권에 연결된 코칭을 찾을 수 없습니다.');
       }
 
-      console.log('[Reservation] Using calendar_id:', instructorSettings.calendar_id);
+      const startTime = new Date(`${selectedDateStr}T${selectedTime}:00`);
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour duration
 
       // Deduct package credit FIRST (before creating reservation)
       await deductPackageCredit(selectedPackageId);
 
-      // Create Google Calendar event with Meet link
-      console.log('Creating calendar event with:', {
-        calendarId: instructorSettings.calendar_id,
-        title: `코칭 - ${user.name}`,
-        attendees: [user.email]
-      });
+      // Try to get coaching's calendar ID (optional)
+      let meetLink = '';
+      let googleEventId = '';
 
-      const event = await addEventToCalendar({
-        calendarId: instructorSettings.calendar_id,
-        title: `코칭 - ${user.name}`,
-        start: startTime.toISOString(),
-        end: endTime.toISOString(),
-        description: `${instructor.name} 강사님과의 코칭 세션`,
-        attendees: [user.email] // Add student email
-      });
+      try {
+        console.log('[Reservation] Fetching coaching calendar for coaching_id:', coachingId);
+        const coaching = await getCoachingCalendar(coachingId.toString());
+        console.log('[Reservation] Coaching calendar:', coaching);
 
-      console.log('Calendar event created:', event);
+        if (coaching?.google_calendar_id) {
+          console.log('[Reservation] Using google_calendar_id:', coaching.google_calendar_id);
 
-      // Create reservation with Meet link
+          // 🆕 캘린더가 목록에 없으면 자동으로 추가
+          await ensureCalendarInList(coaching.google_calendar_id);
+
+          // Add student as writer to the calendar (first time only)
+          try {
+            const { addCalendarWriter } = await import('../lib/google-calendar');
+            await addCalendarWriter(coaching.google_calendar_id, user.email);
+            console.log('[Reservation] Added student as writer to calendar');
+          } catch (e) {
+            console.warn('[Reservation] Failed to add writer (may already exist):', e);
+          }
+
+          // Create Google Calendar event with Meet link
+          console.log('Creating calendar event with:', {
+            calendarId: coaching.google_calendar_id,
+            title: `코칭 - ${user.name}`,
+            attendees: [user.email]
+          });
+
+          const event = await addEventToCalendar({
+            calendarId: coaching.google_calendar_id,
+            title: `코칭 - ${user.name}`,
+            start: startTime.toISOString(),
+            end: endTime.toISOString(),
+            description: `${instructor.name} 강사님과의 코칭 세션`,
+            attendees: [user.email]
+          });
+
+          console.log('Calendar event created:', event);
+          meetLink = event.meetLink || '';
+          googleEventId = event.id || '';
+
+          // Add event to student's calendar as well
+          if (event.meetLink) {
+            try {
+              const studentEvent = await addEventToStudentCalendar({
+                title: `코칭 - ${instructor.name} 강사님`,
+                start: startTime.toISOString(),
+                end: endTime.toISOString(),
+                meetLink: event.meetLink,
+                instructorName: instructor.name
+              });
+              if (studentEvent) {
+                console.log('[Reservation] Student calendar event created:', studentEvent.htmlLink);
+              }
+            } catch (e) {
+              console.error('[Reservation] Failed to add to student calendar (non-critical):', e);
+            }
+          }
+        } else {
+          console.warn('[Reservation] No Google Calendar ID found - creating reservation without Meet link');
+        }
+      } catch (calendarError) {
+        console.error('[Reservation] Google Calendar integration failed (non-critical):', calendarError);
+        // Continue without Google Calendar integration
+      }
+
+      // Create reservation (with or without Meet link)
       await createReservation({
         student_id: user.id,
         instructor_id: instructor.id,
+        coaching_id: coachingId, // ← 추가: coaching_id 전달
         package_id: selectedPackageId,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
-        meet_link: event.meetLink || '',
-        google_event_id: event.id,
+        meet_link: meetLink,
+        google_event_id: googleEventId,
         status: 'confirmed'
       });
 

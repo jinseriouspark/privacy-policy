@@ -429,6 +429,57 @@ export async function getClassPackages(instructorId: string) {
 }
 
 /**
+ * Save Google tokens for user
+ */
+export async function saveGoogleTokens(userId: number, tokens: {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: string;
+}) {
+  const updateData: any = {
+    google_access_token: tokens.access_token,
+    google_token_expires_at: tokens.expires_at || new Date(Date.now() + 3600 * 1000).toISOString(),
+  };
+
+  // Only update refresh_token if provided (it's not always returned)
+  if (tokens.refresh_token) {
+    updateData.google_refresh_token = tokens.refresh_token;
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[saveGoogleTokens] Error:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get instructor's Google tokens
+ */
+export async function getInstructorTokens(instructorId: number) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('google_access_token, google_refresh_token, google_token_expires_at')
+    .eq('id', instructorId)
+    .single();
+
+  if (error) {
+    console.error('[getInstructorTokens] Error:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * ClassPackage 생성
  */
 export async function createClassPackage(instructorId: string, packageData: {
@@ -1341,7 +1392,7 @@ function generateInvitationCode(): string {
 /**
  * 학생 초대하기 (코칭 기반)
  */
-export async function createInvitation(coachingId: string, studentEmail: string) {
+export async function createInvitation(coachingId: string, studentEmail: string, packageIds?: string[]) {
   // Get coaching info to get instructor_id
   const { data: coaching, error: coachingError } = await supabase
     .from('coachings')
@@ -1387,7 +1438,8 @@ export async function createInvitation(coachingId: string, studentEmail: string)
     email: studentEmail,
     invitation_code: invitationCode,
     status: 'pending',
-    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7일
+    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7일
+    package_ids: packageIds || null // 🆕 선택된 수강권 ID 목록
   };
 
   console.log('Inserting invitation:', insertData);
@@ -1474,6 +1526,40 @@ export async function acceptInvitation(invitationCode: string, studentId: string
   }
 
   console.log('[acceptInvitation] Relation created successfully (or already exists)');
+
+  // 🆕 선택된 수강권 자동 할당
+  if (invitation.package_ids && invitation.package_ids.length > 0) {
+    console.log('[acceptInvitation] Auto-assigning packages:', invitation.package_ids);
+
+    for (const packageId of invitation.package_ids) {
+      try {
+        // Get package template details
+        const { data: template } = await supabase
+          .from('package_templates')
+          .select('*')
+          .eq('id', packageId)
+          .single();
+
+        if (template) {
+          // Create package for student
+          await createPackage({
+            student_id: studentId,
+            instructor_id: invitation.coaching.instructor_id,
+            coaching_id: invitation.coaching_id,
+            name: template.name,
+            total_sessions: template.total_sessions,
+            remaining_sessions: template.total_sessions,
+            start_date: new Date().toISOString(),
+            expires_at: new Date(Date.now() + template.validity_days * 24 * 60 * 60 * 1000).toISOString()
+          });
+          console.log('[acceptInvitation] Package assigned:', template.name);
+        }
+      } catch (pkgError) {
+        console.error('[acceptInvitation] Failed to assign package:', packageId, pkgError);
+        // Continue with other packages even if one fails
+      }
+    }
+  }
 
   // 초대 상태 업데이트
   const { error: updateError } = await supabase

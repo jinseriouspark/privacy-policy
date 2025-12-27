@@ -43,7 +43,6 @@ const AccountTypeSelection: React.FC<AccountTypeSelectionProps> = ({ onSelectTyp
                     <div className="text-left">
                       <h3 className="text-lg font-bold text-slate-900 mb-1">강사 / 코치</h3>
                       <p className="text-sm text-slate-600">수강생을 관리하고 예약을 받습니다.</p>
-                      <p className="text-xs text-slate-500 mt-1">Calendly 스타일 예약 링크를 생성할 수 있습니다.</p>
                     </div>
                   </div>
                   <ArrowRight size={24} className="text-slate-300 group-hover:text-orange-500 transition-colors" />

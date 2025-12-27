@@ -17,7 +17,7 @@ interface SignupProps {
 const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
   const [step, setStep] = useState<'type' | 'profile'>('type');
   const [selectedType, setSelectedType] = useState<UserType | null>(null);
-  const [username, setUsername] = useState('');
+  const [shortId, setShortId] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
     }
   };
 
-  const handleComplete = async (type: UserType, username: string, bio: string) => {
+  const handleComplete = async (type: UserType, shortId: string, bio: string) => {
     setLoading(true);
     setError(null);
 
@@ -44,7 +44,7 @@ const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
         name: googleUser.name,
         picture: googleUser.picture,
         userType: type,
-        username: type === UserType.INSTRUCTOR ? username : undefined,
+        short_id: type === UserType.INSTRUCTOR ? shortId : undefined,
         bio: type === UserType.INSTRUCTOR ? bio : undefined,
       });
 
@@ -55,7 +55,7 @@ const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
         name: user.name,
         picture: user.picture,
         userType: user.user_type,
-        username: user.username,
+        short_id: user.short_id,
         bio: user.bio,
         isProfileComplete: true
       } as User);
@@ -68,20 +68,20 @@ const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
   };
 
   const handleProfileSubmit = () => {
-    if (!username.trim()) {
-      setError('사용자 이름을 입력해주세요.');
+    if (!shortId.trim()) {
+      setError('사용자 ID를 입력해주세요.');
       return;
     }
-    if (username.length < 3) {
-      setError('사용자 이름은 3자 이상이어야 합니다.');
+    if (shortId.length < 3) {
+      setError('사용자 ID는 3자 이상이어야 합니다.');
       return;
     }
-    if (!/^[a-z0-9_-]+$/.test(username)) {
-      setError('사용자 이름은 영문 소문자, 숫자, -, _만 사용 가능합니다.');
+    if (!/^[a-z0-9_-]+$/.test(shortId)) {
+      setError('사용자 ID는 영문 소문자, 숫자, -, _만 사용 가능합니다.');
       return;
     }
 
-    handleComplete(UserType.INSTRUCTOR, username, bio);
+    handleComplete(UserType.INSTRUCTOR, shortId, bio);
   };
 
   if (step === 'type') {
@@ -182,13 +182,13 @@ const Signup: React.FC<SignupProps> = ({ googleUser, onComplete, onBack }) => {
           <div className="space-y-1">
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              placeholder="username"
+              value={shortId}
+              onChange={(e) => setShortId(e.target.value.toLowerCase())}
+              placeholder="short-id"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
             />
             <p className="text-xs text-slate-400">
-              예약 링크: <span className="font-mono text-slate-600">yoursite.com/?coach={username || 'username'}</span>
+              예약 링크: <span className="font-mono text-slate-600">yoursite.com/{shortId || 'your-id'}</span>
             </p>
             <p className="text-xs text-slate-400">
               영문 소문자, 숫자, -, _ 만 사용 가능 (최소 3자)
