@@ -94,31 +94,14 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
   const filteredSchedules = useMemo(() => {
     if (!selectedDateStr) return [];
 
-    // 실제 일정 필터링
-    const realSchedules = schedules.filter(item => {
+    // 일정 필터링 (특별한 날 포함)
+    return schedules.filter(item => {
       if (item.date !== selectedDateStr) return false;
       if (item.id?.startsWith('practice_')) return false;
       if (item.meta === '수행 완료') return false;
-      return item.type === 'temple' || item.type === 'personal';
+      return true;
     });
-
-    // 선택된 날짜의 특별한 날 가져오기
-    const selectedDay = days.find(d => d.dateStr === selectedDateStr);
-    if (selectedDay?.specialEvent) {
-      // 특별한 날을 일정처럼 추가
-      const specialSchedule: ScheduleItem = {
-        id: `special_${selectedDateStr}`,
-        type: 'temple',
-        time: '종일',
-        title: selectedDay.specialEvent,
-        date: selectedDateStr,
-        meta: '절기/행사'
-      };
-      return [specialSchedule, ...realSchedules];
-    }
-
-    return realSchedules;
-  }, [selectedDateStr, schedules, days]);
+  }, [selectedDateStr, schedules]);
 
   return (
     <div className="w-full flex flex-col">

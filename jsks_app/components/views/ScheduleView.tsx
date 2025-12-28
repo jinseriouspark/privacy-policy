@@ -301,34 +301,13 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     selectedDate.getDate()
   );
 
-  // Filter real schedules
-  const realSchedules = schedules.filter(item => {
+  // Filter schedules for selected date
+  const filteredSchedules = schedules.filter(item => {
     if (item.date !== selectedDateKey) return false;
     if (item.id.startsWith('practice_')) return false; // Exclude practice logs
     if (item.meta === '수행 완료') return false; // Exclude practice completion records
-    if (item.type !== 'temple' && item.type !== 'personal') return false; // Temple and personal events
     return true;
   });
-
-  // Check if selected date has a special event
-  const isMonday = selectedDate.getDay() === 1;
-  const specialInfo = getSpecialDate(selectedDateKey, isMonday);
-
-  // Combine special dates with real schedules
-  const filteredSchedules = (() => {
-    if (specialInfo.event) {
-      const specialSchedule: ScheduleItem = {
-        id: `special_${selectedDateKey}`,
-        type: 'temple',
-        time: '종일',
-        title: specialInfo.event,
-        date: selectedDateKey,
-        meta: '절기/행사'
-      };
-      return [specialSchedule, ...realSchedules];
-    }
-    return realSchedules;
-  })();
 
   return (
     <div

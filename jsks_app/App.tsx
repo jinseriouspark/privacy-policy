@@ -62,6 +62,19 @@ const App: React.FC = () => {
 
     initApp();
 
+    // 앱 버전 체크 - 버전이 다르면 강제 로그아웃
+    const APP_VERSION = '1.0.2'; // 버전을 올리면 모든 사용자 강제 로그아웃
+    const savedVersion = localStorage.getItem('app_version');
+
+    if (savedVersion !== APP_VERSION) {
+      // 버전이 다르면 로그아웃 처리
+      localStorage.clear();
+      localStorage.setItem('app_version', APP_VERSION);
+      setUser(null);
+      setCurrentView('login');
+      return;
+    }
+
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
@@ -97,7 +110,20 @@ const App: React.FC = () => {
   const loadSchedules = async (email: string, useCache: boolean = true) => {
     try {
       const data = await dbService.getSchedules(email, useCache);
-      setSchedules(data);
+
+      // Add special dates as schedule items
+      const { getAllSpecialDates } = await import('./utils/specialDates');
+      const specialDates = getAllSpecialDates();
+      const specialSchedules: ScheduleItem[] = Object.entries(specialDates).map(([dateKey, title]) => ({
+        id: `special_${dateKey}`,
+        type: 'temple' as const,
+        time: '종일',
+        title: title,
+        date: dateKey,
+        meta: '절기/행사'
+      }));
+
+      setSchedules([...specialSchedules, ...data]);
     } catch (e) { console.warn("Schedules load failed", e); }
   };
   
@@ -118,9 +144,10 @@ const App: React.FC = () => {
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
+    localStorage.setItem('app_version', '1.0.2'); // 로그인 시 버전 저장
     loadSchedules(loggedInUser.email);
     loadPracticeLogs(loggedInUser.email);
-    
+
     if (loggedInUser.role === 'monk') {
       setCurrentView('monk-home');
       return;
@@ -370,7 +397,19 @@ const App: React.FC = () => {
         );
 
       case 'schedule':
-        return <ScheduleView schedules={schedules} currentUser={user} onScheduleClick={setSelectedSchedule} onAddSchedule={() => setCurrentView('add')} />;
+        return (
+          <ScheduleView
+            schedules={schedules}
+            currentUser={user}
+            onScheduleClick={setSelectedSchedule}
+            onAddSchedule={() => setCurrentView('add')}
+            onRefresh={async () => {
+              if (user) {
+                await loadSchedules(user.email, false);
+              }
+            }}
+          />
+        );
 
       case 'add':
         return <AddView onComplete={() => { setCurrentView('home'); if(user) loadSchedules(user.email, false); }} currentUser={user} appConfig={appConfig} />;
