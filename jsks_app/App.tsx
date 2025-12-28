@@ -391,6 +391,14 @@ const App: React.FC = () => {
                 }
                 title={appConfig?.scheduleTitle || APP_STRINGS.sectionSchedule}
                 onItemClick={setSelectedSchedule}
+                currentUser={user}
+                onAddSchedule={() => setCurrentView('add')}
+                onDeleteSchedule={async (scheduleId) => {
+                  if (user) {
+                    await dbService.deleteSchedule(scheduleId);
+                    await loadSchedules(user.email, false);
+                  }
+                }}
               />
             </section>
           </div>
