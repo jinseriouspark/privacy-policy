@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save, Calendar, Package as PackageIcon } from 'lucide-react';
+import { X, Plus, Trash2, Save, Calendar, Package as PackageIcon, Clock } from 'lucide-react';
 import { createPackage, updatePackage, deletePackage, getCoachings, getClassPackages } from '../lib/supabase/database';
 import { User, ClassPackage } from '../types';
+import { PackageTimeModal } from './PackageTimeModal';
 
 interface UserEditModalProps {
   user: User;
@@ -23,6 +24,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
   const [classPackages, setClassPackages] = useState<ClassPackage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
 
   // New package form
   const [newPackage, setNewPackage] = useState({
@@ -281,23 +283,34 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleUpdateSessions(pkg.id, Math.max(0, pkg.remaining_sessions - 1))}
-                          disabled={loading || pkg.remaining_sessions <= 0}
-                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-sm disabled:opacity-50"
-                        >
-                          -1
-                        </button>
-                        <div className="flex-1 text-center">
-                          <span className="text-sm font-medium text-slate-700">잔여: {pkg.remaining_sessions}회</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleUpdateSessions(pkg.id, Math.max(0, pkg.remaining_sessions - 1))}
+                            disabled={loading || pkg.remaining_sessions <= 0}
+                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-sm disabled:opacity-50"
+                          >
+                            -1
+                          </button>
+                          <div className="flex-1 text-center">
+                            <span className="text-sm font-medium text-slate-700">잔여: {pkg.remaining_sessions}회</span>
+                          </div>
+                          <button
+                            onClick={() => handleUpdateSessions(pkg.id, pkg.remaining_sessions + 1)}
+                            disabled={loading}
+                            className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded text-sm"
+                          >
+                            +1
+                          </button>
                         </div>
+
+                        {/* 🆕 시간 설정 버튼 */}
                         <button
-                          onClick={() => handleUpdateSessions(pkg.id, pkg.remaining_sessions + 1)}
-                          disabled={loading}
-                          className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded text-sm"
+                          onClick={() => setEditingPackageId(pkg.id)}
+                          className="w-full flex items-center justify-center gap-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors"
                         >
-                          +1
+                          <Clock size={14} />
+                          {pkg.working_hours ? '시간 설정 변경' : '특별 시간 설정'}
                         </button>
                       </div>
                     </div>
@@ -444,6 +457,19 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* 🆕 Package Time Configuration Modal */}
+      {editingPackageId && (
+        <PackageTimeModal
+          packageId={editingPackageId}
+          currentPackage={packages.find(p => p.id === editingPackageId)}
+          onClose={() => setEditingPackageId(null)}
+          onSave={() => {
+            setEditingPackageId(null);
+            onSave(); // Refresh packages
+          }}
+        />
+      )}
     </div>
   );
 };
