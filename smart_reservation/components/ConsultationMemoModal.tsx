@@ -61,7 +61,7 @@ export default function ConsultationMemoModal({
 
     try {
       const result = await createStudentMemo({
-        instructorId: userId.toString(),
+        instructorId: userId,
         studentId: student.id,
         studentName: student.name,
         content: content.trim(),

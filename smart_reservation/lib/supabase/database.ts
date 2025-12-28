@@ -2269,7 +2269,7 @@ export interface StudentMemo {
  * 학생 메모 생성
  */
 export async function createStudentMemo(data: {
-  instructorId: string;
+  instructorId: number;
   studentId: string;
   studentName: string;
   content: string;
@@ -2303,7 +2303,7 @@ export async function createStudentMemo(data: {
 /**
  * 강사의 모든 학생 메모 조회
  */
-export async function getStudentMemos(instructorId: string): Promise<StudentMemo[]> {
+export async function getStudentMemos(instructorId: number): Promise<StudentMemo[]> {
   const { data, error } = await supabase
     .from('student_memos')
     .select('*')
@@ -2318,7 +2318,7 @@ export async function getStudentMemos(instructorId: string): Promise<StudentMemo
  * 특정 학생의 메모 조회
  */
 export async function getStudentMemosByStudent(
-  instructorId: string,
+  instructorId: number,
   studentId: string
 ): Promise<StudentMemo[]> {
   const { data, error } = await supabase
