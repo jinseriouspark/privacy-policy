@@ -136,6 +136,7 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
       console.log('[MobileCalendar] 🔍 Calling getAvailableTimeSlots with:', {
         instructor_id: selectedPackage.instructor_id,
         coaching_id: coachingId,
+        package_id: selectedPackage.id,  // 🆕 Log packageId
         date: date.toISOString()
       });
 
