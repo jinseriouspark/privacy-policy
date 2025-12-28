@@ -260,8 +260,8 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       // 성공 메시지
       alert(isEditMode ? '콘텐츠가 수정되었습니다.' : '콘텐츠가 등록되었습니다.');
 
-      // 탭 전환 - 업로드 대기 화면으로 복귀
-      setActiveTab('videos');
+      // 탭 전환 - 오늘의법문 자료관리로 이동
+      setActiveTab('content-review');
     } catch (error) {
       console.error('❌ 비디오 저장 실패:', error);
       console.error('에러 타입:', typeof error);
