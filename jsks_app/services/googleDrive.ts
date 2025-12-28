@@ -52,6 +52,7 @@ export const driveService = {
   listFilesInFolder: async (folderId: string): Promise<DriveFile[]> => {
     // If no access token, request it first
     if (!accessToken) {
+      console.log('⚠️ No access token, requesting new one...');
       await driveService.requestAccessToken();
     }
 
@@ -64,6 +65,29 @@ export const driveService = {
           },
         }
       );
+
+      // 401 에러 시 토큰 재발급 시도
+      if (response.status === 401) {
+        console.log('🔄 Token expired, requesting new token...');
+        await driveService.requestAccessToken();
+
+        // 새 토큰으로 재시도
+        const retryResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType,webViewLink,thumbnailLink,size)&orderBy=modifiedTime desc`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!retryResponse.ok) {
+          throw new Error(`Drive API error after retry: ${retryResponse.status}`);
+        }
+
+        const retryData = await retryResponse.json();
+        return retryData.files || [];
+      }
 
       if (!response.ok) {
         throw new Error(`Drive API error: ${response.status}`);
@@ -80,7 +104,8 @@ export const driveService = {
   // Search files in a folder
   searchFilesInFolder: async (folderId: string, query: string): Promise<DriveFile[]> => {
     if (!accessToken) {
-      throw new Error('No access token available. Please authorize first.');
+      console.log('⚠️ No access token, requesting new one...');
+      await driveService.requestAccessToken();
     }
 
     try {
@@ -93,6 +118,29 @@ export const driveService = {
           },
         }
       );
+
+      // 401 에러 시 토큰 재발급 시도
+      if (response.status === 401) {
+        console.log('🔄 Token expired, requesting new token...');
+        await driveService.requestAccessToken();
+
+        // 새 토큰으로 재시도
+        const retryResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(searchQuery)}&fields=files(id,name,mimeType,webViewLink,thumbnailLink,size)&orderBy=modifiedTime desc`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!retryResponse.ok) {
+          throw new Error(`Drive API error after retry: ${retryResponse.status}`);
+        }
+
+        const retryData = await retryResponse.json();
+        return retryData.files || [];
+      }
 
       if (!response.ok) {
         throw new Error(`Drive API error: ${response.status}`);
@@ -109,7 +157,8 @@ export const driveService = {
   // Get file metadata
   getFileMetadata: async (fileId: string): Promise<DriveFile | null> => {
     if (!accessToken) {
-      throw new Error('No access token available. Please authorize first.');
+      console.log('⚠️ No access token, requesting new one...');
+      await driveService.requestAccessToken();
     }
 
     try {
@@ -121,6 +170,28 @@ export const driveService = {
           },
         }
       );
+
+      // 401 에러 시 토큰 재발급 시도
+      if (response.status === 401) {
+        console.log('🔄 Token expired, requesting new token...');
+        await driveService.requestAccessToken();
+
+        // 새 토큰으로 재시도
+        const retryResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,webViewLink,thumbnailLink,size`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!retryResponse.ok) {
+          throw new Error(`Drive API error after retry: ${retryResponse.status}`);
+        }
+
+        return await retryResponse.json();
+      }
 
       if (!response.ok) {
         throw new Error(`Drive API error: ${response.status}`);

@@ -42,10 +42,12 @@ const DriveFilePicker: React.FC<DriveFilePickerProps> = ({ folderId: initialFold
     } catch (err: any) {
       console.error('Failed to load Drive files:', err);
 
-      if (err.message.includes('No access token')) {
-        setError('구글 드라이브 권한이 필요합니다.\n\n로그아웃 후 재로그인하여 드라이브 접근 권한을 허용해주세요.');
+      if (err.message.includes('popup_closed')) {
+        setError('드라이브 권한 요청이 취소되었습니다.\n\n"다시 시도" 버튼을 눌러 권한을 허용해주세요.');
+      } else if (err.message.includes('401') || err.message.includes('access token')) {
+        setError('드라이브 접근 권한이 만료되었습니다.\n\n"다시 시도" 버튼을 눌러 권한을 다시 허용해주세요.');
       } else {
-        setError(err.message || '파일을 불러오는데 실패했습니다.');
+        setError(err.message || '파일을 불러오는데 실패했습니다.\n\n인터넷 연결을 확인하고 다시 시도해주세요.');
       }
     } finally {
       setLoading(false);
