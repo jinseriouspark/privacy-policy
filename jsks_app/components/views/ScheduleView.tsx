@@ -11,14 +11,18 @@ interface ScheduleViewProps {
   onBack?: () => void;
   onScheduleClick?: (schedule: ScheduleItem) => void;
   onAddSchedule?: () => void;
+  onRefresh?: () => Promise<void>;
 }
 
-const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onBack, onScheduleClick, onAddSchedule }) => {
+const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onBack, onScheduleClick, onAddSchedule, onRefresh }) => {
   const [baseDate, setBaseDate] = useState(new Date()); // The month being viewed
   const [selectedDate, setSelectedDate] = useState(new Date()); // The specific day selected
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month'); // Pinch-to-zoom state
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render when special date is hidden
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
 
   // --- Helper Functions ---
   const getYearMonth = (date: Date) => {
@@ -51,6 +55,46 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
 
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'month' ? 'week' : 'month');
+  };
+
+  // Pull to Refresh handlers
+  const handlePullStart = (e: React.TouchEvent) => {
+    const scrollTop = containerRef.current?.scrollTop || 0;
+    if (scrollTop === 0) {
+      setPullStartY(e.touches[0].clientY);
+    }
+  };
+
+  const handlePullMove = (e: React.TouchEvent) => {
+    if (pullStartY === 0) return;
+
+    const scrollTop = containerRef.current?.scrollTop || 0;
+    if (scrollTop > 0) {
+      setPullStartY(0);
+      setPullDistance(0);
+      return;
+    }
+
+    const currentY = e.touches[0].clientY;
+    const distance = Math.max(0, currentY - pullStartY);
+
+    // Max pull distance: 100px
+    setPullDistance(Math.min(distance, 100));
+  };
+
+  const handlePullEnd = async () => {
+    if (pullDistance > 60 && onRefresh && !isRefreshing) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+      } catch (error) {
+        console.error('Refresh failed:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+    setPullStartY(0);
+    setPullDistance(0);
   };
 
   // --- Pinch to Zoom Logic ---
@@ -257,7 +301,8 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     selectedDate.getDate()
   );
 
-  const filteredSchedules = schedules.filter(item => {
+  // Filter real schedules
+  const realSchedules = schedules.filter(item => {
     if (item.date !== selectedDateKey) return false;
     if (item.id.startsWith('practice_')) return false; // Exclude practice logs
     if (item.meta === '수행 완료') return false; // Exclude practice completion records
@@ -265,13 +310,57 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     return true;
   });
 
+  // Check if selected date has a special event
+  const isMonday = selectedDate.getDay() === 1;
+  const specialInfo = getSpecialDate(selectedDateKey, isMonday);
+
+  // Combine special dates with real schedules
+  const filteredSchedules = (() => {
+    if (specialInfo.event) {
+      const specialSchedule: ScheduleItem = {
+        id: `special_${selectedDateKey}`,
+        type: 'temple',
+        time: '종일',
+        title: specialInfo.event,
+        date: selectedDateKey,
+        meta: '절기/행사'
+      };
+      return [specialSchedule, ...realSchedules];
+    }
+    return realSchedules;
+  })();
+
   return (
     <div
-      className="px-6 pt-14 pb-32 animate-fade-in select-none"
+      className="px-6 pt-14 pb-32 animate-fade-in select-none overflow-y-auto"
       ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
+      onTouchStart={(e) => {
+        handlePullStart(e);
+        handleTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        handlePullMove(e);
+        handleTouchMove(e);
+      }}
+      onTouchEnd={handlePullEnd}
+      style={{
+        transform: `translateY(${pullDistance}px)`,
+        transition: pullDistance === 0 ? 'transform 0.3s ease' : 'none'
+      }}
     >
+      {/* Pull to Refresh Indicator */}
+      {pullDistance > 0 && (
+        <div
+          className="absolute top-12 left-0 right-0 flex justify-center items-center"
+          style={{
+            opacity: Math.min(pullDistance / 60, 1),
+            transform: `translateY(-${Math.max(0, 60 - pullDistance)}px)`
+          }}
+        >
+          <div className={`w-8 h-8 border-4 border-primary border-t-transparent rounded-full ${isRefreshing ? 'animate-spin' : ''}`}></div>
+        </div>
+      )}
+
       {/* Back Button */}
       {onBack && (
         <div className="mb-4">
