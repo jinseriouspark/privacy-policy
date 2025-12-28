@@ -90,12 +90,22 @@ const App: React.FC = () => {
         return;
       }
 
-      // Check for booking routes
-      const coachingSlug = getCurrentProjectSlug();
-      const { coachId, classSlug, studioSlug } = getBookingUrlParams();
+      // App routes (skip instructor data loading)
+      const appRoutes = [
+        ROUTES.LANDING, ROUTES.LOGIN, ROUTES.ONBOARDING, ROUTES.SETUP,
+        ROUTES.DASHBOARD, ROUTES.SUMMARY, ROUTES.RESERVATIONS, ROUTES.STUDENTS,
+        ROUTES.ATTENDANCE, ROUTES.PACKAGES, ROUTES.PROFILE,
+        ROUTES.STUDENT_HOME, ROUTES.STUDENT_CALENDAR, ROUTES.STUDENT_RESERVATIONS, ROUTES.STUDENT_PROFILE
+      ];
 
-      // Fetch instructor data for booking pages
-      await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
+      // Only load instructor data for booking routes (not app routes)
+      if (!appRoutes.includes(path)) {
+        const coachingSlug = getCurrentProjectSlug();
+        const { coachId, classSlug, studioSlug } = getBookingUrlParams();
+
+        // Fetch instructor data for booking pages
+        await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
+      }
 
       // Check Supabase session
       const { data: { session } } = await supabase.auth.getSession();
