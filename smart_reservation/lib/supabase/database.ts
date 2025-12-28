@@ -1979,16 +1979,24 @@ export async function getAvailableTimeSlots(
     // 🆕 패키지별 working_hours 조회 (있으면)
     let packageWorkingHours = null;
     if (packageId) {
+      console.log('[getAvailableTimeSlots] 🔍 Fetching package working_hours for packageId:', packageId);
+
       const { data: pkg, error: pkgError } = await supabase
         .from("packages")
         .select("working_hours")
         .eq("id", packageId)
         .single();
 
-      if (!pkgError && pkg) {
+      if (pkgError) {
+        console.error('[getAvailableTimeSlots] ❌ Failed to fetch package working_hours:', pkgError);
+      } else if (pkg) {
         packageWorkingHours = pkg.working_hours;
-        console.log('[getAvailableTimeSlots] Package working_hours:', packageWorkingHours);
+        console.log('[getAvailableTimeSlots] 📦 Package working_hours:', packageWorkingHours);
+      } else {
+        console.warn('[getAvailableTimeSlots] ⚠️ Package not found for id:', packageId);
       }
+    } else {
+      console.log('[getAvailableTimeSlots] ℹ️ No packageId provided, will use coaching working_hours');
     }
 
     // 코칭 정보 조회하여 기본 근무 시간 가져오기
