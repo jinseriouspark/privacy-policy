@@ -21,6 +21,7 @@ import { APP_STRINGS } from './constants';
 import { ViewType, User, ScheduleItem, AppConfig, VideoContent } from './types';
 import { googleAuthService, dbService } from './services/db';
 import { getKoreanToday } from './utils/dateUtils';
+import { getAllSpecialDates } from './utils/specialDates';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('login');
@@ -112,7 +113,6 @@ const App: React.FC = () => {
       const data = await dbService.getSchedules(email, useCache);
 
       // Add special dates as schedule items
-      const { getAllSpecialDates } = await import('./utils/specialDates');
       const specialDates = getAllSpecialDates();
       const specialSchedules: ScheduleItem[] = Object.entries(specialDates).map(([dateKey, title]) => ({
         id: `special_${dateKey}`,
