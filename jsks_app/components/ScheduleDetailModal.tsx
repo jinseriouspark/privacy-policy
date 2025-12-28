@@ -33,12 +33,12 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
   const isFull = !isUnlimited && participants.length >= maxParticipants;
   const hasJoined = currentUser ? participants.includes(currentUser.email) : false;
 
-  // RSVP 버튼 표시 조건: 절 행사 && 참석 인원 설정이 있는 경우
+  // RSVP 버튼 표시 조건: 정수사 일정 && 참석 인원 설정이 있는 경우
   const showRSVPButton = isTempleEvent && currentUser;
 
   // 삭제 버튼 표시 조건:
   // 1) 개인 행사 && 본인이 만든 경우
-  // 2) 절 행사 && 스님 관리자인 경우
+  // 2) 정수사 일정 && 스님 관리자인 경우
   const canDelete = currentUser && (
     (isPersonalEvent && schedule.ownerEmail === currentUser.email) ||
     (isTempleEvent && currentUser.role === 'monk')
@@ -167,7 +167,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
             <div className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold mb-2 ${
               isTempleEvent ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'
             }`}>
-              {isTempleEvent ? '절 행사' : '개인 행사'}
+              {isTempleEvent ? '정수사 일정' : '개인 행사'}
             </div>
             <h3 className="text-[19px] font-bold text-dark leading-snug">{schedule.title}</h3>
           </div>
@@ -215,7 +215,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
             </div>
           )}
 
-          {/* Participants (절 행사만) */}
+          {/* Participants (정수사 일정만) */}
           {isTempleEvent && (
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
@@ -375,7 +375,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
         {(showRSVPButton || canDelete) && (
           <div className="sticky bottom-0 bg-white border-t border-gray-100 p-5">
             <div className="space-y-2.5">
-              {/* RSVP 버튼 (절 행사, 일반 신도) */}
+              {/* RSVP 버튼 (정수사 일정, 일반 신도) */}
               {showRSVPButton && !hasJoined && !canDelete && (
                 <button
                   onClick={() => handleRSVP(true)}
@@ -387,7 +387,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 </button>
               )}
 
-              {/* 참석 취소 버튼 (절 행사, 일반 신도) */}
+              {/* 참석 취소 버튼 (정수사 일정, 일반 신도) */}
               {showRSVPButton && hasJoined && !canDelete && (
                 <button
                   onClick={() => handleRSVP(false)}
@@ -399,7 +399,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 </button>
               )}
 
-              {/* 스님 전용: 일정 취소 버튼 (절 행사) */}
+              {/* 스님 전용: 일정 취소 버튼 (정수사 일정) */}
               {isTempleEvent && currentUser?.role === 'monk' && participants.length > 0 && (
                 <button
                   onClick={handleCancelEvent}
@@ -411,7 +411,7 @@ const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 </button>
               )}
 
-              {/* 삭제 버튼 (개인 행사 본인, 절 행사 스님) */}
+              {/* 삭제 버튼 (개인 행사 본인, 정수사 일정 스님) */}
               {canDelete && (
                 <button
                   onClick={handleDelete}

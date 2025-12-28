@@ -155,7 +155,7 @@ const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig })
             <div className="w-full py-4 rounded-[16px] font-bold text-lg border-2 border-primary bg-primary/10 text-primary flex flex-col items-center gap-2">
               <div className="flex items-center gap-2">
                 <Globe size={18} />
-                <span>절 행사</span>
+                <span>정수사 일정</span>
               </div>
               <span className="text-xs font-normal text-primary/70">
                 모든 신도에게 보입니다
@@ -304,7 +304,7 @@ const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig })
             </div>
           </div>
 
-          {/* Participants (스님이 절 행사 등록할 때만) */}
+          {/* Participants (스님이 정수사 일정 등록할 때만) */}
           {isMonk && formData.type === 'temple' && (
             <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-[16px] border border-blue-200">
               <label className="text-sm font-bold text-blue-900">참석 인원</label>

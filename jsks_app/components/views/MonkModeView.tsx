@@ -96,7 +96,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
 
   const fetchSchedules = async () => {
     const data = await dbService.getSchedules(user.email, false);
-    // 절 행사만 필터링
+    // 정수사 일정만 필터링
     const templeEvents = data.filter(s => s.type === 'temple');
     setSchedules(templeEvents);
   };
