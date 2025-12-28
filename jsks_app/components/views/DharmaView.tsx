@@ -12,10 +12,35 @@ interface DharmaViewProps {
 const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
   const [videos, setVideos] = useState<VideoContent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState<'전체' | '경전공부' | '참선법회' | '공부자료'>('전체');
+  const [selectedFilter, setSelectedFilter] = useState<'전체' | '발원/회향' | '참선자료' | '경전공부'>('전체');
   const [selectedFile, setSelectedFile] = useState<VideoContent | null>(null);
   const [readDharmaIds, setReadDharmaIds] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [expandedAudioId, setExpandedAudioId] = useState<string | null>(null);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+
+  // URL을 하이퍼링크로 변환하는 함수
+  const linkify = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline hover:text-primary/80 break-all"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,6 +85,14 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
     if (video.mediaType === 'youtube' || video.youtubeId) {
       console.log('▶️ Opening YouTube:', video.youtubeId);
       window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank');
+      markAsRead(video.id);
+      return;
+    }
+
+    // 오디오 파일 - 인라인 플레이어 토글
+    if (video.mediaType === 'drive-audio') {
+      console.log('🎵 Toggling audio player:', video.id);
+      setExpandedAudioId(expandedAudioId === video.id ? null : video.id);
       markAsRead(video.id);
       return;
     }
@@ -146,7 +179,7 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
 
       {/* Filter Buttons */}
       <div className="flex gap-2 mb-6 overflow-x-auto">
-        {(['전체', '경전공부', '참선법회', '공부자료'] as const).map((filter) => (
+        {(['전체', '발원/회향', '참선자료', '경전공부'] as const).map((filter) => (
           <button
             key={filter}
             onClick={() => setSelectedFilter(filter)}
@@ -227,10 +260,29 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
                     <span className="text-gray-500 font-medium">{video.author}</span>
                   </div>
                 ) : (
-                  // 파일/텍스트: 설명만 표시
+                  // 파일/텍스트: 설명만 표시 (링크 자동 변환)
                   video.description && (
-                    <p className="text-gray-600 text-[14px] line-clamp-3">{video.description}</p>
+                    <p className="text-gray-600 text-[14px] whitespace-pre-wrap line-clamp-6">{linkify(video.description)}</p>
                   )
+                )}
+
+                {/* 오디오 플레이어 - 확장된 경우만 표시 */}
+                {video.mediaType === 'drive-audio' && expandedAudioId === video.id && video.driveFileId && (
+                  <div className="mt-4 pt-4 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                    <audio
+                      ref={expandedAudioId === video.id ? audioRef : null}
+                      controls
+                      className="w-full rounded-[12px]"
+                      style={{ height: '54px' }}
+                      onLoadedData={(e) => {
+                        const audio = e.currentTarget;
+                        audio.play().catch(err => console.log('Autoplay prevented:', err));
+                      }}
+                    >
+                      <source src={`https://docs.google.com/uc?export=download&id=${video.driveFileId}`} type="audio/mpeg" />
+                      브라우저가 오디오 재생을 지원하지 않습니다.
+                    </audio>
+                  </div>
                 )}
               </div>
             </div>
@@ -249,11 +301,10 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
             >
               <ArrowLeft size={24} className="text-dark" />
             </button>
-            <h2 className="text-[16px] font-bold text-dark">법문 읽기</h2>
           </div>
 
           {/* Content */}
-          <div className="px-6 py-8 pb-20">
+          <div className="px-6 py-8 pb-32">
             {/* 태그 */}
             {selectedText.tags && (
               <span className="inline-block px-3 py-1.5 bg-primary/10 text-primary text-[12px] font-bold rounded-full mb-4">
@@ -271,7 +322,7 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
 
             {/* 본문 */}
             <div className="prose prose-lg max-w-none text-dark whitespace-pre-wrap leading-relaxed text-[16px]">
-              {selectedText.textContent || selectedText.description || '내용이 없습니다.'}
+              {linkify(selectedText.textContent || selectedText.description || '내용이 없습니다.')}
             </div>
           </div>
         </div>
@@ -288,11 +339,10 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
             >
               <ArrowLeft size={24} className="text-dark" />
             </button>
-            <h2 className="text-[16px] font-bold text-dark">첨부파일</h2>
           </div>
 
           {/* Content */}
-          <div className="px-6 py-8 pb-20">
+          <div className="px-6 py-8 pb-32">
             {/* 태그 */}
             {selectedFile.tags && (
               <span className="inline-block px-3 py-1.5 bg-primary/10 text-primary text-[12px] font-bold rounded-full mb-4">
@@ -310,9 +360,26 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
 
             {/* 설명 */}
             {selectedFile.description && (
-              <p className="text-gray-700 text-[15px] mb-8 leading-relaxed">
-                {selectedFile.description}
+              <p className="text-gray-700 text-[15px] mb-8 leading-relaxed whitespace-pre-wrap">
+                {linkify(selectedFile.description)}
               </p>
+            )}
+
+            {/* 오디오 플레이어 (오디오 파일인 경우) */}
+            {selectedFile.driveFileId && selectedFile.mediaType === 'drive-audio' && (
+              <div className="mb-6">
+                <h3 className="text-[16px] font-bold text-dark mb-4">오디오 듣기</h3>
+                <audio
+                  controls
+                  className="w-full rounded-[16px] bg-white shadow-md"
+                  style={{ height: '54px' }}
+                >
+                  <source src={`https://drive.google.com/uc?export=download&id=${selectedFile.driveFileId}`} type="audio/mpeg" />
+                  <source src={`https://drive.google.com/uc?export=download&id=${selectedFile.driveFileId}`} type="audio/wav" />
+                  <source src={`https://drive.google.com/uc?export=download&id=${selectedFile.driveFileId}`} type="audio/ogg" />
+                  브라우저가 오디오 재생을 지원하지 않습니다.
+                </audio>
+              </div>
             )}
 
             {/* 다운로드 버튼 */}
@@ -330,9 +397,9 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
               파일 다운받기
             </button>
 
-            {/* 미리보기 (iframe) */}
-            {selectedFile.driveFileId && (
-              <div className="mt-8">
+            {/* 미리보기 (iframe) - 오디오가 아닌 경우만 */}
+            {selectedFile.driveFileId && selectedFile.mediaType !== 'drive-audio' && (
+              <div className="mt-8 mb-8">
                 <h3 className="text-[16px] font-bold text-dark mb-4">미리보기</h3>
                 <div className="bg-white rounded-[16px] overflow-hidden shadow-md" style={{ height: '600px' }}>
                   <iframe

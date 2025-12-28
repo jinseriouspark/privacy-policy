@@ -45,7 +45,7 @@ export interface User {
 
 export type MediaType = 'youtube' | 'drive-video' | 'drive-audio' | 'drive-pdf' | 'text' | 'text-file';
 export type ContentStatus = 'draft' | 'published';
-export type DharmaCategory = '경전공부' | '참선법회' | '공부자료';
+export type DharmaCategory = '발원/회향' | '참선자료' | '경전공부';
 
 export interface VideoContent {
   id: string;
@@ -61,7 +61,7 @@ export interface VideoContent {
   status?: ContentStatus; // Draft or Published
   uploadedAt?: string; // Upload timestamp
   publishedAt?: string; // Publish timestamp
-  tags?: DharmaCategory; // 경전공부 or 참선법회
+  tags?: DharmaCategory; // 발원/회향 or 참선자료 or 경전공부
 }
 
 export interface ChecklistItem {

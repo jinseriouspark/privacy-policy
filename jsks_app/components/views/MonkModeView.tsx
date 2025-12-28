@@ -28,7 +28,10 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
     driveUrl: '',
     driveFileName: '',
     youtubeLink: '',
-    tags: '전체' as '전체' | '경전공부' | '참선법회' | '공부자료'
+    tags: '전체' as '전체' | '발원/회향' | '참선자료' | '경전공부',
+    uploadDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+    uploadTime: new Date().toTimeString().slice(0, 5), // HH:MM
+    driveMediaType: 'drive-video' as 'drive-video' | 'drive-audio' | 'drive-pdf'
   });
 
   // Settings State
@@ -124,6 +127,12 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
     return koreanTime.toISOString();
   };
 
+  // 사용자 입력 날짜/시간을 ISO 문자열로 변환
+  const getUploadTimestamp = () => {
+    const dateTimeString = `${newVideo.uploadDate}T${newVideo.uploadTime}:00+09:00`;
+    return new Date(dateTimeString).toISOString();
+  };
+
   const handleAddVideo = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -134,7 +143,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
         description: newVideo.description,
         duration: editingVideo ? editingVideo.duration : '00:00',
         status: editingVideo ? editingVideo.status : 'draft',
-        uploadedAt: editingVideo ? editingVideo.uploadedAt : getKoreanTime(),
+        uploadedAt: editingVideo ? editingVideo.uploadedAt : getUploadTimestamp(),
       };
 
       if (addMode === 'youtube') {
@@ -193,7 +202,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
             ...videoData,
             driveUrl: newVideo.driveUrl,
             driveFileId: driveFileId || undefined,
-            mediaType: 'drive-video',
+            mediaType: newVideo.driveMediaType,
             thumbnailUrl: 'https://via.placeholder.com/1280x720/8B7355/FFFFFF?text=Drive+File',
             tags: [newVideo.tags]
           };
@@ -230,7 +239,18 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       // 폼 초기화
       setEditingVideo(null);
       setIsAddingVideo(false);
-      setNewVideo({ title: '', author: '지월스님', description: '', driveUrl: '', driveFileName: '', youtubeLink: '', tags: '전체' });
+      setNewVideo({
+        title: '',
+        author: '지월스님',
+        description: '',
+        driveUrl: '',
+        driveFileName: '',
+        youtubeLink: '',
+        tags: '전체',
+        uploadDate: new Date().toISOString().split('T')[0],
+        uploadTime: new Date().toTimeString().slice(0, 5),
+        driveMediaType: 'drive-video'
+      });
 
       // 비디오 목록 새로고침
       console.log('🔄 비디오 목록 새로고침 중...');
@@ -284,6 +304,19 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
 
   const handleEditVideo = (video: VideoContent) => {
     setEditingVideo(video);
+
+    // uploadedAt에서 날짜와 시간 추출
+    let uploadDate = new Date().toISOString().split('T')[0];
+    let uploadTime = new Date().toTimeString().slice(0, 5);
+
+    if (video.uploadedAt) {
+      const dt = new Date(video.uploadedAt);
+      // 한국 시간으로 변환 (UTC+9)
+      const koreanTime = new Date(dt.getTime() + (9 * 60 * 60 * 1000));
+      uploadDate = koreanTime.toISOString().split('T')[0];
+      uploadTime = koreanTime.toISOString().split('T')[1].slice(0, 5);
+    }
+
     setNewVideo({
       title: video.title,
       author: video.author || '지월스님',
@@ -291,7 +324,10 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
       driveUrl: video.driveUrl || '',
       driveFileName: video.driveUrl ? '기존 파일' : '',
       youtubeLink: video.youtubeId ? `https://www.youtube.com/watch?v=${video.youtubeId}` : '',
-      tags: (video.tags && video.tags[0]) || '전체'
+      tags: (video.tags && video.tags[0]) || '전체',
+      uploadDate,
+      uploadTime,
+      driveMediaType: (video.mediaType as 'drive-video' | 'drive-audio' | 'drive-pdf') || 'drive-video'
     });
     setAddMode(video.mediaType === 'youtube' ? 'youtube' : 'drive');
     setIsAddingVideo(true);
@@ -533,6 +569,51 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
               </div>
             )}
 
+            {/* 파일 형식 선택 (드라이브 모드만) */}
+            {addMode === 'drive' && (
+              <div className="flex flex-col gap-3 p-4 bg-orange-50 rounded-[16px] border border-orange-200">
+                <label className="text-sm font-bold text-orange-900">파일 형식</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewVideo({...newVideo, driveMediaType: 'drive-video'})}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${
+                      newVideo.driveMediaType === 'drive-video'
+                        ? 'bg-orange-500 text-white shadow-md'
+                        : 'bg-white text-orange-600 border-2 border-orange-200 hover:border-orange-400'
+                    }`}
+                  >
+                    영상
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewVideo({...newVideo, driveMediaType: 'drive-audio'})}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${
+                      newVideo.driveMediaType === 'drive-audio'
+                        ? 'bg-orange-500 text-white shadow-md'
+                        : 'bg-white text-orange-600 border-2 border-orange-200 hover:border-orange-400'
+                    }`}
+                  >
+                    오디오
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewVideo({...newVideo, driveMediaType: 'drive-pdf'})}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${
+                      newVideo.driveMediaType === 'drive-pdf'
+                        ? 'bg-orange-500 text-white shadow-md'
+                        : 'bg-white text-orange-600 border-2 border-orange-200 hover:border-orange-400'
+                    }`}
+                  >
+                    PDF
+                  </button>
+                </div>
+                <p className="text-xs text-orange-700">
+                  💡 업로드할 파일의 형식을 선택하세요
+                </p>
+              </div>
+            )}
+
             {/* 제목 */}
             <input
               className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl"
@@ -559,11 +640,35 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
               placeholder="법문 설명 (선택사항)"
             />
 
+            {/* 업로드 날짜 및 시간 */}
+            <div className="flex flex-col gap-3 p-4 bg-purple-50 rounded-[16px] border border-purple-200">
+              <label className="text-sm font-bold text-purple-900">업로드 날짜 및 시간</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  className="flex-1 p-3 bg-white border border-purple-200 rounded-xl"
+                  value={newVideo.uploadDate}
+                  onChange={e => setNewVideo({...newVideo, uploadDate: e.target.value})}
+                  required
+                />
+                <input
+                  type="time"
+                  className="flex-1 p-3 bg-white border border-purple-200 rounded-xl"
+                  value={newVideo.uploadTime}
+                  onChange={e => setNewVideo({...newVideo, uploadTime: e.target.value})}
+                  required
+                />
+              </div>
+              <p className="text-xs text-purple-700">
+                💡 법문이 올라간 정확한 날짜와 시간을 입력하세요
+              </p>
+            </div>
+
             {/* 필터 태그 선택 */}
             <div className="flex flex-col gap-3 p-4 bg-green-50 rounded-[16px] border border-green-200">
               <label className="text-sm font-bold text-green-900">카테고리 선택</label>
               <div className="grid grid-cols-2 gap-2">
-                {(['전체', '경전공부', '참선법회', '공부자료'] as const).map((tag) => (
+                {(['전체', '발원/회향', '참선자료', '경전공부'] as const).map((tag) => (
                   <button
                     key={tag}
                     type="button"
@@ -586,6 +691,7 @@ const MonkModeView: React.FC<MonkModeViewProps> = ({ user, onLogout }) => {
                 onClick={() => {
                   setIsAddingVideo(false);
                   setEditingVideo(null);
+                  setActiveTab('content-review');
                 }}
                 className="flex-1 py-3 bg-gray-100 rounded-xl"
               >
