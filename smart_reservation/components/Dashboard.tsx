@@ -658,10 +658,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                             setSelectedStudent(u);
                             setShowMemoModal(true);
                           }}
-                          className="flex items-center justify-center gap-1 py-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors"
+                          className="relative flex items-center justify-center gap-1 py-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors"
                       >
                           <FileText size={14} />
                           메모
+                          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full">
+                            NEW
+                          </span>
                       </button>
                       <button
                           onClick={() => openUserEditor(u)}

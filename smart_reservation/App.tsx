@@ -313,6 +313,12 @@ const App: React.FC = () => {
     const isPublicRoute = path === ROUTES.LANDING || path === ROUTES.LOGIN ||
                          path === ROUTES.PRIVACY || path === ROUTES.TERMS;
 
+    // Redirect /home to login for guests
+    if (path === ROUTES.STUDENT_HOME) {
+      navigateTo(ROUTES.LOGIN);
+      return;
+    }
+
     if (!isBookingPage && !isPublicRoute && path !== '/') {
       // Redirect guests to landing
       navigateTo(ROUTES.LANDING);

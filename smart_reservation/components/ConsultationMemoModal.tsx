@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Loader2, CheckCircle, ExternalLink } from 'lucide-react';
-import { createStudentMemo } from '../services/notion';
+import { X, Loader2, CheckCircle } from 'lucide-react';
+import { createStudentMemo } from '../lib/supabase/database';
 
 interface ConsultationMemoModalProps {
   isOpen: boolean;
@@ -11,6 +11,12 @@ interface ConsultationMemoModalProps {
     name: string;
     email: string;
   };
+  onSave?: () => void; // Optional callback after successful save
+}
+
+interface SaveResult {
+  success: boolean;
+  error?: string;
 }
 
 const PRESET_TAGS = ['상담', '피드백', '수업 계획', '목표 설정', '진도 체크', '부상/통증'];
@@ -20,13 +26,14 @@ export default function ConsultationMemoModal({
   onClose,
   userId,
   student,
+  onSave,
 }: ConsultationMemoModalProps) {
   const [content, setContent] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ success: boolean; pageUrl?: string; error?: string } | null>(null);
+  const [saveResult, setSaveResult] = useState<SaveResult | null>(null);
 
   const handleToggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -53,9 +60,10 @@ export default function ConsultationMemoModal({
     setSaveResult(null);
 
     try {
-      const result = await createStudentMemo(userId, {
-        studentName: student.name,
+      const result = await createStudentMemo({
+        instructorId: userId.toString(),
         studentId: student.id,
+        studentName: student.name,
         content: content.trim(),
         tags: selectedTags,
         date,
@@ -64,8 +72,12 @@ export default function ConsultationMemoModal({
       if (result.success) {
         setSaveResult({
           success: true,
-          pageUrl: result.pageUrl,
         });
+
+        // onSave 콜백 호출 (출석 체크 등에서 사용)
+        if (onSave) {
+          onSave();
+        }
 
         // 2초 후 자동으로 모달 닫기
         setTimeout(() => {
@@ -105,7 +117,7 @@ export default function ConsultationMemoModal({
           <div>
             <h2 className="text-xl font-bold text-slate-900">📝 상담 메모 작성</h2>
             <p className="text-sm text-slate-500 mt-1">
-              {student.name}님과의 상담 내용을 Notion에 저장합니다
+              {student.name}님과의 상담 내용을 기록합니다
             </p>
           </div>
           <button
@@ -157,7 +169,7 @@ export default function ConsultationMemoModal({
               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
             />
             <p className="text-xs text-slate-500 mt-2">
-              💡 작성한 메모는 Notion Database에 페이지로 저장됩니다
+              💡 작성한 메모는 안전하게 보관됩니다
             </p>
           </div>
 
@@ -245,20 +257,9 @@ export default function ConsultationMemoModal({
                     }`}
                   >
                     {saveResult.success
-                      ? '✅ Notion에 저장되었습니다!'
+                      ? '✅ 메모가 저장되었습니다!'
                       : `❌ 저장 실패: ${saveResult.error}`}
                   </p>
-                  {saveResult.pageUrl && (
-                    <a
-                      href={saveResult.pageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-green-600 hover:underline inline-flex items-center gap-1 mt-1"
-                    >
-                      Notion에서 보기
-                      <ExternalLink size={12} />
-                    </a>
-                  )}
                 </div>
               </div>
             </div>
@@ -279,14 +280,14 @@ export default function ConsultationMemoModal({
               className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSaving && <Loader2 size={18} className="animate-spin" />}
-              {isSaving ? 'Notion에 저장 중...' : 'Notion에 저장'}
+              {isSaving ? '메모 저장 중...' : '메모 저장'}
             </button>
           </div>
 
           {/* Help Text */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-xs text-blue-800">
-              💡 <strong>Tip:</strong> Notion 연동이 되지 않았다면 프로필/설정에서 먼저 Notion을 연동해주세요.
+              💡 <strong>Tip:</strong> 작성한 메모는 데이터베이스에 안전하게 저장됩니다.
             </p>
           </div>
         </div>

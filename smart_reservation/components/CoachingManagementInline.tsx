@@ -218,8 +218,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
             <Calendar size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-bold text-sm text-slate-900 mb-1">코칭별 캘린더 관리</p>
-              <p className="text-xs text-slate-600 mb-2">각 코칭마다 별도의 Google 캘린더를 생성하여 예약을 관리할 수 있습니다.</p>
-              <p className="text-xs text-blue-600 font-medium">💡 학생 예약이 Google Calendar에 자동으로 추가되지 않나요? "권한 업그레이드" 버튼을 눌러보세요!</p>
+              <p className="text-xs text-slate-600">각 코칭마다 별도의 Google 캘린더를 생성하여 예약을 관리할 수 있습니다.</p>
             </div>
           </div>
         </div>
@@ -438,19 +437,10 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                             }
                           </span>
                           {coaching.google_calendar_id ? (
-                            <>
-                              <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
-                                <CheckCircle2 size={10} />
-                                캘린더 연동됨
-                              </span>
-                              <button
-                                onClick={(e) => handleUpgradeCalendar(e, coaching.google_calendar_id!)}
-                                className="px-2 py-0.5 bg-blue-100 text-blue-600 hover:bg-blue-200 text-xs rounded-full font-medium transition-colors"
-                                title="학생이 예약 시 Google Calendar에 자동으로 추가되도록 권한을 업그레이드합니다"
-                              >
-                                권한 업그레이드
-                              </button>
-                            </>
+                            <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
+                              <CheckCircle2 size={10} />
+                              캘린더 연동됨
+                            </span>
                           ) : (
                             <button
                               onClick={(e) => {

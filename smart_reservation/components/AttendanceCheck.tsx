@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Reservation } from '../types';
 import { getAttendanceList, updateAttendance } from '../lib/supabase/database';
 import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Search } from 'lucide-react';
+import ConsultationMemoModal from './ConsultationMemoModal';
 
 interface AttendanceCheckProps {
   instructorEmail: string;
@@ -13,6 +14,11 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'today' | 'pending'>('today');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Memo modal state
+  const [showMemoModal, setShowMemoModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [pendingAttendanceUpdate, setPendingAttendanceUpdate] = useState<{ reservationId: string; status: 'attended' | 'absent' | 'late' | 'pending' } | null>(null);
 
   useEffect(() => {
     fetchReservations();
@@ -46,7 +52,20 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
     }
   };
 
-  const handleAttendance = async (reservationId: string, status: 'attended' | 'absent' | 'late' | 'pending') => {
+  const handleAttendance = async (reservationId: string, status: 'attended' | 'absent' | 'late' | 'pending', reservation?: Reservation) => {
+    // '출석' 버튼 클릭 시 메모 모달 먼저 띄우기
+    if (status === 'attended' && reservation) {
+      setSelectedStudent({
+        id: reservation.studentEmail, // student_id가 없으므로 email을 사용
+        name: reservation.studentName || reservation.studentEmail,
+        email: reservation.studentEmail
+      });
+      setPendingAttendanceUpdate({ reservationId, status });
+      setShowMemoModal(true);
+      return;
+    }
+
+    // 다른 상태(지각, 결석, 초기화)는 바로 처리
     try {
       await updateAttendance(reservationId, status as any);
 
@@ -55,6 +74,28 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
           ? { ...r, attendanceStatus: status }
           : r
       ));
+    } catch (err: any) {
+      alert(err.message || '출석 처리에 실패했습니다.');
+    }
+  };
+
+  // 메모 작성 완료 후 출석 처리
+  const handleMemoSaved = async () => {
+    if (!pendingAttendanceUpdate) return;
+
+    try {
+      await updateAttendance(pendingAttendanceUpdate.reservationId, pendingAttendanceUpdate.status as any);
+
+      setReservations(reservations.map(r =>
+        r.reservationId === pendingAttendanceUpdate.reservationId
+          ? { ...r, attendanceStatus: pendingAttendanceUpdate.status }
+          : r
+      ));
+
+      // Reset state
+      setShowMemoModal(false);
+      setSelectedStudent(null);
+      setPendingAttendanceUpdate(null);
     } catch (err: any) {
       alert(err.message || '출석 처리에 실패했습니다.');
     }
@@ -132,21 +173,21 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
         {isPast && reservation.attendanceStatus === 'pending' && (
           <div className="flex space-x-2 pt-3 border-t border-slate-100">
             <button
-              onClick={() => handleAttendance(reservation.reservationId, 'attended')}
+              onClick={() => handleAttendance(reservation.reservationId, 'attended', reservation)}
               className="flex-1 py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium transition-colors flex items-center justify-center text-sm"
             >
               <CheckCircle size={16} className="mr-1" />
               출석
             </button>
             <button
-              onClick={() => handleAttendance(reservation.reservationId, 'late')}
+              onClick={() => handleAttendance(reservation.reservationId, 'late', reservation)}
               className="flex-1 py-2 px-3 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg font-medium transition-colors flex items-center justify-center text-sm"
             >
               <Clock size={16} className="mr-1" />
               지각
             </button>
             <button
-              onClick={() => handleAttendance(reservation.reservationId, 'absent')}
+              onClick={() => handleAttendance(reservation.reservationId, 'absent', reservation)}
               className="flex-1 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-medium transition-colors flex items-center justify-center text-sm"
             >
               <XCircle size={16} className="mr-1" />
@@ -268,6 +309,25 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredReservations.map(renderReservationCard)}
         </div>
+      )}
+
+      {/* Consultation Memo Modal */}
+      {selectedStudent && instructorId && (
+        <ConsultationMemoModal
+          isOpen={showMemoModal}
+          onClose={() => {
+            setShowMemoModal(false);
+            setSelectedStudent(null);
+            setPendingAttendanceUpdate(null);
+          }}
+          userId={parseInt(instructorId)}
+          student={{
+            id: selectedStudent.id,
+            name: selectedStudent.name,
+            email: selectedStudent.email,
+          }}
+          onSave={handleMemoSaved}
+        />
       )}
     </div>
   );

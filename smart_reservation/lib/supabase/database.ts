@@ -2248,3 +2248,87 @@ export async function getNotionSettings(userId: number): Promise<NotionSettings 
   };
 }
 
+/**
+ * ============================================
+ * 학생 메모 관리 (DB 저장)
+ * ============================================
+ */
+
+export interface StudentMemo {
+  id?: string;
+  instructor_id: string;
+  student_id: string;
+  student_name: string;
+  content: string;
+  tags?: string[];
+  date: string;
+  created_at?: string;
+}
+
+/**
+ * 학생 메모 생성
+ */
+export async function createStudentMemo(data: {
+  instructorId: string;
+  studentId: string;
+  studentName: string;
+  content: string;
+  tags?: string[];
+  date: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('student_memos')
+      .insert({
+        instructor_id: data.instructorId,
+        student_id: data.studentId,
+        student_name: data.studentName,
+        content: data.content,
+        tags: data.tags || [],
+        date: data.date,
+      });
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to create student memo:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to create memo'
+    };
+  }
+}
+
+/**
+ * 강사의 모든 학생 메모 조회
+ */
+export async function getStudentMemos(instructorId: string): Promise<StudentMemo[]> {
+  const { data, error } = await supabase
+    .from('student_memos')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * 특정 학생의 메모 조회
+ */
+export async function getStudentMemosByStudent(
+  instructorId: string,
+  studentId: string
+): Promise<StudentMemo[]> {
+  const { data, error } = await supabase
+    .from('student_memos')
+    .select('*')
+    .eq('instructor_id', instructorId)
+    .eq('student_id', studentId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
