@@ -47,6 +47,74 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
     loadData();
   }, [packageId]);
 
+  // 레거시 포맷 감지 및 정규화 헬퍼
+  const normalizeWorkingHours = (hours: any) => {
+    if (!hours || typeof hours !== 'object') {
+      return defaultWorkingHours;
+    }
+
+    // 이미 정규화된 포맷인지 확인 (monday, tuesday 등의 키가 있는지)
+    const hasNamedDays = 'monday' in hours || 'tuesday' in hours;
+
+    // 레거시 숫자 키가 있는지 확인 (0, 1, 2, 3, 4, 5, 6)
+    const hasNumericDays = Object.keys(hours).some(key => /^[0-6]$/.test(key));
+
+    if (hasNumericDays) {
+      console.warn('[PackageTimeModal] ⚠️ Legacy numeric format detected, converting...');
+
+      // 숫자 키를 요일 이름으로 변환
+      const dayMap: Record<string, string> = {
+        '0': 'sunday', '1': 'monday', '2': 'tuesday', '3': 'wednesday',
+        '4': 'thursday', '5': 'friday', '6': 'saturday'
+      };
+
+      const normalized: any = {};
+
+      // 레거시 데이터 변환
+      Object.entries(hours).forEach(([key, value]: [string, any]) => {
+        const dayName = dayMap[key] || key; // 숫자면 변환, 아니면 그대로
+
+        if (value && typeof value === 'object') {
+          // isWorking/start/end 포맷을 enabled/blocks로 변환
+          if ('isWorking' in value || 'start' in value) {
+            normalized[dayName] = {
+              enabled: value.isWorking ?? value.enabled ?? true,
+              blocks: value.isWorking || value.enabled
+                ? [{ start: value.start || '09:00', end: value.end || '18:00' }]
+                : []
+            };
+          } else {
+            // 이미 새 포맷
+            normalized[dayName] = value;
+          }
+        }
+      });
+
+      // 누락된 요일 채우기
+      Object.keys(defaultWorkingHours).forEach(day => {
+        if (!normalized[day]) {
+          normalized[day] = defaultWorkingHours[day];
+        }
+      });
+
+      return normalized;
+    }
+
+    // 정규화된 포맷이지만 일부 요일이 누락된 경우
+    if (hasNamedDays) {
+      const complete = { ...defaultWorkingHours };
+      Object.keys(defaultWorkingHours).forEach(day => {
+        if (hours[day]) {
+          complete[day] = hours[day];
+        }
+      });
+      return complete;
+    }
+
+    // 알 수 없는 포맷
+    return defaultWorkingHours;
+  };
+
   const loadData = async () => {
     try {
       // 패키지의 현재 working_hours와 코칭의 working_hours 가져오기
@@ -58,19 +126,23 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
 
       if (pkgError) throw pkgError;
 
-      console.log('[PackageTimeModal] Package data:', pkg);
+      console.log('[PackageTimeModal] Raw package data:', pkg);
 
-      // 코칭 working_hours 저장
-      setCoachingWorkingHours(pkg.coaching?.working_hours || defaultWorkingHours);
+      // 코칭 working_hours 정규화 및 저장
+      const normalizedCoachingHours = normalizeWorkingHours(pkg.coaching?.working_hours);
+      setCoachingWorkingHours(normalizedCoachingHours);
 
-      // 패키지에 커스텀 시간이 있으면 사용
+      // 패키지에 커스텀 시간이 있으면 사용 (정규화 후)
       if (pkg.working_hours) {
-        setWorkingHours(pkg.working_hours);
+        const normalizedPackageHours = normalizeWorkingHours(pkg.working_hours);
+        setWorkingHours(normalizedPackageHours);
         setUseCustomHours(true);
+        console.log('[PackageTimeModal] ✅ Using normalized package hours:', normalizedPackageHours);
       } else {
         // 없으면 코칭 시간을 복사해서 시작
-        setWorkingHours(pkg.coaching?.working_hours || defaultWorkingHours);
+        setWorkingHours(normalizedCoachingHours);
         setUseCustomHours(false);
+        console.log('[PackageTimeModal] ✅ Using normalized coaching hours:', normalizedCoachingHours);
       }
     } catch (error) {
       console.error('Failed to load package data:', error);
