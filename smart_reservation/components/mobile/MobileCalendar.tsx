@@ -142,7 +142,8 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
       const slots = await getAvailableTimeSlots(
         selectedPackage.instructor_id.toString(),
         coachingId.toString(),
-        date
+        date,
+        selectedPackage.id  // 🆕 Pass package ID for hierarchical working hours
       );
 
       console.log('[MobileCalendar] 📊 Received slots:', {

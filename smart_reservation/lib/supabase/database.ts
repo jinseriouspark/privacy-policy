@@ -1954,7 +1954,8 @@ export async function deleteNotification(notificationId: string) {
 export async function getAvailableTimeSlots(
   instructorId: string,
   coachingId: string,
-  date: Date
+  date: Date,
+  packageId?: string  // 🆕 Optional: for package-specific working hours
 ) {
   try {
     // 해당 날짜의 시작과 끝 시간 계산
@@ -1974,6 +1975,21 @@ export async function getAvailableTimeSlots(
       .in("status", ["confirmed", "pending"]);
 
     if (error) throw error;
+
+    // 🆕 패키지별 working_hours 조회 (있으면)
+    let packageWorkingHours = null;
+    if (packageId) {
+      const { data: pkg, error: pkgError } = await supabase
+        .from("packages")
+        .select("working_hours")
+        .eq("id", packageId)
+        .single();
+
+      if (!pkgError && pkg) {
+        packageWorkingHours = pkg.working_hours;
+        console.log('[getAvailableTimeSlots] Package working_hours:', packageWorkingHours);
+      }
+    }
 
     // 코칭 정보 조회하여 기본 근무 시간 가져오기
     const { data: coaching, error: coachingError } = await supabase
@@ -1995,7 +2011,17 @@ export async function getAvailableTimeSlots(
     });
 
     const duration = coaching?.duration || 60;
-    const workingHours = coaching?.working_hours;
+
+    // 🆕 계층적 우선순위: Package > Coaching > Default
+    const workingHours = packageWorkingHours || coaching?.working_hours;
+
+    if (packageWorkingHours) {
+      console.log('[getAvailableTimeSlots] ✅ Using PACKAGE working hours (override)');
+    } else if (coaching?.working_hours) {
+      console.log('[getAvailableTimeSlots] ✅ Using COACHING working hours (default)');
+    } else {
+      console.log('[getAvailableTimeSlots] ⚠️ No working hours found, using system default');
+    }
 
     // 해당 날짜의 요일 확인 (0=일요일, 1=월요일, ...)
     const dayOfWeek = date.getDay();
