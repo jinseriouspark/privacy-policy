@@ -12,7 +12,7 @@ interface DharmaViewProps {
 const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
   const [videos, setVideos] = useState<VideoContent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState<'전체' | '발원/회향' | '참선자료' | '경전공부'>('전체');
+  const [selectedFilter, setSelectedFilter] = useState<'전체' | '경전공부' | '참선자료' | '발원/회향'>('전체');
   const [selectedFile, setSelectedFile] = useState<VideoContent | null>(null);
   const [readDharmaIds, setReadDharmaIds] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -179,7 +179,7 @@ const DharmaView: React.FC<DharmaViewProps> = ({ appConfig, onBack }) => {
 
       {/* Filter Buttons */}
       <div className="flex gap-2 mb-6 overflow-x-auto">
-        {(['전체', '발원/회향', '참선자료', '경전공부'] as const).map((filter) => (
+        {(['전체', '경전공부', '참선자료', '발원/회향'] as const).map((filter) => (
           <button
             key={filter}
             onClick={() => setSelectedFilter(filter)}

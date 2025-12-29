@@ -21,7 +21,7 @@ import { APP_STRINGS } from './constants';
 import { ViewType, User, ScheduleItem, AppConfig, VideoContent } from './types';
 import { googleAuthService, dbService } from './services/db';
 import { getKoreanToday } from './utils/dateUtils';
-import { getAllSpecialDates } from './utils/specialDates';
+import { getAllSpecialDates, isSolarTerm } from './utils/specialDates';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('login');
@@ -112,16 +112,18 @@ const App: React.FC = () => {
     try {
       const data = await dbService.getSchedules(email, useCache);
 
-      // Add special dates as schedule items
+      // Add special dates as schedule items (24절기 제외)
       const specialDates = getAllSpecialDates();
-      const specialSchedules: ScheduleItem[] = Object.entries(specialDates).map(([dateKey, title]) => ({
-        id: `special_${dateKey}`,
-        type: 'temple' as const,
-        time: '종일',
-        title: title,
-        date: dateKey,
-        meta: '절기/행사'
-      }));
+      const specialSchedules: ScheduleItem[] = Object.entries(specialDates)
+        .filter(([_, title]) => !isSolarTerm(title)) // 24절기 제외
+        .map(([dateKey, title]) => ({
+          id: `special_${dateKey}`,
+          type: 'temple' as const,
+          time: '종일',
+          title: title,
+          date: dateKey,
+          meta: '절기/행사'
+        }));
 
       setSchedules([...specialSchedules, ...data]);
     } catch (e) { console.warn("Schedules load failed", e); }

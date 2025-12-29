@@ -114,6 +114,14 @@ export function getAllSpecialDates(): Record<string, string> {
   return { ...allSpecialDates };
 }
 
+// 24절기 목록
+const SOLAR_TERMS = ['소한', '대한', '입춘', '우수', '경칩', '춘분', '청명', '곡우', '입하', '소만', '망종', '하지', '소서', '대서', '입추', '처서', '백로', '추분', '한로', '상강', '입동', '소설', '대설', '동지'];
+
+// 24절기인지 확인
+export function isSolarTerm(title: string): boolean {
+  return SOLAR_TERMS.some(term => title.includes(term));
+}
+
 // 특별한 날에서 음력 정보와 절기/행사 분리
 export function getSpecialDate(dateKey: string, isMonday: boolean): { lunarInfo?: string; event?: string } {
   // 숨김 처리된 날짜 확인
