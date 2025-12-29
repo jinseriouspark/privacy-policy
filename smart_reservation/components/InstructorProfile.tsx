@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, UserType } from '../types';
-import { updateUser } from '../lib/supabase/database';
-import { ArrowLeft, Settings, Save, Loader2, CheckCircle2, User as UserIcon, Mail } from 'lucide-react';
+import { updateUser, deleteUser } from '../lib/supabase/database';
+import { signOut } from '../lib/supabase/auth';
+import { ArrowLeft, Settings, Save, Loader2, CheckCircle2, User as UserIcon, Mail, AlertTriangle } from 'lucide-react';
 
 interface InstructorProfileProps {
   user: User;
@@ -16,6 +17,8 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -41,6 +44,22 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
       setError(err.message || '프로필 업데이트에 실패했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setError(null);
+
+    try {
+      await deleteUser(user.id!);
+      await signOut();
+      // Redirect to landing page
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message || '회원 탈퇴에 실패했습니다.');
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -168,16 +187,63 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
           </div>
         </div>
 
-        {/* Logout Button */}
-        <div className="mt-6 text-center">
+        {/* Logout & Delete Account Buttons */}
+        <div className="mt-6 flex flex-col items-center gap-3">
           <button
             onClick={onLogout}
             className="text-slate-500 hover:text-slate-700 text-sm font-medium underline"
           >
             로그아웃
           </button>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-red-500 hover:text-red-700 text-sm font-medium underline"
+          >
+            회원 탈퇴
+          </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                정말 탈퇴하시겠습니까?
+              </h2>
+              <p className="text-slate-600 mb-6">
+                모든 데이터가 영구적으로 삭제되며,<br />
+                복구할 수 없습니다.
+              </p>
+
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold transition-colors disabled:opacity-50"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 px-6 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleteLoading ? (
+                    <Loader2 className="animate-spin h-5 w-5" />
+                  ) : (
+                    '탈퇴하기'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
