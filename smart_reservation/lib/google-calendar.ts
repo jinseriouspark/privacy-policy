@@ -473,22 +473,13 @@ export async function ensureCalendarInList(calendarId: string) {
 
     const accessToken = session.provider_token;
 
-    console.log('[ensureCalendarInList] Checking calendar:', calendarId);
+    console.log('[ensureCalendarInList] Adding calendar to list:', calendarId);
 
-    // 1. 현재 캘린더 목록 가져오기
-    const calendarList = await getCalendarList();
-    const exists = calendarList.some((cal: any) => cal.id === calendarId);
-
-    if (exists) {
-      console.log('[ensureCalendarInList] Calendar already in list');
-      return true;
-    }
-
-    // 2. 목록에 없으면 추가
-    console.log('[ensureCalendarInList] Adding calendar to list...');
+    // 전체 목록 조회 없이 바로 추가 시도
+    // 이미 목록에 있으면 에러 발생하지만 무시됨 (addCalendarToList 내부에서 처리)
     await addCalendarToList(calendarId, accessToken);
 
-    console.log('[ensureCalendarInList] ✅ Calendar added to list successfully');
+    console.log('[ensureCalendarInList] ✅ Calendar ensured in list');
     return true;
   } catch (error: any) {
     console.error('[ensureCalendarInList] Error:', error);

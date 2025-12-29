@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData, Coaching } from '../types';
 import { postToGAS } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu, FileText } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu, FileText, Download, HelpCircle } from 'lucide-react';
+import { hasSeenTutorial, startOnboarding, resetTutorial } from '../utils/onboarding';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
 import { StudentInviteModal } from './StudentInviteModal';
@@ -13,10 +14,12 @@ import PackageManagement from './PackageManagement';
 import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
+import ConsultationHistory from './ConsultationHistory';
 import { logActivity, type TabName } from '../lib/supabase/database';
-import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor } from '../lib/supabase/database';
+import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor, getStudentMemos } from '../lib/supabase/database';
+import { convertToCSV, downloadCSV, getTimestampForFilename, formatDateForCSV } from '../utils/csv';
 import { sendBookingLinkToStudent } from '../services/solapi';
-import { createCoachingCalendar, getCalendarList } from '../lib/google-calendar';
+import { createCoachingCalendar } from '../lib/google-calendar';
 import { navigateTo, ROUTES } from '../utils/router';
 
 interface DashboardProps {
@@ -26,7 +29,7 @@ interface DashboardProps {
   onNavigateToProfile?: () => void;
 }
 
-type TabType = 'reservations' | 'users' | 'packages' | 'group-classes' | 'attendance' | 'stats' | 'class';
+type TabType = 'reservations' | 'users' | 'packages' | 'group-classes' | 'attendance' | 'stats' | 'class' | 'memos';
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservation, onLogout, onNavigateToProfile }) => {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -45,7 +48,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     '/attend': 'attendance',
     '/student': 'users',
     '/membership': 'packages',
-    '/class': 'class'
+    '/class': 'class',
+    '/memos': 'memos'
   };
 
   const tabToUrl: Record<TabType, string> = {
@@ -55,7 +59,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     'attendance': '/attend',
     'users': '/student',
     'packages': '/membership',
-    'class': '/class'
+    'class': '/class',
+    'memos': '/memos'
   };
   
   // Instructor - User Mgmt
@@ -150,6 +155,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     if (isCoach) {
         loadFirstCoaching();
         loadCoachings();
+
+        // 온보딩 튜토리얼 - 스튜디오 이름 설정 후에만 자동 실행
+        setTimeout(() => {
+          // 스튜디오 이름이 설정되어 있고, 튜토리얼을 본 적이 없을 때만 실행
+          if (user.studioName && !hasSeenTutorial()) {
+            startOnboarding();
+          }
+        }, 1000); // 1초 딜레이 (UI 로드 대기)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -276,6 +289,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     const url = tabToUrl[tab];
     if (url) {
       window.history.pushState({}, '', url);
+    }
+
+    // 예약 탭으로 전환 시 데이터 새로고침
+    if (tab === 'reservations') {
+      fetchDashboard();
     }
   };
 
@@ -480,6 +498,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     }
   };
 
+  const handleDownloadMemosCSV = async () => {
+    try {
+      const memos = await getStudentMemos(user.id);
+
+      if (memos.length === 0) {
+        alert('다운로드할 메모가 없습니다.');
+        return;
+      }
+
+      // Format data for CSV
+      const csvData = memos.map(memo => ({
+        '날짜': formatDateForCSV(memo.date),
+        '학생명': memo.student_name,
+        '학생ID': memo.student_id,
+        '메모': memo.content.replace(/\n/g, ' '), // Remove line breaks
+        '태그': memo.tags ? memo.tags.join('; ') : '',
+        '작성일시': memo.created_at ? formatDateForCSV(memo.created_at) : ''
+      }));
+
+      const csv = convertToCSV(csvData, ['날짜', '학생명', '학생ID', '메모', '태그', '작성일시']);
+      const filename = `학생메모_${getTimestampForFilename()}.csv`;
+
+      downloadCSV(csv, filename);
+    } catch (error) {
+      console.error('Failed to download memos CSV:', error);
+      alert('CSV 다운로드 중 오류가 발생했습니다.');
+    }
+  };
+
   const renderCoachUsers = () => {
     // 이메일 검색 필터링
     const filteredUsers = users.filter(u =>
@@ -501,6 +548,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
+
+            {/* CSV 다운로드 버튼 */}
+            <button
+              onClick={handleDownloadMemosCSV}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
+            >
+              <Download size={18} />
+              메모 CSV
+            </button>
 
             {/* 학생 초대 버튼 */}
             <button
@@ -761,6 +817,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+            {isCoach && (
+                <button
+                  onClick={() => {
+                    resetTutorial();
+                    startOnboarding();
+                  }}
+                  className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-full"
+                  title="가이드 다시 보기"
+                  data-tour="welcome"
+                >
+                    <HelpCircle size={18} />
+                </button>
+            )}
             {isCoach && onNavigateToProfile && (
                 <button onClick={onNavigateToProfile} className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full">
                     <Settings size={18} />
@@ -835,6 +904,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     {activeTab === 'users' && '회원'}
                     {activeTab === 'packages' && '수강권'}
                     {activeTab === 'class' && '코칭 관리'}
+                    {activeTab === 'memos' && '상담 기록'}
                   </span>
                 </button>
 
@@ -911,6 +981,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     >
                       코칭 관리
                     </button>
+                    <button
+                      onClick={() => handleTabChange('memos')}
+                      className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
+                        activeTab === 'memos'
+                          ? 'bg-orange-50 text-orange-600 font-bold'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      상담 기록
+                    </button>
                   </div>
                 )}
               </div>
@@ -922,6 +1002,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => handleTabChange('stats')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'stats' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="stats-tab"
                     >
                         <TrendingUp size={14} className="inline mr-1" />
                         통계
@@ -929,6 +1010,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => handleTabChange('reservations')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'reservations' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="reservations-tab"
                     >
                         <Calendar size={14} className="inline mr-1" />
                         예약
@@ -943,6 +1025,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => handleTabChange('attendance')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'attendance' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="attendance-tab"
                     >
                         <CheckCircle2 size={14} className="inline mr-1" />
                         출석
@@ -950,6 +1033,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => { handleTabChange('users'); fetchUsers(); }}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="users-tab"
                     >
                         <Users size={14} className="inline mr-1" />
                         회원
@@ -957,6 +1041,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => handleTabChange('packages')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'packages' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="packages-tab"
                     >
                         <Package size={14} className="inline mr-1" />
                         수강권
@@ -964,9 +1049,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     <button
                         onClick={() => handleTabChange('class')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'class' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        data-tour="class-tab"
                     >
                         <FolderOpen size={14} className="inline mr-1" />
                         코칭 관리
+                    </button>
+                    <button
+                        onClick={() => handleTabChange('memos')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'memos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <FileText size={14} className="inline mr-1" />
+                        상담 기록
                     </button>
                 </div>
             </div>
@@ -1017,6 +1110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 {activeTab === 'users' && renderCoachUsers()}
                 {activeTab === 'packages' && <PackageManagement instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'class' && renderCoachingManagement()}
+                {activeTab === 'memos' && <ConsultationHistory instructorId={user.id} />}
             </div>
           </div>
         </div>
