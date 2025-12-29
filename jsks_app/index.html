@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>정수결사 수행 관리</title>
-    
+
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
     <!-- PWA Settings for Native App Feel -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,6 +32,57 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js"></script>
     
+    <script>
+      // App Version Check and Cache Clear
+      (function() {
+        const APP_VERSION = '1.0.1'; // 버전이 변경되면 이 값을 업데이트하세요
+        const STORAGE_KEY = 'app_version';
+
+        const currentVersion = localStorage.getItem(STORAGE_KEY);
+
+        if (currentVersion !== APP_VERSION) {
+          console.log('🔄 New version detected. Clearing cache...');
+
+          // Clear all localStorage except user session
+          const userSession = localStorage.getItem('user');
+          const practiceItems = localStorage.getItem('practiceItems');
+          localStorage.clear();
+          if (userSession) localStorage.setItem('user', userSession);
+          if (practiceItems) localStorage.setItem('practiceItems', practiceItems);
+
+          // Clear sessionStorage
+          sessionStorage.clear();
+
+          // Clear all caches
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (let name of names) {
+                caches.delete(name);
+              }
+            });
+          }
+
+          // Unregister service workers
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (let registration of registrations) {
+                registration.unregister();
+              }
+            });
+          }
+
+          // Save new version
+          localStorage.setItem(STORAGE_KEY, APP_VERSION);
+
+          // Show message and reload
+          console.log('✅ Cache cleared. Reloading...');
+          setTimeout(() => {
+            window.location.reload(true);
+          }, 100);
+        }
+      })();
+    </script>
+
     <script>
       tailwind.config = {
         theme: {
