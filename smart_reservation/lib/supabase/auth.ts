@@ -20,7 +20,7 @@ export async function signInWithGoogle() {
         prompt: 'select_account',
       },
       // Google Calendar API 권한 추가 (캘린더 생성, 이벤트 추가, Meet 링크 생성)
-      scopes: 'email profile openid https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
+      scopes: 'email profile openid https://www.googleapis.com/auth/calendar',
       skipBrowserRedirect: false
     }
   });
