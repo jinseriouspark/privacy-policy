@@ -122,7 +122,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
                 문의
               </a>
               <button
-                onClick={onShowLogin}
+                onClick={handleGoogleLogin}
                 className="text-slate-600 hover:text-slate-900 font-medium transition-colors"
               >
                 로그인
@@ -157,7 +157,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
                   문의
                 </a>
                 <button
-                  onClick={onShowLogin}
+                  onClick={handleGoogleLogin}
                   className="text-slate-600 hover:text-slate-900 font-medium text-left"
                 >
                   로그인
@@ -186,12 +186,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
               className="px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg rounded-full transition-all transform hover:scale-105 shadow-lg"
             >
               구글로 시작하기
-            </button>
-            <button
-              onClick={onShowLogin}
-              className="px-8 py-4 bg-white hover:bg-slate-50 text-slate-700 font-bold text-lg rounded-full transition-all border-2 border-slate-300"
-            >
-              로그인
             </button>
           </div>
         </div>
