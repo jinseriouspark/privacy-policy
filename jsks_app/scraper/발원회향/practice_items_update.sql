@@ -4,7 +4,7 @@
 -- 기존 데이터 삭제
 DELETE FROM practice_items;
 
--- 새로운 질문 데이터 입력
+-- 새로운 질문 데이터 입력 (UUID 자동 생성)
 INSERT INTO practice_items (category, question, "order") VALUES
 
 -- 1. 집착과 무자성에 대한 자각
