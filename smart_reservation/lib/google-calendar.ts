@@ -43,12 +43,6 @@ export async function createCoachingCalendar(calendarName: string = '코칭 예�
 
     console.log('[createCoachingCalendar] Calendar created:', calendar.id);
 
-    // 캘린더 목록에 명시적으로 추가 (사용자 UI에 표시되도록)
-    await addCalendarToList(calendar.id, accessToken);
-
-    // 생성된 캘린더를 공유 가능하도록 설정 (선택사항)
-    await makeCalendarPublic(calendar.id, accessToken);
-
     return {
       id: calendar.id,
       name: calendar.summary,
@@ -58,69 +52,6 @@ export async function createCoachingCalendar(calendarName: string = '코칭 예�
   } catch (error: any) {
     console.error('캘린더 생성 오류:', error);
     throw error;
-  }
-}
-
-/**
- * 캘린더를 사용자의 캘린더 목록에 명시적으로 추가
- * (Google Calendar UI에 표시되도록)
- */
-async function addCalendarToList(calendarId: string, accessToken: string) {
-  try {
-    console.log('[addCalendarToList] Adding calendar to list:', calendarId);
-
-    const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: calendarId,
-        selected: true,  // 캘린더를 선택된 상태로 표시
-        defaultReminders: [
-          { method: 'popup', minutes: 30 },
-          { method: 'email', minutes: 1440 }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.warn('[addCalendarToList] Failed:', error);
-      // 이미 목록에 있을 수 있으므로 에러 무시
-    } else {
-      console.log('[addCalendarToList] Successfully added to calendar list');
-    }
-  } catch (error) {
-    console.warn('[addCalendarToList] Error:', error);
-    // 캘린더 목록 추가 실패는 무시 (이미 존재할 수 있음)
-  }
-}
-
-/**
- * 캘린더를 공개 설정 (선택사항)
- */
-async function makeCalendarPublic(calendarId: string, accessToken: string) {
-  try {
-    // Grant write access so students can create reservations
-    // Note: In production, consider more restrictive permissions
-    await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/acl`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        role: 'writer', // Changed from 'reader' to 'writer' to allow event creation
-        scope: {
-          type: 'default'
-        }
-      })
-    });
-  } catch (error) {
-    console.warn('캘린더 공개 설정 실패:', error);
-    // 공개 설정 실패는 무시 (필수가 아님)
   }
 }
 
@@ -427,36 +358,6 @@ export async function addEventToStudentCalendar(params: {
   }
 }
 
-/**
- * 사용자의 캘린더 목록 가져오기
- */
-export async function getCalendarList() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.provider_token) {
-      throw new Error('캘린더 권한이 필요합니다. 우측 상단에서 로그아웃 후 다시 로그인해주세요.');
-    }
-
-    const accessToken = session.provider_token;
-
-    const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error('캘린더 목록을 가져올 수 없습니다.');
-    }
-
-    const data = await response.json();
-    return data.items || [];
-  } catch (error: any) {
-    console.error('캘린더 목록 조회 오류:', error);
-    throw error;
-  }
-}
 
 /**
  * 🆕 기존 캘린더가 목록에 없으면 자동으로 추가

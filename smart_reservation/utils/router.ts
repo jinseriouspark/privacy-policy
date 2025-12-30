@@ -103,8 +103,8 @@ export const ROUTES = {
   // Public routes
   LANDING: '/',
   LOGIN: '/login',
-  PRIVACY: '/privacy-policy',
-  TERMS: '/terms-of-service',
+  PRIVACY: '/privacy',
+  TERMS: '/terms',
 
   // Auth routes
   ONBOARDING: '/onboarding',
