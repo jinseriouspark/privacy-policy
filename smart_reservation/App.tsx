@@ -22,6 +22,9 @@ import { initGA, trackPageView, analytics } from './lib/analytics';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Toaster } from 'react-hot-toast';
 
+// 앱 버전 - 변경 시 모든 캐시 무효화
+const APP_VERSION = '1.0.5';
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,26 @@ const App: React.FC = () => {
   // URL 상태 추적
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
+  // 버전 체크 및 캐시 강제 갱신
+  useEffect(() => {
+    const storedVersion = localStorage.getItem('app_version');
+    if (storedVersion !== APP_VERSION) {
+      console.log(`[App] Version updated: ${storedVersion} → ${APP_VERSION}`);
+      console.log('[App] Clearing cache and reloading...');
+      localStorage.setItem('app_version', APP_VERSION);
+
+      // Service Worker 캐시 제거
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => registration.unregister());
+        });
+      }
+
+      // 브라우저 캐시 강제 갱신
+      window.location.reload();
+    }
+  }, []);
+
   // Initialize Google Analytics
   useEffect(() => {
     initGA();
@@ -41,6 +64,23 @@ const App: React.FC = () => {
 
   // Listen for URL changes
   useEffect(() => {
+    // Handle Notion OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    const notionCode = params.get('code');
+    const notionState = params.get('state');
+
+    if (notionCode && window.location.pathname === '/notion-callback') {
+      handleNotionCallback(notionCode);
+      return;
+    }
+
+    // 🆕 Handle demo mode (?demo=true)
+    const isDemoMode = params.get('demo') === 'true';
+    if (isDemoMode && !currentUser) {
+      handleDemoLogin();
+      return;
+    }
+
     // Remove hash from URL (Supabase auth uses hash fragments)
     if (window.location.hash && window.location.hash.includes('access_token')) {
       // Let Supabase handle auth, then clean up
@@ -411,6 +451,79 @@ const App: React.FC = () => {
       navigateTo(ROUTES.LANDING);
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const handleNotionCallback = async (code: string) => {
+    try {
+      setLoading(true);
+      const { handleNotionCallback: processCallback } = await import('./lib/notion-oauth');
+      const result = await processCallback(code);
+
+      if (result.success) {
+        // Redirect to dashboard with success message
+        navigateTo(ROUTES.DASHBOARD);
+        setTimeout(() => {
+          alert(`Notion 연동 완료: ${result.workspace_name}`);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Notion OAuth callback error:', error);
+      navigateTo(ROUTES.DASHBOARD);
+      setTimeout(() => {
+        alert('Notion 연동에 실패했습니다.');
+      }, 500);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    try {
+      setLoading(true);
+      console.log('[handleDemoLogin] Starting demo login...');
+
+      // Fetch demo user from database
+      const demoUser = await getUserByEmail('demo@yeyakmania.com');
+
+      if (!demoUser) {
+        console.error('[handleDemoLogin] Demo user not found in database');
+        alert('데모 계정을 찾을 수 없습니다. 데이터베이스를 확인해주세요.');
+        navigateTo(ROUTES.LANDING);
+        return;
+      }
+
+      console.log('[handleDemoLogin] Demo user found:', demoUser);
+
+      // Create user object
+      const user: User = {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        picture: demoUser.picture,
+        userType: UserType.INSTRUCTOR,
+        username: demoUser.username,
+        bio: demoUser.bio,
+        isProfileComplete: true,
+        remaining: 0
+      };
+
+      setCurrentUser(user);
+      console.log('[handleDemoLogin] Demo user set, redirecting to dashboard');
+
+      // Remove ?demo=true from URL
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+
+      // Navigate to dashboard
+      navigateTo(ROUTES.SUMMARY);
+      analytics.login('demo');
+    } catch (error) {
+      console.error('[handleDemoLogin] Error:', error);
+      alert('데모 로그인에 실패했습니다.');
+      navigateTo(ROUTES.LANDING);
+    } finally {
+      setLoading(false);
     }
   };
 

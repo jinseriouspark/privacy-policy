@@ -101,7 +101,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <img src="/yak-logo.png" alt="yAK" className="h-8" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-500 to-orange-500 bg-clip-text text-transparent">
                 예약매니아
               </h1>
@@ -187,6 +188,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
             >
               구글로 시작하기
             </button>
+            <button
+              onClick={() => window.location.href = '/?demo=true'}
+              className="px-8 py-4 bg-white hover:bg-slate-50 text-orange-500 font-bold text-lg rounded-full transition-all transform hover:scale-105 shadow-lg border-2 border-orange-500"
+            >
+              데모 체험하기
+            </button>
           </div>
         </div>
       </section>
@@ -225,8 +232,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
             </div>
 
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-6">
-                <TrendingUp size={24} className="text-green-600" />
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-6">
+                <TrendingUp size={24} className="text-orange-600" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">실시간 통계</h3>
               <p className="text-slate-600 leading-relaxed">
@@ -250,7 +257,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
             {[
               '전화 응대 없이 자동으로 예약 접수',
               'Google 캘린더와 자동 동기화',
-              '수강권 판매부터 관리까지 한 번에',
+              '수강권 판매부터 관리까지 한 번에 (지원예정)',
               '실시간 출석 체크로 수업 관리 간편화',
               '매출과 통계를 한눈에 파악',
               '모바일과 PC 모두에서 사용 가능'
@@ -284,22 +291,66 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess, onShowLogin }
 
       {/* Footer */}
       <footer className="py-12 bg-slate-900 text-slate-400 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-sm">© 2025 예약매니아. All rights reserved.</p>
-          <div className="mt-4 space-x-6">
-            <button
-              onClick={() => setShowTerms(true)}
-              className="text-sm hover:text-white transition-colors"
-            >
-              이용약관
-            </button>
-            <button
-              onClick={() => setShowPrivacy(true)}
-              className="text-sm hover:text-white transition-colors"
-            >
-              개인정보처리방침
-            </button>
-            <a href="mailto:contact@traff-engine.com" className="text-sm hover:text-white transition-colors">문의하기</a>
+        <div className="max-w-7xl mx-auto">
+          {/* 사업자 정보 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* 회사 정보 */}
+            <div>
+              <h3 className="text-white font-bold mb-4">사업자 정보</h3>
+              <div className="space-y-2 text-sm">
+                <p><span className="text-slate-500">상호명:</span> 트래픽엔진</p>
+                <p><span className="text-slate-500">대표자명:</span> 박진슬</p>
+                <p><span className="text-slate-500">사업자등록번호:</span> 867-13-02930</p>
+                <p><span className="text-slate-500">사업장 주소:</span> 서울특별시 양천구 목동중앙본로22길</p>
+                <p><span className="text-slate-500">전화번호:</span> 010-3265-5939</p>
+                <p><span className="text-slate-500">이메일:</span> contact@traff-engine.com</p>
+                <p><span className="text-slate-500">통신판매업 신고:</span> 제2025-서울양천-1208호</p>
+              </div>
+            </div>
+
+            {/* 고객 지원 */}
+            <div>
+              <h3 className="text-white font-bold mb-4">고객 지원</h3>
+              <div className="space-y-2 text-sm">
+                <p>평일 17:00 - 24:00</p>
+                <p className="text-slate-500">(주말 및 공휴일 휴무)</p>
+                <p className="mt-4">이메일: contact@traff-engine.com</p>
+                <p>카카오톡: @traffic-engine</p>
+              </div>
+            </div>
+
+            {/* 바로가기 */}
+            <div>
+              <h3 className="text-white font-bold mb-4">바로가기</h3>
+              <div className="space-y-2 text-sm">
+                <a
+                  href="/terms"
+                  className="block hover:text-white transition-colors"
+                >
+                  이용약관
+                </a>
+                <a
+                  href="/privacy"
+                  className="block hover:text-white transition-colors"
+                >
+                  개인정보처리방침
+                </a>
+                <button
+                  onClick={() => setShowPricing(true)}
+                  className="block hover:text-white transition-colors text-left"
+                >
+                  요금안내
+                </button>
+                <a href="mailto:contact@traff-engine.com" className="block hover:text-white transition-colors">
+                  제휴문의
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <div className="pt-8 border-t border-slate-800 text-center text-sm">
+            <p>© 2025 트래픽엔진. All rights reserved.</p>
           </div>
         </div>
       </footer>
