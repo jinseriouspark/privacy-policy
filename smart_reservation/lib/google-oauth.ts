@@ -7,6 +7,7 @@
  */
 
 import { generateToken } from './jwt';
+import { supabase } from './supabase/client';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const REDIRECT_URI = `${window.location.origin}/auth/callback`;
@@ -271,9 +272,6 @@ export async function handleOAuthCallback(): Promise<{
   // 2. Supabase Auth 세션 생성 (RLS용)
   if (supabaseSession?.email && supabaseSession?.password) {
     console.log('[handleOAuthCallback] Creating Supabase Auth session...');
-
-    // Supabase client 임포트
-    const { supabase } = await import('./supabase/client');
 
     // 비밀번호로 로그인하여 실제 세션 생성
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
