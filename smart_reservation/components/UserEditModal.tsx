@@ -207,7 +207,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white">
+        <div className="bg-gradient-to-br bg-orange-500 p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center font-bold text-xl backdrop-blur-sm">
@@ -307,7 +307,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
                         {/* 🆕 시간 설정 버튼 */}
                         <button
                           onClick={() => setEditingPackageId(pkg.id)}
-                          className="w-full flex items-center justify-center gap-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors"
+                          className="w-full flex items-center justify-center gap-2 py-2 bg-slate-50 hover:bg-slate-100 text-orange-700 rounded-lg text-sm font-medium transition-colors"
                         >
                           <Clock size={14} />
                           {pkg.working_hours ? '시간 설정 변경' : '특별 시간 설정'}
@@ -364,8 +364,8 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
 
                 {/* 코칭 자동 연결 - UI 숨김 */}
                 {newPackage.coaching_id && coachings.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-800">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-sm text-orange-800">
                       📎 {coachings.find(c => c.id === newPackage.coaching_id)?.title || '코칭'}에 자동 연결됩니다
                     </p>
                   </div>

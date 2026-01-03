@@ -67,7 +67,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-indigo-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-lg text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-4">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 mx-auto mb-4">
             <CheckCircle2 size={32} />
           </div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">저장 완료</h2>
@@ -102,7 +102,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ user, onUpdate, o
       <div className="max-w-4xl mx-auto p-4 py-8">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {/* Profile Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-8">
+          <div className="bg-gradient-to-r bg-orange-500 p-8">
             <div className="flex items-center gap-4">
               {user.picture ? (
                 <img

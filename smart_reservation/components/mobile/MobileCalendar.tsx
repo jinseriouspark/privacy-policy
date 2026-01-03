@@ -647,7 +647,7 @@ export const MobileCalendar: React.FC<MobileCalendarProps> = ({ user }) => {
                   {slot.time}
                 </div>
                 {slot.available ? (
-                  <div className="text-[10px] text-green-600 mt-0.5">가능</div>
+                  <div className="text-[10px] text-orange-600 mt-0.5">가능</div>
                 ) : slot.reason === 'past' ? (
                   <div className="text-[10px] text-slate-400 mt-0.5">지남</div>
                 ) : (

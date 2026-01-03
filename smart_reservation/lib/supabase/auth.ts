@@ -19,8 +19,8 @@ export async function signInWithGoogle() {
         access_type: 'offline',
         prompt: 'select_account',
       },
-      // Google Calendar API 권한 추가 (캘린더 생성, 이벤트 추가, Meet 링크 생성)
-      scopes: 'email profile openid https://www.googleapis.com/auth/calendar',
+      // 로그인 시에는 기본 정보만 요청 (Incremental Authorization)
+      scopes: 'email profile openid',
       skipBrowserRedirect: false
     }
   });

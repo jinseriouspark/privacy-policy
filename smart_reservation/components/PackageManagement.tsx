@@ -241,7 +241,7 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
     <div
       key={pkg.id}
       className={`bg-white rounded-xl border-2 p-5 transition-all ${
-        pkg.isActive ? 'border-slate-200 hover:border-purple-300 hover:shadow-md' : 'border-slate-100 bg-slate-50 opacity-60'
+        pkg.isActive ? 'border-slate-200 hover:border-orange-300 hover:shadow-md' : 'border-slate-100 bg-slate-50 opacity-60'
       }`}
     >
       <div className="flex items-start justify-between mb-4">
@@ -300,8 +300,8 @@ const PackageManagement: React.FC<PackageManagementProps> = ({ instructorEmail, 
         </div>
 
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
-            <DollarSign size={16} className="text-green-600" />
+          <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+            <DollarSign size={16} className="text-orange-600" />
           </div>
           <div>
             <p className="text-xs text-slate-500">가격</p>

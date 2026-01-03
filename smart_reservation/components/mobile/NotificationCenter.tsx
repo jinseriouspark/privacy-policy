@@ -104,15 +104,15 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'booking_confirmed':
-        return <Calendar size={20} className="text-green-600" />;
+        return <Calendar size={20} className="text-orange-600" />;
       case 'booking_cancelled':
         return <AlertCircle size={20} className="text-red-600" />;
       case 'class_reminder':
-        return <Bell size={20} className="text-blue-600" />;
+        return <Bell size={20} className="text-orange-600" />;
       case 'package_expiring':
         return <CreditCard size={20} className="text-orange-600" />;
       case 'instructor_message':
-        return <MessageCircle size={20} className="text-purple-600" />;
+        return <MessageCircle size={20} className="text-orange-600" />;
       default:
         return <Bell size={20} className="text-slate-600" />;
     }

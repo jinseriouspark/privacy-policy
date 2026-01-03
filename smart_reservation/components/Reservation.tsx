@@ -382,8 +382,8 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
                     {slot.status === 'busy' && slot.type && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                         isGroup
-                          ? 'bg-purple-100 text-purple-600'
-                          : 'bg-blue-100 text-blue-600'
+                          ? 'bg-orange-100 text-orange-600'
+                          : 'bg-slate-100 text-orange-600'
                       }`}>
                         {isGroup ? '그룹' : '개인'}
                       </span>
@@ -403,7 +403,7 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
   if (confirmed) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center animate-in fade-in zoom-in duration-300 px-4">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-6 shadow-sm">
+        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 mb-6 shadow-sm">
           <CheckCircle2 size={40} />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">예약 확정</h2>
@@ -517,9 +517,9 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
 
       {/* Package Selection */}
       {user && userPackages.length > 0 && (
-        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 border border-purple-100">
+        <div className="bg-gradient-to-br from-orange-50 to-indigo-50 rounded-2xl p-5 border border-orange-100">
           <div className="flex items-center gap-2 mb-3">
-            <Package size={18} className="text-purple-600" />
+            <Package size={18} className="text-orange-600" />
             <h3 className="font-bold text-slate-900">수강권 선택</h3>
           </div>
           <div className="space-y-2">
@@ -534,17 +534,17 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
                   onClick={() => setSelectedPackageId(pkg.id)}
                   className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
                     isSelected
-                      ? 'border-purple-500 bg-purple-100/50 shadow-md'
-                      : 'border-slate-200 bg-white hover:border-purple-300'
+                      ? 'border-orange-500 bg-orange-100/50 shadow-md'
+                      : 'border-slate-200 bg-white hover:border-orange-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`font-bold ${isSelected ? 'text-purple-900' : 'text-slate-900'}`}>
+                      <p className={`font-bold ${isSelected ? 'text-orange-900' : 'text-slate-900'}`}>
                         {pkg.name || '수강권'}
                       </p>
                       <p className="text-sm text-slate-600 mt-1">
-                        잔여: <span className="font-bold text-purple-600">{pkg.remaining_sessions}</span>
+                        잔여: <span className="font-bold text-orange-600">{pkg.remaining_sessions}</span>
                         {pkg.total_sessions && ` / ${pkg.total_sessions}회`}
                       </p>
                       {daysLeft !== null && (
@@ -554,7 +554,7 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
                       )}
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'border-purple-500 bg-purple-500' : 'border-slate-300'
+                      isSelected ? 'border-orange-500 bg-orange-500' : 'border-slate-300'
                     }`}>
                       {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
                     </div>
@@ -589,9 +589,10 @@ const Reservation: React.FC<ReservationProps> = ({ user, instructor, onBack, onS
                   redirectTo: window.location.href, // Redirect back to this exact page
                   queryParams: {
                     access_type: 'offline',
-                    prompt: 'select_account',
+                    prompt: 'consent',  // 추가 권한이므로 consent 필요
+                    include_granted_scopes: 'true',  // 기존 권한 유지 (Incremental Auth)
                   },
-                  scopes: 'email profile openid https://www.googleapis.com/auth/calendar',
+                  scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.acls',
                   skipBrowserRedirect: false
                 }
               });

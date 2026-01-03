@@ -347,8 +347,8 @@ export const MobileStudents: React.FC<MobileStudentsProps> = ({ user }) => {
                   onClick={() => handleCopyBookingLink(student)}
                   className={`flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     copiedStudentId === student.id
-                      ? 'bg-green-50 text-green-600'
-                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      ? 'bg-orange-50 text-orange-600'
+                      : 'bg-slate-50 text-orange-600 hover:bg-slate-100'
                   }`}
                 >
                   {copiedStudentId === student.id ? (

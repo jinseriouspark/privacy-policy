@@ -10,7 +10,7 @@ export async function upsertUser(data: {
   name: string;
   picture?: string;
   userType?: UserType;
-  username?: string;
+  short_id?: string;
   bio?: string;
   studioName?: string;
   phone?: string;
@@ -28,6 +28,7 @@ export async function upsertUser(data: {
       email: data.email,
       name: data.name,
       picture: data.picture,
+      short_id: data.short_id,
       studio_name: data.studioName,
       phone: data.phone,
       bio: data.bio,
@@ -637,7 +638,7 @@ export async function createReservation(data: {
 
   // Get instructor's Google Calendar ID
   const { data: settings } = await supabase
-    .from('instructor_settings')
+    .from('settings')
     .select('google_calendar_id')
     .eq('instructor_id', data.instructor_id)
     .single();
@@ -1501,7 +1502,8 @@ function generateInvitationCode(): string {
 /**
  * 학생 초대하기 (코칭 기반)
  */
-export async function createInvitation(coachingId: string, studentEmail: string, packageIds?: string[]) {
+export async function createInvitation(params: { instructorId: string; coachingId: string; studentEmail: string; packageIds?: string[] }) {
+  const { coachingId, studentEmail, packageIds } = params;
   // Get coaching info to get instructor_id
   const { data: coaching, error: coachingError } = await supabase
     .from('coachings')
@@ -2425,3 +2427,363 @@ export async function deleteStudentMemo(
   }
 }
 
+/**
+ * 하이브리드 방식: 학생을 pending 상태로 직접 추가
+ * - 강사가 이메일/이름을 입력하면 즉시 DB에 추가 (상태: pending)
+ * - 강사 화면에는 즉시 표시됨
+ * - 학생이 해당 이메일로 로그인하면 자동으로 active 상태로 변경
+ */
+export async function addPendingStudent(data: {
+  email: string;
+  name: string;
+  phone?: string;
+  instructorId: string;
+  coachingId: string;
+  packageIds?: string[];
+}) {
+  console.log('[addPendingStudent] Adding pending student:', data);
+
+  try {
+    // 1. 이미 존재하는 사용자인지 확인
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', data.email)
+      .single();
+
+    let studentUserId: string;
+
+    if (existingUser) {
+      // 이미 가입한 사용자면 해당 ID 사용
+      studentUserId = existingUser.id;
+      console.log('[addPendingStudent] User already exists:', studentUserId);
+    } else {
+      // 새 사용자를 pending 상태로 생성
+      const { data: newUser, error: userError } = await supabase
+        .from('users')
+        .insert({
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          user_type: 'student',
+          status: 'pending', // pending 상태로 추가
+        })
+        .select()
+        .single();
+
+      if (userError) throw userError;
+      studentUserId = newUser.id;
+      console.log('[addPendingStudent] Created pending user:', studentUserId);
+    }
+
+    // 2. instructor_students 관계 추가
+    const { error: relationError } = await supabase
+      .from('instructor_students')
+      .insert({
+        instructor_id: data.instructorId,
+        student_id: studentUserId,
+      });
+
+    if (relationError) {
+      // 이미 관계가 존재하면 무시
+      if (!relationError.message?.includes('duplicate')) {
+        throw relationError;
+      }
+    }
+
+    // 3. 선택한 수강권이 있으면 할당
+    if (data.packageIds && data.packageIds.length > 0) {
+      for (const packageId of data.packageIds) {
+        // Get package template details
+        const { data: packageTemplate } = await supabase
+          .from('packages')
+          .select('*')
+          .eq('id', packageId)
+          .single();
+
+        if (packageTemplate) {
+          // Create student package
+          await supabase.from('student_packages').insert({
+            student_id: studentUserId,
+            instructor_id: data.instructorId,
+            package_id: packageId,
+            total_sessions: packageTemplate.total_sessions,
+            remaining_sessions: packageTemplate.total_sessions,
+            expires_at: new Date(Date.now() + packageTemplate.validity_days * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'active',
+          });
+        }
+      }
+    }
+
+    console.log('[addPendingStudent] Student added successfully');
+    return {
+      success: true,
+      studentId: studentUserId,
+      isPending: !existingUser, // 새로 만든 경우에만 pending
+    };
+  } catch (error: any) {
+    console.error('[addPendingStudent] Error:', error);
+    throw new Error(error.message || '학생 추가에 실패했습니다.');
+  }
+}
+
+/**
+ * Pending 사용자를 Active로 활성화
+ * (학생이 처음 로그인할 때 자동 호출)
+ */
+export async function activatePendingUser(userId: string) {
+  const { error } = await supabase
+    .from('users')
+    .update({ status: 'active' })
+    .eq('id', userId)
+    .eq('status', 'pending');
+
+  if (error) {
+    console.error('[activatePendingUser] Error:', error);
+    throw error;
+  }
+
+  console.log('[activatePendingUser] User activated:', userId);
+  return true;
+}
+
+/**
+ * 🆕 강사의 연동된 캘린더 목록 저장/조회
+ */
+export async function saveLinkedCalendars(instructorId: string, calendarIds: string[]) {
+  const { data, error } = await supabase
+    .from('settings')
+    .upsert({
+      instructor_id: instructorId,
+      linked_calendars: calendarIds
+    }, {
+      onConflict: 'instructor_id'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[saveLinkedCalendars] Error:', error);
+    throw error;
+  }
+
+  console.log('[saveLinkedCalendars] Linked calendars saved:', calendarIds);
+  return data;
+}
+
+export async function getLinkedCalendars(instructorId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('linked_calendars')
+    .eq('instructor_id', instructorId)
+    .single();
+
+  if (error) {
+    console.error('[getLinkedCalendars] Error:', error);
+    return [];
+  }
+
+  return data?.linked_calendars || [];
+}
+
+/**
+ * 🆕 Busy 시간 캐시 저장/조회
+ */
+export async function saveBusyTimesCache(
+  instructorId: string,
+  busyTimes: Array<{ start: string; end: string; calendar_name?: string }>
+) {
+  const { data, error } = await supabase
+    .from('settings')
+    .upsert({
+      instructor_id: instructorId,
+      busy_times_cache: busyTimes,
+      last_synced_at: new Date().toISOString()
+    }, {
+      onConflict: 'instructor_id'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[saveBusyTimesCache] Error:', error);
+    throw error;
+  }
+
+  console.log('[saveBusyTimesCache] Busy times cached');
+  return data;
+}
+
+export async function getBusyTimesCache(instructorId: string) {
+  const { data, error } = await supabase
+    .from('settings')
+    .select('busy_times_cache, last_synced_at')
+    .eq('instructor_id', instructorId)
+    .single();
+
+  if (error) {
+    console.error('[getBusyTimesCache] Error:', error);
+    return { busyTimes: [], lastSynced: null };
+  }
+
+  return {
+    busyTimes: data?.busy_times_cache || [],
+    lastSynced: data?.last_synced_at
+  };
+}
+
+/**
+ * 🆕 캘린더 동기화 (busy 시간 업데이트)
+ */
+export async function syncCalendarBusyTimes(instructorId: string) {
+  try {
+    // 1. 연동된 캘린더 목록 가져오기
+    const linkedCalendars = await getLinkedCalendars(instructorId);
+
+    if (linkedCalendars.length === 0) {
+      console.log('[syncCalendarBusyTimes] No linked calendars');
+      return { busyTimes: [], lastSynced: new Date().toISOString() };
+    }
+
+    // 2. 다음 7일간의 busy 시간 조회
+    const now = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(now.getDate() + 7);
+
+    const { getCalendarBusyTimes } = await import('../google-calendar');
+    const busyTimes = await getCalendarBusyTimes({
+      calendarIds: linkedCalendars,
+      timeMin: now.toISOString(),
+      timeMax: nextWeek.toISOString()
+    });
+
+    // 3. 캐시에 저장
+    await saveBusyTimesCache(instructorId, busyTimes);
+
+    console.log('[syncCalendarBusyTimes] Synced busy times:', busyTimes.length);
+    return { busyTimes, lastSynced: new Date().toISOString() };
+  } catch (error) {
+    console.error('[syncCalendarBusyTimes] Error:', error);
+    throw error;
+  }
+}
+
+// ==========================================
+// Notion Integration Functions
+// ==========================================
+
+/**
+ * Save Notion OAuth access token
+ */
+export async function saveNotionAccessToken(
+  instructorId: string,
+  notionData: {
+    access_token: string;
+    workspace_name: string;
+    workspace_icon?: string;
+    bot_id: string;
+    owner: any;
+  }
+) {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .upsert({
+        instructor_id: instructorId,
+        notion_access_token: notionData.access_token,
+        notion_workspace_name: notionData.workspace_name,
+        notion_workspace_icon: notionData.workspace_icon,
+        notion_bot_id: notionData.bot_id,
+        notion_connected_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'instructor_id'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('[saveNotionAccessToken] Saved Notion token for instructor:', instructorId);
+    return data;
+  } catch (error) {
+    console.error('[saveNotionAccessToken] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get Notion access token
+ */
+export async function getNotionAccessToken(instructorId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('notion_access_token, notion_workspace_name, notion_database_id')
+      .eq('instructor_id', instructorId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // Ignore not found error
+
+    return data;
+  } catch (error) {
+    console.error('[getNotionAccessToken] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Save Notion database ID
+ */
+export async function saveNotionDatabaseId(instructorId: string, databaseId: string) {
+  try {
+    const { data, error} = await supabase
+      .from('settings')
+      .update({
+        notion_database_id: databaseId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('instructor_id', instructorId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('[saveNotionDatabaseId] Saved database ID for instructor:', instructorId);
+    return data;
+  } catch (error) {
+    console.error('[saveNotionDatabaseId] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete Notion access token (disconnect)
+ */
+export async function deleteNotionAccessToken(instructorId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .update({
+        notion_access_token: null,
+        notion_workspace_name: null,
+        notion_workspace_icon: null,
+        notion_bot_id: null,
+        notion_database_id: null,
+        notion_connected_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('instructor_id', instructorId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log('[deleteNotionAccessToken] Disconnected Notion for instructor:', instructorId);
+    return data;
+  } catch (error) {
+    console.error('[deleteNotionAccessToken] Error:', error);
+    throw error;
+  }
+}

@@ -449,7 +449,7 @@ export const BookingBottomSheet: React.FC<BookingBottomSheetProps> = ({
               {/* Step 4: Confirmation */}
               {step === 'confirm' && (
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white">
+                  <div className="bg-gradient-to-br bg-orange-500 rounded-2xl p-6 text-white">
                     <div className="flex items-center gap-2 mb-4">
                       <CheckCircle size={24} />
                       <h3 className="text-lg font-bold">예약 정보 확인</h3>

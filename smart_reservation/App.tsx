@@ -13,17 +13,18 @@ import TermsOfService from './components/TermsOfService';
 import AccountTypeSelection from './components/AccountTypeSelection';
 import ErrorBoundary from './components/ErrorBoundary';
 import PublicBooking from './components/PublicBooking';
+import OAuthCallback from './components/OAuthCallback';
 import { getCurrentProjectSlug, getBookingUrlParams, getStudioSlug } from './services/api';
-import { signOut } from './lib/supabase/auth';
 import { supabase } from './lib/supabase/client';
 import { getUserByEmail, upsertUser, acceptInvitation, getCoachingBySlug, getCoachingByCoachAndSlug, selectUserType, getInstructorCoachings } from './lib/supabase/database';
+import { verifyToken } from './lib/jwt';
 import { navigateTo, replaceTo, getCurrentRoute, getPostLoginRoute, ROUTES } from './utils/router';
 import { initGA, trackPageView, analytics } from './lib/analytics';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Toaster } from 'react-hot-toast';
 
 // 앱 버전 - 변경 시 모든 캐시 무효화
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.6';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -147,11 +148,18 @@ const App: React.FC = () => {
         await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
       }
 
-      // Check Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
+      // Check JWT token
+      const token = localStorage.getItem('auth_token');
 
-      if (session?.user) {
-        await handleAuthenticatedUser(session.user.email!, route);
+      if (token) {
+        const payload = await verifyToken(token);
+        if (payload) {
+          await handleAuthenticatedUser(payload.email, route);
+        } else {
+          // Invalid token, clear it
+          localStorage.removeItem('auth_token');
+          await handleGuestUser(path, coachingSlug, coachId, classSlug, route.params.invite);
+        }
       } else {
         await handleGuestUser(path, coachingSlug, coachId, classSlug, route.params.invite);
       }
@@ -229,43 +237,13 @@ const App: React.FC = () => {
     let existingUser = await getUserByEmail(email);
     console.log('[handleAuthenticatedUser] existingUser:', existingUser);
 
-    // 🆕 If user doesn't exist in DB, create them automatically
+    // User doesn't exist - this shouldn't happen with our OAuth flow
+    // (login.ts creates the user automatically)
     if (!existingUser) {
-      console.log('[handleAuthenticatedUser] Creating new user in DB...');
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-
-      if (!authUser) {
-        console.error('[handleAuthenticatedUser] No auth user!');
-        return;
-      }
-
-      // Create user with student role by default (can be changed in onboarding)
-      existingUser = await upsertUser({
-        email: authUser.email!,
-        name: authUser.user_metadata?.full_name || authUser.email!.split('@')[0],
-        picture: authUser.user_metadata?.avatar_url,
-        userType: UserType.STUDENT, // Default to student for booking links
-      });
-
-      console.log('[handleAuthenticatedUser] New user created:', existingUser);
-    }
-
-    // 🆕 Save Google tokens for calendar access
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.provider_token) {
-        console.log('[handleAuthenticatedUser] Saving Google tokens');
-        const { saveGoogleTokens } = await import('./lib/supabase/database');
-        await saveGoogleTokens(existingUser.id, {
-          access_token: session.provider_token,
-          refresh_token: session.provider_refresh_token,
-          expires_at: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : undefined,
-        });
-        console.log('[handleAuthenticatedUser] Google tokens saved');
-      }
-    } catch (error) {
-      console.error('[handleAuthenticatedUser] Failed to save Google tokens:', error);
-      // Don't block login if token save fails
+      console.error('[handleAuthenticatedUser] User not found in DB. This should not happen!');
+      localStorage.removeItem('auth_token');
+      navigateTo(ROUTES.LOGIN);
+      return;
     }
 
     // Handle invitation acceptance
@@ -446,7 +424,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       analytics.logout();
-      await signOut();
+      // Clear JWT token
+      localStorage.removeItem('auth_token');
       setCurrentUser(null);
       navigateTo(ROUTES.LANDING);
     } catch (error) {
@@ -554,6 +533,9 @@ const App: React.FC = () => {
 
       case ROUTES.LOGIN:
         return <Login onLogin={handleLogin} />;
+
+      case ROUTES.AUTH_CALLBACK:
+        return <OAuthCallback />;
 
       case ROUTES.PRIVACY:
         return (
@@ -704,6 +686,7 @@ const App: React.FC = () => {
   // Full-screen views without Layout
   const fullScreenPaths = [
     ROUTES.LANDING,
+    ROUTES.AUTH_CALLBACK,
     ROUTES.DASHBOARD,
     ROUTES.SUMMARY,
     ROUTES.RESERVATIONS,

@@ -106,13 +106,13 @@ export const SwipeableReservationCard: React.FC<SwipeableReservationCardProps> =
                 isCancelled
                   ? 'bg-slate-100 text-slate-600'
                   : isPast
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-slate-100 text-orange-600'
                   : 'bg-orange-100 text-orange-600'
               }`}>
                 {isCancelled ? '취소됨' : isPast ? '완료' : '예정'}
               </span>
               {reservation.coaching?.type === 'group' && (
-                <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-600 font-medium">
+                <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-medium">
                   그룹
                 </span>
               )}

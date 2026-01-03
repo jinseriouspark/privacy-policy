@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Reservation } from '../types';
 import { getAttendanceList, updateAttendance } from '../lib/supabase/database';
-import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertCircle, Loader2, Search, Download } from 'lucide-react';
 import ConsultationMemoModal from './ConsultationMemoModal';
+import { convertToCSV, downloadCSV, getTimestampForFilename, formatDateForCSV } from '../utils/csv';
 
 interface AttendanceCheckProps {
   instructorEmail: string;
@@ -101,6 +102,29 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
     }
   };
 
+  const handleDownloadAttendanceCSV = () => {
+    if (reservations.length === 0) {
+      alert('다운로드할 출석 기록이 없습니다.');
+      return;
+    }
+
+    // Format data for CSV
+    const csvData = reservations.map(reservation => ({
+      '날짜': reservation.date,
+      '시간': reservation.time,
+      '학생명': reservation.studentName || '',
+      '학생이메일': reservation.studentEmail,
+      '수업유형': reservation.classType === 'private' ? '개인' : '그룹',
+      '출석상태': getAttendanceLabel(reservation.attendanceStatus),
+      '예약상태': reservation.status
+    }));
+
+    const csv = convertToCSV(csvData, ['날짜', '시간', '학생명', '학생이메일', '수업유형', '출석상태', '예약상태']);
+    const filename = `출석기록_${getTimestampForFilename()}.csv`;
+
+    downloadCSV(csv, filename);
+  };
+
   const filteredReservations = reservations.filter(r =>
     r.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.studentEmail?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -109,7 +133,7 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
   const getAttendanceColor = (status?: string) => {
     switch (status) {
       case 'attended':
-        return 'bg-green-100 text-green-700 border-green-200';
+        return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'absent':
         return 'bg-red-100 text-red-700 border-red-200';
       case 'late':
@@ -174,7 +198,7 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
           <div className="flex space-x-2 pt-3 border-t border-slate-100">
             <button
               onClick={() => handleAttendance(reservation.reservationId, 'attended', reservation)}
-              className="flex-1 py-2 px-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium transition-colors flex items-center justify-center text-sm"
+              className="flex-1 py-2 px-3 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg font-medium transition-colors flex items-center justify-center text-sm"
             >
               <CheckCircle size={16} className="mr-1" />
               출석
@@ -223,7 +247,7 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-slate-900 flex items-center mb-2">
-          <CheckCircle size={24} className="mr-2 text-green-600" />
+          <CheckCircle size={24} className="mr-2 text-orange-600" />
           출석 체크
         </h2>
         <p className="text-sm text-slate-500">회원들의 출석을 관리하세요</p>
@@ -241,6 +265,15 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none"
           />
         </div>
+
+        {/* CSV Download Button */}
+        <button
+          onClick={handleDownloadAttendanceCSV}
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg font-medium text-sm transition-all whitespace-nowrap"
+        >
+          <Download size={18} />
+          출석 CSV
+        </button>
 
         <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
           <button
@@ -281,7 +314,7 @@ const AttendanceCheck: React.FC<AttendanceCheckProps> = ({ instructorEmail, inst
         {['attended', 'late', 'absent', 'pending'].map(status => {
           const count = reservations.filter(r => r.attendanceStatus === status).length;
           const colors = {
-            attended: 'bg-green-50 border-green-200 text-green-700',
+            attended: 'bg-orange-50 border-orange-200 text-orange-700',
             late: 'bg-orange-50 border-orange-200 text-orange-700',
             absent: 'bg-red-50 border-red-200 text-red-700',
             pending: 'bg-slate-50 border-slate-200 text-slate-600'

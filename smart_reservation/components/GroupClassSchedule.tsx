@@ -288,7 +288,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
                     { day: 3, label: '수', color: 'text-slate-700' },
                     { day: 4, label: '목', color: 'text-slate-700' },
                     { day: 5, label: '금', color: 'text-slate-700' },
-                    { day: 6, label: '토', color: 'text-blue-600' }
+                    { day: 6, label: '토', color: 'text-orange-600' }
                   ].map(({ day, label, color }) => (
                     <button
                       key={day}
@@ -349,7 +349,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
             ? 'border-red-200 bg-red-50 opacity-60'
             : isFull
             ? 'border-orange-200 bg-orange-50'
-            : 'border-slate-200 hover:border-blue-300 hover:shadow-md'
+            : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
         }`}
       >
         <div className="flex items-start justify-between mb-4">
@@ -404,7 +404,7 @@ const GroupClassSchedule: React.FC<GroupClassScheduleProps> = ({ instructorEmail
               </span>
             )}
             {session.status === 'completed' && (
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
                 완료
               </span>
             )}

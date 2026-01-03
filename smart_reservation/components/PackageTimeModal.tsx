@@ -30,7 +30,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
     thursday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
     friday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
     saturday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    sunday: { enabled: false, blocks: [] }
+    sunday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] }
   };
 
   useEffect(() => {
@@ -194,7 +194,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-200 flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 text-white flex-shrink-0">
+        <div className="bg-gradient-to-br from-slate-500 to-orange-600 p-6 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
@@ -202,7 +202,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-bold">수강권별 시간 설정</h2>
-                <p className="text-sm text-blue-100 mt-1">
+                <p className="text-sm text-slate-100 mt-1">
                   {currentPackage?.name || '수강권'}
                 </p>
               </div>
@@ -216,9 +216,9 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Info Banner */}
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+          <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <AlertCircle size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+              <AlertCircle size={20} className="text-slate-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-bold text-sm text-slate-900 mb-1">시간 설정 우선순위</p>
                 <p className="text-xs text-slate-600 mb-2">
@@ -244,7 +244,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
             <button
               onClick={() => handleToggleCustomHours(!useCustomHours)}
               className={`w-14 h-8 rounded-full transition-all ${
-                useCustomHours ? 'bg-blue-500' : 'bg-slate-200'
+                useCustomHours ? 'bg-slate-500' : 'bg-slate-200'
               }`}
             >
               <div
@@ -257,7 +257,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
 
           {/* Time Block Selector */}
           {useCustomHours && (
-            <div className="bg-white border-2 border-blue-200 rounded-xl p-6">
+            <div className="bg-white border-2 border-slate-200 rounded-xl p-6">
               <h3 className="text-sm font-bold text-slate-900 mb-4">예약 가능 시간 설정</h3>
               <p className="text-xs text-slate-600 mb-4">
                 {isMobile
@@ -323,7 +323,7 @@ export const PackageTimeModal: React.FC<PackageTimeModalProps> = ({
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-slate-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://yeyak-mania.co.kr/sitemap.xml

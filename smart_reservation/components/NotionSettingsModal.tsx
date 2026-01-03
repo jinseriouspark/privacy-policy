@@ -284,13 +284,13 @@ export default function NotionSettingsModal({ isOpen, onClose, userId }: NotionS
                 <div
                   className={`p-4 rounded-xl border ${
                     testResult.success
-                      ? 'bg-green-50 border-green-200 text-green-800'
+                      ? 'bg-orange-50 border-orange-200 text-orange-800'
                       : 'bg-red-50 border-red-200 text-red-800'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     {testResult.success ? (
-                      <CheckCircle size={20} className="text-green-600" />
+                      <CheckCircle size={20} className="text-orange-600" />
                     ) : (
                       <AlertCircle size={20} className="text-red-600" />
                     )}
@@ -309,7 +309,7 @@ export default function NotionSettingsModal({ isOpen, onClose, userId }: NotionS
                 <button
                   onClick={handleTest}
                   disabled={isTesting || !integrationToken || !databaseId}
-                  className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-slate-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isTesting && <Loader2 size={18} className="animate-spin" />}
                   연동 테스트

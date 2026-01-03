@@ -238,7 +238,7 @@ export const MobileInstructorHome: React.FC<MobileInstructorHomeProps> = ({ user
         }}
       >
         {/* Today's Summary Card */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br bg-orange-500 rounded-2xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold">📊 오늘의 요약</h2>
             <span className="text-sm bg-white/20 px-3 py-1 rounded-full">
@@ -336,8 +336,8 @@ export const MobileInstructorHome: React.FC<MobileInstructorHomeProps> = ({ user
                         : `${revenueBreakdown.private.toLocaleString()}원`}
                     </p>
                   </div>
-                  <div className="bg-blue-50 rounded-xl p-3">
-                    <p className="text-xs text-blue-600 mb-1">그룹</p>
+                  <div className="bg-slate-50 rounded-xl p-3">
+                    <p className="text-xs text-orange-600 mb-1">그룹</p>
                     <p className="text-lg font-bold text-slate-900">
                       {revenueBreakdown.group >= 10000
                         ? `${(revenueBreakdown.group / 10000).toFixed(1)}만`
@@ -351,8 +351,8 @@ export const MobileInstructorHome: React.FC<MobileInstructorHomeProps> = ({ user
               <div>
                 <p className="text-xs text-slate-500 mb-2">출석 상태별</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-green-50 rounded-xl p-3">
-                    <p className="text-xs text-green-600 mb-1">출석 완료</p>
+                  <div className="bg-orange-50 rounded-xl p-3">
+                    <p className="text-xs text-orange-600 mb-1">출석 완료</p>
                     <p className="text-lg font-bold text-slate-900">
                       {revenueBreakdown.attended >= 10000
                         ? `${(revenueBreakdown.attended / 10000).toFixed(1)}만`
@@ -445,7 +445,7 @@ export const MobileInstructorHome: React.FC<MobileInstructorHomeProps> = ({ user
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600">평균 출석률</span>
-                <span className="text-lg font-bold text-green-600">
+                <span className="text-lg font-bold text-orange-600">
                   {weekStats.attendanceRate.toFixed(1)}%
                 </span>
               </div>

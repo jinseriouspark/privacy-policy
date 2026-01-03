@@ -136,7 +136,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white relative">
+        <div className="bg-gradient-to-br bg-orange-500 p-6 text-white relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
@@ -158,9 +158,9 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
         <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
           {/* Info Banner: Show only if NO coachings have calendar yet */}
           {!calendarConnected && (
-            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+            <div className="mb-4 p-4 bg-gradient-to-r from-slate-50 to-indigo-50 border-2 border-slate-200 rounded-xl">
               <div className="flex items-start gap-3">
-                <Calendar size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                <Calendar size={20} className="text-slate-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="font-bold text-sm text-slate-900 mb-1">캘린더 연동이 필요합니다</p>
                   <p className="text-xs text-slate-600">예약을 받으려면 Google 캘린더를 연동해주세요. 각 코칭마다 별도 캘린더를 생성할 수 있습니다.</p>
@@ -199,7 +199,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                 <button
                   onClick={handleCreateCoaching}
                   disabled={!newCoachingTitle.trim()}
-                  className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+                  className="flex-1 py-2 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold transition-all disabled:opacity-50"
                 >
                   생성
                 </button>
@@ -253,13 +253,13 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                         )}
                         <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
                           coaching.type === ClassType.GROUP
-                            ? 'bg-purple-100 text-purple-600'
-                            : 'bg-blue-100 text-blue-600'
+                            ? 'bg-orange-100 text-orange-600'
+                            : 'bg-slate-100 text-orange-600'
                         }`}>
                           {coaching.type === ClassType.GROUP ? '그룹' : '개인'}
                         </span>
                         {coaching.google_calendar_id && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
+                          <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full font-medium flex items-center gap-1">
                             <CheckCircle2 size={10} />
                             캘린더 연동됨
                           </span>

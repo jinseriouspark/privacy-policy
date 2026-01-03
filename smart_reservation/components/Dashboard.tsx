@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, DashboardData, CalendarCheckResult, Reservation, WorkingHour, AvailabilityData, Coaching } from '../types';
 import { postToGAS } from '../services/api';
-import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu, FileText, Download, HelpCircle } from 'lucide-react';
+import { Calendar, Plus, RefreshCw, LogOut, XCircle, Loader2, Video, Settings, Users, CheckCircle2, Clock, MinusCircle, PlusCircle, AlertTriangle, Share2, Copy, Package, TrendingUp, Edit, Trash2, Save, X, FolderOpen, Link2, MessageCircle, Menu, FileText, Download, HelpCircle, Database, UserX } from 'lucide-react';
 import { hasSeenTutorial, startOnboarding, resetTutorial } from '../utils/onboarding';
 import { InstructorSetupModal } from './InstructorSetupModal';
 import { UserEditModal } from './UserEditModal';
@@ -9,14 +9,17 @@ import { StudentInviteModal } from './StudentInviteModal';
 import { CoachingManagementModal } from './CoachingManagementModal';
 import { CoachingManagementInline } from './CoachingManagementInline';
 import NotionSettingsModal from './NotionSettingsModal';
+import NotionOAuthModal from './NotionOAuthModal';
 import ConsultationMemoModal from './ConsultationMemoModal';
 import PackageManagement from './PackageManagement';
-import GroupClassSchedule from './GroupClassSchedule';
 import AttendanceCheck from './AttendanceCheck';
 import StatsDashboard from './StatsDashboard';
 import ConsultationHistory from './ConsultationHistory';
+import ManualReservationModal from './ManualReservationModal';
+import CalendarSyncModal from './CalendarSyncModal';
 import { logActivity, type TabName } from '../lib/supabase/database';
-import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor, getStudentMemos } from '../lib/supabase/database';
+import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor, getStudentMemos, deleteUser } from '../lib/supabase/database';
+import { signOut } from '../lib/supabase/auth';
 import { convertToCSV, downloadCSV, getTimestampForFilename, formatDateForCSV } from '../utils/csv';
 import { sendBookingLinkToStudent } from '../services/solapi';
 import { createCoachingCalendar } from '../lib/google-calendar';
@@ -29,7 +32,7 @@ interface DashboardProps {
   onNavigateToProfile?: () => void;
 }
 
-type TabType = 'reservations' | 'users' | 'packages' | 'group-classes' | 'attendance' | 'stats' | 'class' | 'memos';
+type TabType = 'reservations' | 'users' | 'packages' | 'attendance' | 'stats' | 'class' | 'memos';
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservation, onLogout, onNavigateToProfile }) => {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -44,7 +47,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const urlToTab: Record<string, TabType> = {
     '/summary': 'stats',
     '/all-reservation': 'reservations',
-    '/group': 'group-classes',
     '/attend': 'attendance',
     '/student': 'users',
     '/membership': 'packages',
@@ -55,7 +57,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const tabToUrl: Record<TabType, string> = {
     'stats': '/summary',
     'reservations': '/all-reservation',
-    'group-classes': '/group',
     'attendance': '/attend',
     'users': '/student',
     'packages': '/membership',
@@ -68,6 +69,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [usersLoading, setUsersLoading] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userPackages, setUserPackages] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]); // 강사의 수강권 상품 목록
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [coachings, setCoachings] = useState<any[]>([]);
   const [copiedStudentId, setCopiedStudentId] = useState<string | null>(null);
@@ -82,6 +84,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   const [showNotionSettings, setShowNotionSettings] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  // Manual Reservation
+  const [showManualReservation, setShowManualReservation] = useState(false);
+
+  // Calendar Sync
+  const [showCalendarSync, setShowCalendarSync] = useState(false);
+
+  // Notion OAuth
+  const [showNotionOAuth, setShowNotionOAuth] = useState(false);
 
   // Check if user is instructor based on user.userType
   const isCoach = user.userType === 'instructor';
@@ -155,6 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     if (isCoach) {
         loadFirstCoaching();
         loadCoachings();
+        fetchPackages(); // 수강권 목록 로드 (수동 예약에 필요)
 
         // 온보딩 튜토리얼 - 스튜디오 이름 설정 후에만 자동 실행
         setTimeout(() => {
@@ -220,12 +232,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
     // Check if student has phone number
     if (!student.phone) {
-      const message = `안녕하세요 ${student.name}님! 예약은 아래 링크에서 가능합니다.\n\n${bookingUrl}`;
+      const message = `안녕하세요 ${student.name}님! 예약은 아래 링크에서 가능합니다.\n\n${bookingUrl}\n\n※ 카카오톡, 인스타그램 등 앱 내 브라우저에서는 로그인이 불가능합니다.\nSafari 또는 Chrome 앱에서 접속해주세요.`;
       try {
         await navigator.clipboard.writeText(message);
-        alert('학생 전화번호가 없습니다.\n메시지가 클립보드에 복사되었습니다.');
+        alert('메시지가 클립보드에 복사되었습니다.\n카카오톡으로 전송해주세요.');
       } catch (error) {
-        alert('학생 전화번호가 등록되지 않았습니다.');
+        alert('복사에 실패했습니다.');
       }
       return;
     }
@@ -361,6 +373,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       finally { setUsersLoading(false); }
   };
 
+  const fetchPackages = async () => {
+    if (!isCoach) return;
+    try {
+      const result = await getPackages(user.id);
+      setPackages(result);
+    } catch (err) {
+      console.error('Failed to fetch packages:', err);
+    }
+  };
+
   // fetchSettings 함수 제거됨 - 설정 탭 삭제
 
   const updateUserCredit = async (targetEmail: string, currentTotal: number, delta: number) => {
@@ -404,7 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                             href={res.meetLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-500 to-orange-600 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm"
                         >
                             <Video size={16} />
                             <span>입장</span>
@@ -552,7 +574,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             {/* CSV 다운로드 버튼 */}
             <button
               onClick={handleDownloadMemosCSV}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
             >
               <Download size={18} />
               메모 CSV
@@ -567,7 +589,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 }
                 setShowInviteModal(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition-all shadow-lg whitespace-nowrap"
             >
               <Users size={18} />
               학생 초대하기
@@ -689,8 +711,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                                   onClick={() => handleCopyBookingLink(u)}
                                   className={`flex items-center justify-center p-2 rounded-lg transition-all ${
                                       copiedStudentId === u.id
-                                          ? 'bg-green-50 text-green-600'
-                                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                          ? 'bg-orange-50 text-orange-600'
+                                          : 'bg-slate-50 text-orange-600 hover:bg-slate-100'
                                   }`}
                                   title="링크 복사"
                               >
@@ -710,21 +732,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                           카톡
                       </button>
                       <button
-                          onClick={() => {
-                            setSelectedStudent(u);
-                            setShowMemoModal(true);
-                          }}
-                          className="relative flex items-center justify-center gap-1 py-2 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 transition-colors"
-                      >
-                          <FileText size={14} />
-                          메모
-                          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full">
-                            NEW
-                          </span>
-                      </button>
-                      <button
                           onClick={() => openUserEditor(u)}
-                          className="flex items-center justify-center gap-1 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
+                          className="flex items-center justify-center gap-1 py-2 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition-all shadow-sm"
                       >
                           <Edit size={14} />
                           편집
@@ -787,6 +796,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
   // renderCoachSettings 함수 제거됨 - 설정 탭 삭제
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await deleteUser(user.id!);
+      await signOut();
+      window.location.href = '/';
+    } catch (err: any) {
+      alert(err.message || '회원 탈퇴에 실패했습니다.');
+      setDeleteLoading(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const Header = () => (
     <div className="sticky top-0 z-20 bg-slate-50 pb-3 pt-2 -mt-2">
       <div className="flex justify-between items-center gap-3">
@@ -814,6 +839,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                 </button>
             </div>
             <p className="text-xs text-slate-500 truncate">{user.email}</p>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-[10px] text-slate-300 hover:text-red-400 transition-colors mt-0.5"
+            >
+              계정 탈퇴
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -823,7 +854,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     resetTutorial();
                     startOnboarding();
                   }}
-                  className="p-2 text-slate-400 hover:text-blue-500 transition-colors bg-white border border-slate-200 rounded-full"
+                  className="p-2 text-slate-400 hover:text-slate-500 transition-colors bg-white border border-slate-200 rounded-full"
                   title="가이드 다시 보기"
                   data-tour="welcome"
                 >
@@ -840,6 +871,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <UserX size={24} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-slate-900">계정 탈퇴</h3>
+                <p className="text-sm text-slate-500">정말로 탈퇴하시겠습니까?</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">
+              모든 데이터가 삭제되며 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+                className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <Loader2 className="animate-spin h-5 w-5" />
+                ) : (
+                  <>탈퇴하기</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -883,6 +954,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
             />
           )}
 
+          {/* Manual Reservation Modal */}
+          {showManualReservation && (
+            <ManualReservationModal
+              instructorId={user.id}
+              students={users}
+              packages={packages}
+              onClose={() => setShowManualReservation(false)}
+              onSuccess={() => {
+                fetchReservations();
+                setShowManualReservation(false);
+              }}
+            />
+          )}
+
+          {/* Calendar Sync Modal */}
+          {showCalendarSync && (
+            <CalendarSyncModal
+              instructorId={user.id}
+              onClose={() => setShowCalendarSync(false)}
+            />
+          )}
+
+          {/* Notion OAuth Modal */}
+          {showNotionOAuth && (
+            <NotionOAuthModal
+              isOpen={showNotionOAuth}
+              instructorId={user.id}
+              onClose={() => setShowNotionOAuth(false)}
+            />
+          )}
+
           <div className="min-h-screen bg-slate-50">
             <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
               <Header />
@@ -899,7 +1001,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                   <span className="font-bold text-slate-900">
                     {activeTab === 'stats' && '통계'}
                     {activeTab === 'reservations' && '예약'}
-                    {activeTab === 'group-classes' && '그룹수업'}
                     {activeTab === 'attendance' && '출석'}
                     {activeTab === 'users' && '회원'}
                     {activeTab === 'packages' && '수강권'}
@@ -932,16 +1033,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                       예약
                     </button>
                     <button
-                      onClick={() => handleTabChange('group-classes')}
-                      className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
-                        activeTab === 'group-classes'
-                          ? 'bg-orange-50 text-orange-600 font-bold'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      그룹수업
-                    </button>
-                    <button
                       onClick={() => handleTabChange('attendance')}
                       className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
                         activeTab === 'attendance'
@@ -952,7 +1043,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                       출석
                     </button>
                     <button
-                      onClick={() => { handleTabChange('users'); fetchUsers(); }}
+                      onClick={() => handleTabChange('memos')}
+                      className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
+                        activeTab === 'memos'
+                          ? 'bg-orange-50 text-orange-600 font-bold'
+                          : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      상담 기록
+                    </button>
+                    <button
+                      onClick={() => handleTabChange('users')}
                       className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
                         activeTab === 'users'
                           ? 'bg-orange-50 text-orange-600 font-bold'
@@ -981,16 +1082,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     >
                       코칭 관리
                     </button>
-                    <button
-                      onClick={() => handleTabChange('memos')}
-                      className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
-                        activeTab === 'memos'
-                          ? 'bg-orange-50 text-orange-600 font-bold'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      상담 기록
-                    </button>
                   </div>
                 )}
               </div>
@@ -1016,13 +1107,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         예약
                     </button>
                     <button
-                        onClick={() => handleTabChange('group-classes')}
-                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'group-classes' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <span className="inline-block w-4 h-4 bg-purple-100 text-purple-600 rounded text-[10px] font-black leading-4 text-center mr-1">G</span>
-                        그룹수업
-                    </button>
-                    <button
                         onClick={() => handleTabChange('attendance')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'attendance' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         data-tour="attendance-tab"
@@ -1031,7 +1115,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         출석
                     </button>
                     <button
-                        onClick={() => { handleTabChange('users'); fetchUsers(); }}
+                        onClick={() => handleTabChange('memos')}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'memos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <FileText size={14} className="inline mr-1" />
+                        상담 기록
+                    </button>
+                    <button
+                        onClick={() => handleTabChange('users')}
                         className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                         data-tour="users-tab"
                     >
@@ -1054,13 +1145,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         <FolderOpen size={14} className="inline mr-1" />
                         코칭 관리
                     </button>
-                    <button
-                        onClick={() => handleTabChange('memos')}
-                        className={`px-3 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'memos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <FileText size={14} className="inline mr-1" />
-                        상담 기록
-                    </button>
                 </div>
             </div>
 
@@ -1074,6 +1158,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                                 <Calendar size={22} className="mr-2 text-orange-500"/> 전체 예약
                             </h3>
                             <div className="flex items-center gap-2">
+                                {/* 수동 예약 추가 버튼 */}
+                                <button
+                                    onClick={() => setShowManualReservation(true)}
+                                    className="px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors flex items-center gap-2 text-sm"
+                                >
+                                    <Plus size={16} />
+                                    <span className="hidden sm:inline">수동 예약</span>
+                                </button>
+
                                 {/* 정렬 버튼 */}
                                 <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
                                     <button
@@ -1105,10 +1198,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         {renderCoachReservations()}
                     </>
                 )}
-                {activeTab === 'group-classes' && <GroupClassSchedule instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'attendance' && <AttendanceCheck instructorEmail={user.email} instructorId={user.id} />}
                 {activeTab === 'users' && renderCoachUsers()}
-                {activeTab === 'packages' && <PackageManagement instructorEmail={user.email} instructorId={user.id} />}
+                {activeTab === 'packages' && (
+                  <PackageManagement
+                    instructorEmail={user.email}
+                    instructorId={user.id}
+                  />
+                )}
                 {activeTab === 'class' && renderCoachingManagement()}
                 {activeTab === 'memos' && <ConsultationHistory instructorId={user.id} />}
             </div>
@@ -1213,7 +1310,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">
         <Header />
 
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+      <div className="bg-gradient-to-br bg-orange-500 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
         <p className="text-orange-100 text-sm font-medium uppercase tracking-wider mb-1">잔여 수강권</p>
         <div className="flex items-end items-baseline">
@@ -1272,7 +1369,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                     
                     <div className="flex items-center space-x-2">
                         <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                            res.status === '확정됨' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                            res.status === '확정됨' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'
                         }`}>
                         {res.status}
                         </span>
@@ -1288,10 +1385,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                         )}
                     </div>
                   </div>
-                  {res.status === '확정됨' && res.meetLink && (
+                  {res.status === '확정됨' && (
+                    res.meetLink ? (
                       <a href={res.meetLink} target="_blank" rel="noreferrer" className="flex items-center justify-center w-full py-2.5 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-100">
-                          <Video size={16} className="mr-2" /> 화상 회의 입장
+                        <Video size={16} className="mr-2" /> 화상 회의 입장
                       </a>
+                    ) : (
+                      <div className="flex items-center justify-center w-full py-2.5 text-xs text-slate-400 bg-slate-50 rounded-lg border border-slate-100">
+                        <AlertTriangle size={14} className="mr-1.5" /> Meet 링크가 생성되지 않았습니다
+                      </div>
+                    )
                   )}
                 </div>
               );

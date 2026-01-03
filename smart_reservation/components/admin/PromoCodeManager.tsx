@@ -420,7 +420,7 @@ const PromoCodeManager: React.FC<PromoCodeManagerProps> = ({ onBack }) => {
                             className="text-slate-400 hover:text-slate-600"
                           >
                             {copiedCode === code.code ? (
-                              <Check size={16} className="text-green-500" />
+                              <Check size={16} className="text-orange-500" />
                             ) : (
                               <Copy size={16} />
                             )}
@@ -435,7 +435,7 @@ const PromoCodeManager: React.FC<PromoCodeManagerProps> = ({ onBack }) => {
                         }
                       </td>
                       <td className="py-3 px-4 text-sm">
-                        <span className={code.current_uses > 0 ? 'text-green-600 font-medium' : 'text-slate-400'}>
+                        <span className={code.current_uses > 0 ? 'text-orange-600 font-medium' : 'text-slate-400'}>
                           {code.current_uses}
                         </span>
                         <span className="text-slate-400">
@@ -480,7 +480,7 @@ const PromoCodeManager: React.FC<PromoCodeManagerProps> = ({ onBack }) => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-600">사용됨</p>
-                  <p className="text-3xl font-bold text-green-600 mt-2">{stats.used}</p>
+                  <p className="text-3xl font-bold text-orange-600 mt-2">{stats.used}</p>
                 </div>
                 <Check className="text-green-300" size={40} />
               </div>

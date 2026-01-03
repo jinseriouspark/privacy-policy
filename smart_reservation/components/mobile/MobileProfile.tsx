@@ -37,7 +37,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
   return (
     <div className="pb-20 bg-slate-50 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-6 pt-8 pb-12">
+      <div className="bg-gradient-to-br bg-orange-500 px-6 pt-8 pb-12">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
             {user.picture ? (

@@ -11,7 +11,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 text-white">
+        <div className="bg-gradient-to-br bg-orange-500 p-6 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -65,30 +65,30 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           {/* Step 2 */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 bg-slate-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-lg">
                 2
               </div>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Calendar size={24} className="text-blue-600" />
+                <Calendar size={24} className="text-orange-600" />
                 코칭(클래스) 생성
               </h3>
             </div>
             <div className="ml-13 space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <p className="font-bold text-slate-900 mb-2">대시보드 → "코칭 관리" 클릭</p>
                 <ul className="space-y-2 text-sm text-slate-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-orange-600">•</span>
                     <div>
-                      <span className="font-medium">Class ID:</span> 영문으로 입력 (예: <code className="bg-blue-100 px-2 py-0.5 rounded">pilates-private</code>, <code className="bg-blue-100 px-2 py-0.5 rounded">yoga-group</code>)
+                      <span className="font-medium">Class ID:</span> 영문으로 입력 (예: <code className="bg-slate-100 px-2 py-0.5 rounded">pilates-private</code>, <code className="bg-slate-100 px-2 py-0.5 rounded">yoga-group</code>)
                     </div>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-orange-600">•</span>
                     <div>이 ID가 예약 URL에 사용됩니다</div>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-600">•</span>
+                    <span className="text-orange-600">•</span>
                     <div>여러 코칭을 만들어 각각 관리할 수 있습니다</div>
                   </li>
                 </ul>
@@ -99,16 +99,16 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           {/* Step 3 */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-lg">
                 3
               </div>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Users size={24} className="text-green-600" />
+                <Users size={24} className="text-orange-600" />
                 회원(학생) 등록
               </h3>
             </div>
             <div className="ml-13 space-y-3">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
                 <p className="font-bold text-slate-900">"학생 초대하기" 버튼 클릭</p>
                 <ol className="space-y-2 text-sm text-slate-700 list-decimal list-inside">
                   <li>학생의 Gmail 주소 입력</li>
@@ -125,25 +125,25 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           {/* Step 4 */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-lg">
                 4
               </div>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Package size={24} className="text-purple-600" />
+                <Package size={24} className="text-orange-600" />
                 수강권 등록
               </h3>
             </div>
             <div className="ml-13 space-y-3">
-              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-4">
                 <div>
                   <p className="font-bold text-slate-900 mb-2">방법 1: 수강권 템플릿 만들기 (추천)</p>
                   <ul className="space-y-1 text-sm text-slate-700 ml-4">
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600">→</span>
+                      <span className="text-orange-600">→</span>
                       <span>"수강권" 탭에서 템플릿 생성 (이름, 횟수, 유효기간, 가격)</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600">→</span>
+                      <span className="text-orange-600">→</span>
                       <span>나중에 학생에게 부여 시 빠르게 선택 가능</span>
                     </li>
                   </ul>
@@ -152,11 +152,11 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
                   <p className="font-bold text-slate-900 mb-2">방법 2: 학생에게 직접 부여</p>
                   <ul className="space-y-1 text-sm text-slate-700 ml-4">
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600">→</span>
+                      <span className="text-orange-600">→</span>
                       <span>대시보드 → 학생 이름 클릭 → "추가" 버튼</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-purple-600">→</span>
+                      <span className="text-orange-600">→</span>
                       <span>수강권 정보 입력 후 저장</span>
                     </li>
                   </ul>
@@ -168,31 +168,31 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
           {/* Step 5 */}
           <section className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-lg">
                 5
               </div>
               <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <Share2 size={24} className="text-pink-600" />
+                <Share2 size={24} className="text-orange-600" />
                 예약 링크 공유
               </h3>
             </div>
             <div className="ml-13 space-y-3">
-              <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 space-y-3">
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
                 <div>
                   <p className="font-bold text-slate-900 mb-2">코칭별 예약 링크 (추천)</p>
-                  <div className="bg-white p-3 rounded border border-pink-300 font-mono text-sm text-slate-800">
-                    https://yeyak-mania.vercel.app/<span className="text-pink-600 font-bold">pilates-private</span>
+                  <div className="bg-white p-3 rounded border border-orange-300 font-mono text-sm text-slate-800">
+                    https://yeyak-mania.vercel.app/<span className="text-orange-600 font-bold">pilates-private</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">Class ID가 URL에 포함됩니다</p>
                 </div>
-                <div className="border-t border-pink-200 pt-3">
+                <div className="border-t border-orange-200 pt-3">
                   <p className="font-bold text-slate-900 mb-2">강사 프로필 링크</p>
-                  <div className="bg-white p-3 rounded border border-pink-300 font-mono text-sm text-slate-800 break-all">
-                    https://yeyak-mania.vercel.app?coach=<span className="text-pink-600 font-bold">your@email.com</span>
+                  <div className="bg-white p-3 rounded border border-orange-300 font-mono text-sm text-slate-800 break-all">
+                    https://yeyak-mania.vercel.app?coach=<span className="text-orange-600 font-bold">your@email.com</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">모든 코칭 목록을 보여줍니다</p>
                 </div>
-                <p className="text-sm text-slate-600 bg-white p-3 rounded border border-pink-300">
+                <p className="text-sm text-slate-600 bg-white p-3 rounded border border-orange-300">
                   💡 대시보드의 "공유하기" 버튼으로 링크를 쉽게 복사할 수 있습니다
                 </p>
               </div>

@@ -107,12 +107,12 @@ export const SolapiSettingsModal: React.FC<SolapiSettingsModalProps> = ({
         ) : (
           <div className="p-6 space-y-6">
             {/* Info Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
               <div className="flex gap-3">
-                <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
+                <AlertCircle size={20} className="text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-orange-800">
                   <p className="font-medium mb-1">Solapi API 키는 암호화되어 안전하게 저장됩니다</p>
-                  <p className="text-blue-700">
+                  <p className="text-orange-700">
                     <a
                       href="https://console.solapi.com"
                       target="_blank"
@@ -231,7 +231,7 @@ export const SolapiSettingsModal: React.FC<SolapiSettingsModalProps> = ({
               disabled={saving || saveSuccess}
               className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition-all ${
                 saveSuccess
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-orange-500 text-white'
                   : 'bg-orange-500 text-white hover:bg-orange-600 active:scale-95'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >

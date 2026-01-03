@@ -405,6 +405,48 @@ export function getCalendarSubscribeUrl(calendarId: string): string {
 }
 
 /**
+ * 🆕 사용자의 모든 Google Calendar 목록 조회
+ */
+export async function getUserCalendars() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.provider_token) {
+      throw new Error('캘린더 권한이 필요합니다. 우측 상단에서 로그아웃 후 다시 로그인해주세요.');
+    }
+
+    const accessToken = session.provider_token;
+
+    const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || '캘린더 목록 조회에 실패했습니다.');
+    }
+
+    const data = await response.json();
+
+    // 캘린더 목록 반환 (간소화)
+    return (data.items || []).map((cal: any) => ({
+      id: cal.id,
+      summary: cal.summary,
+      description: cal.description,
+      primary: cal.primary || false,
+      backgroundColor: cal.backgroundColor,
+      accessRole: cal.accessRole
+    }));
+  } catch (error: any) {
+    console.error('캘린더 목록 조회 오류:', error);
+    throw error;
+  }
+}
+
+/**
  * 여러 캘린더의 busy 시간 조회 (시간 충돌 방지용)
  */
 export async function getCalendarBusyTimes(params: {

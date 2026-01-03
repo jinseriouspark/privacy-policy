@@ -107,6 +107,7 @@ export const ROUTES = {
   TERMS: '/terms',
 
   // Auth routes
+  AUTH_CALLBACK: '/auth/callback',
   ONBOARDING: '/onboarding',
   SETUP: '/setup',
 

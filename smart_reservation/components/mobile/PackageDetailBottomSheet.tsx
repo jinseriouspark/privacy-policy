@@ -128,7 +128,7 @@ export const PackageDetailBottomSheet: React.FC<PackageDetailBottomSheetProps> =
                             곧 만료
                           </span>
                         ) : (
-                          <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                          <span className="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
                             사용 가능
                           </span>
                         )}
@@ -156,7 +156,7 @@ export const PackageDetailBottomSheet: React.FC<PackageDetailBottomSheetProps> =
                         {/* Progress Bar */}
                         <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-orange-500 to-orange-600 h-full transition-all duration-300"
+                            className="bg-gradient-to-r bg-orange-500 h-full transition-all duration-300"
                             style={{ width: `${usagePercentage}%` }}
                           />
                         </div>

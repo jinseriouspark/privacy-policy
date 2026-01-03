@@ -84,7 +84,7 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
   if (success) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in zoom-in duration-300">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-6 shadow-lg">
+        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 mb-6 shadow-lg">
           <CheckCircle2 size={40} />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-3">스튜디오 설정 완료!</h2>

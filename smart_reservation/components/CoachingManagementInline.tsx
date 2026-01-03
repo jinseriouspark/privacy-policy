@@ -213,9 +213,9 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
         </div>
 
         {/* Info Banner: Per-coaching calendar setup */}
-        <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+        <div className="mb-4 p-4 bg-gradient-to-r from-slate-50 to-indigo-50 border-2 border-slate-200 rounded-xl">
           <div className="flex items-start gap-3">
-            <Calendar size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+            <Calendar size={20} className="text-slate-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-bold text-sm text-slate-900 mb-1">코칭별 캘린더 관리</p>
               <p className="text-xs text-slate-600">각 코칭마다 별도의 Google 캘린더를 생성하여 예약을 관리할 수 있습니다.</p>
@@ -291,7 +291,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
               <button
                 onClick={handleCreateCoaching}
                 disabled={!newCoachingTitle.trim()}
-                className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+                className="flex-1 py-2 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold transition-all disabled:opacity-50"
               >
                 생성
               </button>
@@ -328,7 +328,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                   key={coaching.id}
                   className={`p-4 rounded-xl border-2 transition-all ${
                     isEditing
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-slate-500 bg-slate-50'
                       : currentCoaching?.id === coaching.id
                       ? 'border-orange-500 bg-orange-50'
                       : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -344,7 +344,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
                         placeholder="코칭 제목"
-                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-slate-500 focus:outline-none"
                       />
 
                       <textarea
@@ -352,7 +352,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                         onChange={(e) => setEditDesc(e.target.value)}
                         placeholder="코칭 설명 (선택사항)"
                         rows={2}
-                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-slate-500 focus:outline-none"
                       />
 
                       <div className="grid grid-cols-2 gap-4">
@@ -364,7 +364,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                           <select
                             value={editDuration}
                             onChange={(e) => setEditDuration(Number(e.target.value))}
-                            className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                            className="w-full px-4 py-2 border-2 border-slate-200 rounded-lg focus:border-slate-500 focus:outline-none"
                           >
                             <option value={30}>30분</option>
                             <option value={45}>45분</option>
@@ -379,7 +379,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                       </div>
 
                       {/* Working Hours - 🆕 Time Block Selector */}
-                      <div className="bg-white p-4 rounded-xl border-2 border-blue-200">
+                      <div className="bg-white p-4 rounded-xl border-2 border-slate-200">
                         <h4 className="text-sm font-bold text-slate-900 mb-3">예약 가능 시간 설정</h4>
                         <p className="text-xs text-slate-600 mb-4">
                           {isMobile
@@ -397,7 +397,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                         <button
                           onClick={() => handleUpdateCoaching(coaching.id)}
                           disabled={!editTitle.trim()}
-                          className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
+                          className="flex-1 py-2 bg-gradient-to-r from-slate-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-bold transition-all disabled:opacity-50"
                         >
                           저장
                         </button>
@@ -425,8 +425,8 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                           )}
                           <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
                             coaching.type === ClassType.GROUP
-                              ? 'bg-purple-100 text-purple-600'
-                              : 'bg-blue-100 text-blue-600'
+                              ? 'bg-orange-100 text-orange-600'
+                              : 'bg-slate-100 text-orange-600'
                           }`}>
                             {coaching.type === ClassType.GROUP ? '그룹' : '개인'}
                           </span>
@@ -437,7 +437,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                             }
                           </span>
                           {coaching.google_calendar_id ? (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full font-medium flex items-center gap-1">
                               <CheckCircle2 size={10} />
                               캘린더 연동됨
                             </span>
@@ -468,7 +468,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                             e.stopPropagation();
                             handleStartEdit(coaching);
                           }}
-                          className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-orange-600 hover:bg-slate-50 rounded-lg transition-colors"
                           title="코칭 편집"
                         >
                           <Edit2 size={18} />

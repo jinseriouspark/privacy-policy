@@ -79,7 +79,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
 
         {/* Header */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-8 text-white text-center relative">
+        <div className="bg-gradient-to-br bg-orange-500 p-8 text-white text-center relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors text-2xl">✕</button>
           <div className="mx-auto w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 shadow-lg backdrop-blur-sm">
             <Calendar size={32} className="text-white" />
@@ -91,7 +91,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
         <div className="p-8">
           {success ? (
             <div className="text-center py-8 animate-in zoom-in duration-300">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                     <Check size={40} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900">설정 완료!</h3>
@@ -102,7 +102,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
                     href={`https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(createdCalendarId)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl"
+                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-medium transition-all shadow-lg hover:shadow-xl"
                   >
                     <Calendar size={20} />
                     <span>Google Calendar에서 확인</span>
@@ -166,7 +166,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
                                 </div>
                                 <button
                                     onClick={() => requestCalendarPermissions()}
-                                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                                    className="w-full py-3 bg-gradient-to-r from-slate-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
                                 >
                                     <LogOut size={20} />
                                     <span>로그아웃 후 다시 로그인</span>
@@ -183,7 +183,7 @@ export const InstructorSetupModal: React.FC<InstructorSetupModalProps> = ({
                 <button
                     onClick={handleCreateCalendar}
                     disabled={loading}
-                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-4 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-lg shadow-xl transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? (
                         <>

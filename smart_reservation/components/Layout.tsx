@@ -19,9 +19,12 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           {children}
         </div>
       </div>
-      <p className="mt-4 sm:mt-6 md:mt-8 text-[10px] sm:text-xs text-slate-400">
-        © 2025 예약매니아
-      </p>
+      <div className="mt-4 sm:mt-6 md:mt-8 flex items-center gap-2">
+        <img src="/yak-logo.png" alt="yAK" className="h-4" />
+        <p className="text-[10px] sm:text-xs text-slate-400">
+          © 2025 예약매니아
+        </p>
+      </div>
     </div>
   );
 };

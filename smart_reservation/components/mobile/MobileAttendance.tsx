@@ -113,7 +113,7 @@ export const MobileAttendance: React.FC<MobileAttendanceProps> = ({ user }) => {
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-white rounded-xl p-3 border border-slate-200 text-center">
             <p className="text-xs text-slate-500 mb-1">출석</p>
-            <p className="text-xl font-bold text-green-600">{stats.attended}</p>
+            <p className="text-xl font-bold text-orange-600">{stats.attended}</p>
           </div>
           <div className="bg-white rounded-xl p-3 border border-slate-200 text-center">
             <p className="text-xs text-slate-500 mb-1">지각</p>
@@ -166,7 +166,7 @@ export const MobileAttendance: React.FC<MobileAttendanceProps> = ({ user }) => {
                   {status && (
                     <div className={`px-3 py-1 rounded-full text-xs font-medium ${
                       status === 'attended'
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-orange-100 text-orange-700'
                         : status === 'late'
                         ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-red-100 text-red-700'
@@ -207,7 +207,7 @@ export const MobileAttendance: React.FC<MobileAttendanceProps> = ({ user }) => {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => handleMarkAttendance(reservation.id, 'attended')}
-                      className="flex items-center justify-center gap-1 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors"
+                      className="flex items-center justify-center gap-1 py-2 bg-orange-50 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
                     >
                       <CheckCircle size={16} />
                       출석

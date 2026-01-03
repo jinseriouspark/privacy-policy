@@ -99,7 +99,7 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ instructor, user, onSelec
                 className="w-20 h-20 rounded-full border-2 border-orange-200 shadow-md"
               />
             ) : (
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-400 to-orange-400 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-md">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-400 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-md">
                 {instructor.name.charAt(0)}
               </div>
             )}
@@ -167,8 +167,8 @@ const PublicBooking: React.FC<PublicBookingProps> = ({ instructor, user, onSelec
 
           {/* Login Notice */}
           {!user && coachings.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-              <p className="text-sm text-blue-800">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+              <p className="text-sm text-orange-800">
                 <Mail size={14} className="inline mr-1" />
                 예약하려면 Google 계정으로 로그인해주세요
               </p>
