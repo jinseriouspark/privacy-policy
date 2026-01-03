@@ -57,6 +57,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update(email + 'supabase-auth-password')
       .digest('hex');
 
+    // Supabase Auth 사용자 확인 및 비밀번호 업데이트
+    try {
+      const { data: existingUser } = await supabase.auth.admin.listUsers();
+      const matchingUser = existingUser?.users?.find((u: any) => u.email === email);
+
+      if (matchingUser) {
+        // 기존 사용자 - 비밀번호 업데이트
+        console.log('[RefreshSupabaseSession] Updating password for existing user');
+        await supabase.auth.admin.updateUserById(matchingUser.id, {
+          password: userPassword,
+        });
+      } else {
+        // 새 사용자 - 생성
+        console.log('[RefreshSupabaseSession] Creating new Supabase Auth user');
+        await supabase.auth.admin.createUser({
+          email,
+          password: userPassword,
+          email_confirm: true,
+        });
+      }
+    } catch (authError) {
+      console.error('[RefreshSupabaseSession] Auth update error:', authError);
+      // Continue anyway - the password might still work
+    }
+
     // 세션 정보 반환
     return res.status(200).json({
       supabaseSession: {
