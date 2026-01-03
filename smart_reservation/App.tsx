@@ -291,6 +291,50 @@ const App: React.FC = () => {
     console.log('[handleAuthenticatedUser] Setting currentUser:', user);
     setCurrentUser(user);
 
+    // 🆕 Check Supabase Auth session and create if missing
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        console.log('[handleAuthenticatedUser] No Supabase Auth session, checking if we can create one');
+
+        // Try to get Supabase session from server
+        const authToken = localStorage.getItem('auth_token');
+        if (authToken) {
+          try {
+            const response = await fetch('/api/auth/refresh-supabase-session', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
+
+            if (response.ok) {
+              const { supabaseSession } = await response.json();
+              if (supabaseSession?.email && supabaseSession?.password) {
+                console.log('[handleAuthenticatedUser] Creating Supabase Auth session...');
+                const { error } = await supabase.auth.signInWithPassword({
+                  email: supabaseSession.email,
+                  password: supabaseSession.password,
+                });
+                if (error) {
+                  console.error('[handleAuthenticatedUser] Supabase Auth login error:', error);
+                } else {
+                  console.log('[handleAuthenticatedUser] Supabase Auth session created successfully');
+                }
+              }
+            }
+          } catch (e) {
+            console.error('[handleAuthenticatedUser] Failed to refresh Supabase session:', e);
+          }
+        }
+      } else {
+        console.log('[handleAuthenticatedUser] Supabase Auth session exists');
+      }
+    } catch (e) {
+      console.error('[handleAuthenticatedUser] Error checking Supabase session:', e);
+    }
+
     // Check if there's a saved redirect path (from requestCalendarPermissions)
     const savedRedirect = sessionStorage.getItem('postLoginRedirect');
     if (savedRedirect && window.location.pathname !== savedRedirect) {
