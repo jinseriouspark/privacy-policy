@@ -10,7 +10,6 @@ interface StudioSetupProps {
 
 const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
   const [studioName, setStudioName] = useState(user.studioName || '');
-  const [studioSlug, setStudioSlug] = useState(user.short_id || '');
   const [displayName, setDisplayName] = useState(user.name || '');
   const [bio, setBio] = useState(user.bio || '');
   const [phone, setPhone] = useState(user.phone || '');
@@ -18,27 +17,9 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const validateSlug = (slug: string): boolean => {
-    const slugRegex = /^[a-z0-9-]+$/;
-    return slugRegex.test(slug);
-  };
-
-  const handleSlugChange = (value: string) => {
-    const lowerValue = value.toLowerCase().replace(/\s+/g, '-');
-    setStudioSlug(lowerValue);
-  };
-
   const handleSubmit = async () => {
     if (!studioName.trim()) {
       setError('스튜디오 이름을 입력해주세요.');
-      return;
-    }
-    if (!studioSlug.trim()) {
-      setError('URL 주소를 입력해주세요.');
-      return;
-    }
-    if (!validateSlug(studioSlug)) {
-      setError('URL 주소는 영문 소문자, 숫자, 하이픈(-)만 사용할 수 있습니다.');
       return;
     }
     if (!displayName.trim()) {
@@ -52,7 +33,6 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
     try {
       const updateData: any = {
         studio_name: studioName.trim(),
-        short_id: studioSlug.trim(),
         name: displayName.trim(),
         bio: bio.trim(),
         phone: phone.trim(),
@@ -66,7 +46,6 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
         onComplete({
           ...user,
           studioName: studioName.trim(),
-          short_id: studioSlug.trim(),
           name: displayName.trim(),
           bio: bio.trim(),
           phone: phone.trim(),
@@ -118,27 +97,6 @@ const StudioSetup: React.FC<StudioSetupProps> = ({ user, onComplete }) => {
             placeholder="예: 강남 필라테스 스튜디오"
             className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all text-base"
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            URL 주소 <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={studioSlug}
-            onChange={(e) => handleSlugChange(e.target.value)}
-            placeholder="예: gangnam-pilates"
-            className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 outline-none transition-all text-base font-mono"
-          />
-          <p className="text-xs text-slate-500 mt-2">
-            영문 소문자, 숫자, 하이픈(-)만 사용 가능합니다
-          </p>
-          {studioSlug && (
-            <p className="text-xs text-orange-600 mt-1">
-              예약 링크: /book/{studioSlug}
-            </p>
-          )}
         </div>
 
         <div>

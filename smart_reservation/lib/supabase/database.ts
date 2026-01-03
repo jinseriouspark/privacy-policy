@@ -10,7 +10,6 @@ export async function upsertUser(data: {
   name: string;
   picture?: string;
   userType?: UserType;
-  short_id?: string;
   bio?: string;
   studioName?: string;
   phone?: string;
@@ -28,7 +27,6 @@ export async function upsertUser(data: {
       email: data.email,
       name: data.name,
       picture: data.picture,
-      short_id: data.short_id,
       studio_name: data.studioName,
       phone: data.phone,
       bio: data.bio,
@@ -400,15 +398,15 @@ export async function getCoachingBySlug(slug: string) {
 }
 
 /**
- * 코칭 조회 by coach short_id and slug (new format)
- * Supports /{coach_id}/{class_slug} URL format
+ * 코칭 조회 by coach username and slug (new format)
+ * Supports /{coach_username}/{class_slug} URL format
  */
-export async function getCoachingByCoachAndSlug(coachShortId: string, slug: string) {
-  // First get instructor by short_id
+export async function getCoachingByCoachAndSlug(coachUsername: string, slug: string) {
+  // First get instructor by username
   const { data: instructor, error: instructorError } = await supabase
     .from('users')
     .select('id')
-    .eq('short_id', coachShortId)
+    .eq('username', coachUsername)
     .single();
 
   if (instructorError || !instructor) {

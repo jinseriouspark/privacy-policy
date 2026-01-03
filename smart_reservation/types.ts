@@ -21,7 +21,6 @@ export interface User {
   // ⚠️ Deprecated (하위 호환성 유지)
   userType?: UserType; // primaryRole로 대체됨
 
-  short_id?: string; // For public booking link (e.g., /book/short_id)
   bio?: string; // Instructor bio
   isProfileComplete?: boolean; // Has completed onboarding
   studioName?: string; // 강사용 스튜디오 이름
