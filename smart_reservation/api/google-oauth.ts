@@ -30,9 +30,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET; // ⚠️ 서버 전용!
 
+    console.log('[Google OAuth] Environment check:');
+    console.log('  - VITE_GOOGLE_CLIENT_ID:', clientId ? 'SET' : 'MISSING');
+    console.log('  - GOOGLE_CLIENT_SECRET:', clientSecret ? 'SET' : 'MISSING');
+
     if (!clientId || !clientSecret) {
       console.error('[Google OAuth] Missing Google credentials');
-      return res.status(500).json({ error: 'Google OAuth not configured' });
+      return res.status(500).json({
+        error: 'Google OAuth not configured',
+        details: {
+          clientId: clientId ? 'present' : 'missing',
+          clientSecret: clientSecret ? 'present' : 'missing'
+        }
+      });
     }
 
     console.log('[Google OAuth] Exchanging code for tokens...');
