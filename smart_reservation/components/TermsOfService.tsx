@@ -34,9 +34,9 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onBack }) => {
             본 약관은 트래픽엔진(이하 "회사")이 제공하는 예약매니아 서비스의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
           </p>
           <div className="mt-6 flex items-center gap-4 text-sm text-slate-500">
-            <span>시행일자: 2025년 1월 1일</span>
+            <span>시행일자: 2026년 1월 1일</span>
             <span>•</span>
-            <span>최종 수정: 2024년 12월 31일</span>
+            <span>최종 수정: 2025년 12월 31일</span>
           </div>
         </div>
 

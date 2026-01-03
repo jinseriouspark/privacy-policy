@@ -34,9 +34,9 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             트래픽엔진(이하 "회사")은 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 등 관련 법령을 준수하고 있습니다.
           </p>
           <div className="mt-6 flex items-center gap-4 text-sm text-slate-500">
-            <span>시행일자: 2025년 1월 1일</span>
+            <span>시행일자: 2026년 1월 1일</span>
             <span>•</span>
-            <span>최종 수정: 2024년 12월 31일</span>
+            <span>최종 수정: 2025년 12월 31일</span>
           </div>
         </div>
 
