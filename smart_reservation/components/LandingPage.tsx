@@ -3,7 +3,7 @@ import { Calendar, Users, TrendingUp, CheckCircle, ArrowRight, Menu, X } from 'l
 import PricingPage from './PricingPage';
 import TermsOfService from './TermsOfService';
 import PrivacyPolicy from './PrivacyPolicy';
-import { signInWithGoogle } from '../lib/supabase/auth';
+import { signInWithGoogle } from '../lib/google-oauth';
 
 interface LandingPageProps {
   onLoginSuccess: (user: User) => void;

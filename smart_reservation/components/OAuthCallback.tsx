@@ -15,28 +15,37 @@ export default function OAuthCallback() {
     async function processCallback() {
       try {
         console.log('[OAuthCallback] Processing OAuth callback...');
+        console.log('[OAuthCallback] Current URL:', window.location.href);
 
         // OAuth callback 처리
         const { user, token } = await handleOAuthCallback();
 
-        console.log('[OAuthCallback] Login successful:', user);
+        console.log('[OAuthCallback] Login successful');
+        console.log('[OAuthCallback] User object:', JSON.stringify(user, null, 2));
+        console.log('[OAuthCallback] Token saved:', !!token);
+        console.log('[OAuthCallback] primaryRole:', user.primaryRole);
+        console.log('[OAuthCallback] studio_name:', user.studio_name);
+
         setStatus('success');
 
         // 사용자 역할에 따라 리디렉션
         setTimeout(() => {
           // 역할이 없으면 온보딩으로
           if (!user.primaryRole) {
+            console.log('[OAuthCallback] No role → Redirecting to /onboarding');
             window.location.href = '/onboarding';
             return;
           }
 
           // 강사이고 스튜디오 정보가 없으면 setup으로
           if (user.primaryRole === 'instructor' && !user.studio_name) {
+            console.log('[OAuthCallback] Instructor without studio → Redirecting to /setup');
             window.location.href = '/setup';
             return;
           }
 
           // 그 외는 summary로
+          console.log('[OAuthCallback] Has role → Redirecting to /summary');
           window.location.href = '/summary';
         }, 1000);
       } catch (err: any) {
