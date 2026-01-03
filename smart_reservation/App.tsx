@@ -391,6 +391,7 @@ const App: React.FC = () => {
     }
 
     try {
+      setLoading(true);
       console.log('[handleSelectUserType] Calling selectUserType...');
       await selectUserType(currentUser.id!, userType);
       console.log('[handleSelectUserType] selectUserType SUCCESS');
@@ -442,6 +443,8 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('[handleSelectUserType] ERROR:', error);
       alert('계정 유형 선택에 실패했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -586,6 +589,7 @@ const App: React.FC = () => {
           <AccountTypeSelection
             onSelectType={handleSelectUserType}
             onBack={handleLogout}
+            isLoading={loading}
           />
         );
 

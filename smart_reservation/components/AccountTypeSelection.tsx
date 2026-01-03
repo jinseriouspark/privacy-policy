@@ -1,15 +1,25 @@
 import React from 'react';
-import { Briefcase, GraduationCap, ArrowRight } from 'lucide-react';
+import { Briefcase, GraduationCap, ArrowRight, Loader2 } from 'lucide-react';
 
 interface AccountTypeSelectionProps {
   onSelectType: (type: 'instructor' | 'student') => void;
   onBack: () => void;
+  isLoading?: boolean;
 }
 
-const AccountTypeSelection: React.FC<AccountTypeSelectionProps> = ({ onSelectType, onBack }) => {
+const AccountTypeSelection: React.FC<AccountTypeSelectionProps> = ({ onSelectType, onBack, isLoading = false }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-orange-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200 relative">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+              <p className="text-sm text-slate-600 font-medium">설정하는 중...</p>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="bg-gradient-to-br from-orange-600 to-orange-500 p-6 text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mx-auto mb-4">
@@ -32,7 +42,8 @@ const AccountTypeSelection: React.FC<AccountTypeSelectionProps> = ({ onSelectTyp
             {/* Instructor Option */}
             <button
               onClick={() => onSelectType('instructor')}
-              className="w-full group"
+              disabled={isLoading}
+              className="w-full group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="bg-white border-2 border-slate-200 hover:border-orange-500 rounded-xl p-6 transition-all hover:shadow-lg">
                 <div className="flex items-center justify-between">
@@ -53,7 +64,8 @@ const AccountTypeSelection: React.FC<AccountTypeSelectionProps> = ({ onSelectTyp
             {/* Student Option */}
             <button
               onClick={() => onSelectType('student')}
-              className="w-full group"
+              disabled={isLoading}
+              className="w-full group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="bg-white border-2 border-slate-200 hover:border-orange-500 rounded-xl p-6 transition-all hover:shadow-lg">
                 <div className="flex items-center justify-between">
