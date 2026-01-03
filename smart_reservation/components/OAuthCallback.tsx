@@ -22,9 +22,22 @@ export default function OAuthCallback() {
         console.log('[OAuthCallback] Login successful:', user);
         setStatus('success');
 
-        // 1초 후 대시보드로 리디렉션
+        // 사용자 역할에 따라 리디렉션
         setTimeout(() => {
-          window.location.href = '/';
+          // 역할이 없으면 온보딩으로
+          if (!user.primaryRole) {
+            window.location.href = '/onboarding';
+            return;
+          }
+
+          // 강사이고 스튜디오 정보가 없으면 setup으로
+          if (user.primaryRole === 'instructor' && !user.studio_name) {
+            window.location.href = '/setup';
+            return;
+          }
+
+          // 그 외는 summary로
+          window.location.href = '/summary';
         }, 1000);
       } catch (err: any) {
         console.error('[OAuthCallback] Error:', err);

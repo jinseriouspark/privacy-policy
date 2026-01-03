@@ -95,6 +95,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Login] User upserted:', user.id);
 
+    // 사용자 역할 조회
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role_name')
+      .eq('user_id', user.id);
+
+    const primaryRole = roles && roles.length > 0 ? roles[0].role_name : null;
+
+    console.log('[Login] User role:', primaryRole);
+
     // JWT 토큰 생성
     const token = await generateJWT({
       userId: user.id,
@@ -102,9 +112,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       name: user.name,
     });
 
-    // 성공 응답
+    // 성공 응답 (primaryRole과 studio_name 포함)
     return res.status(200).json({
-      user,
+      user: {
+        ...user,
+        primaryRole,
+      },
       token,
     });
   } catch (error: any) {
