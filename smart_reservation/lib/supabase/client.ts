@@ -20,10 +20,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
+      'Prefer': 'return=representation',
     }
   }
 });
+
+// Helper to add auth headers to Supabase requests
+export function getAuthHeaders() {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        'x-user-email': payload.email || '',
+        'x-user-id': payload.userId?.toString() || '',
+      };
+    } catch (e) {
+      console.error('[getAuthHeaders] Failed to decode token:', e);
+    }
+  }
+  return {};
+}
 
 // Database Types (will be generated from Supabase)
 export type Database = {

@@ -129,13 +129,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Supabase Auth 세션 생성 (RLS용)
-    // Google OAuth 사용자를 Supabase Auth에도 등록
+    // 고정된 비밀번호로 Supabase Auth 사용자 생성 (Google OAuth 후)
     let authUserId: string | undefined;
     let supabaseSession: any = null;
 
-    // 1. Supabase Auth에 사용자 생성 또는 조회
+    // 사용자 이메일 기반 고정 비밀번호 생성 (보안: 서버만 알고 있음)
+    const crypto = await import('crypto');
+    const userPassword = crypto
+      .createHmac('sha256', getEnv('JWT_SECRET'))
+      .update(email + 'supabase-auth-password')
+      .digest('hex');
+
+    // 1. Supabase Auth에 사용자 생성 또는 업데이트
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: user.email,
+      password: userPassword,
       email_confirm: true,
       user_metadata: {
         name: user.name,
@@ -146,11 +154,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (authError) {
       if (authError.message === 'User already registered') {
-        // 이미 등록된 사용자 - UUID 조회
-        console.log('[Login] User already exists in Supabase Auth');
+        // 이미 등록된 사용자 - UUID 조회 및 비밀번호 업데이트
+        console.log('[Login] User already exists in Supabase Auth, updating password');
         const { data: existingUser } = await supabase.auth.admin.listUsers();
-        const matchingUser = existingUser?.users?.find(u => u.email === user.email);
-        authUserId = matchingUser?.id;
+        const matchingUser = existingUser?.users?.find((u: any) => u.email === email);
+
+        if (matchingUser) {
+          authUserId = matchingUser.id;
+          // 비밀번호 업데이트 (혹시 변경되었을 경우 대비)
+          await supabase.auth.admin.updateUserById(authUserId, {
+            password: userPassword,
+          });
+        }
       } else {
         console.error('[Login] Supabase Auth error:', authError);
       }
@@ -160,23 +175,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Login] Supabase Auth user ID:', authUserId);
 
-    // 2. 클라이언트 세션을 위한 액세스 토큰 생성
+    // 2. 클라이언트가 로그인할 수 있도록 비밀번호 전달
     if (authUserId) {
-      try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-          type: 'magiclink',
-          email: user.email,
-        });
-
-        if (sessionError) {
-          console.error('[Login] Session generation error:', sessionError);
-        } else {
-          supabaseSession = sessionData;
-          console.log('[Login] Supabase session generated');
-        }
-      } catch (err) {
-        console.error('[Login] Failed to generate session:', err);
-      }
+      supabaseSession = {
+        email: user.email,
+        password: userPassword,
+      };
+      console.log('[Login] Supabase auth credentials prepared for client');
     }
 
     // 성공 응답 (primaryRole, authUserId, supabaseSession 포함)

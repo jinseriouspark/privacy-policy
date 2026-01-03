@@ -268,26 +268,23 @@ export async function handleOAuthCallback(): Promise<{
   // 1. 커스텀 JWT 토큰 저장
   localStorage.setItem('auth_token', token);
 
-  // 2. Supabase Auth 세션 저장 (RLS용)
-  if (supabaseSession) {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0];
+  // 2. Supabase Auth 세션 생성 (RLS용)
+  if (supabaseSession?.email && supabaseSession?.password) {
+    console.log('[handleOAuthCallback] Creating Supabase Auth session...');
 
-    if (projectRef) {
-      const sessionKey = `sb-${projectRef}-auth-token`;
+    // Supabase client 임포트
+    const { supabase } = await import('./supabase/client');
 
-      // Supabase 세션 구조에 맞게 저장
-      const sessionData = {
-        access_token: supabaseSession.properties?.access_token || '',
-        refresh_token: supabaseSession.properties?.refresh_token || '',
-        expires_at: supabaseSession.properties?.expires_at || 0,
-        expires_in: supabaseSession.properties?.expires_in || 3600,
-        token_type: 'bearer',
-        user: supabaseSession.user || user,
-      };
+    // 비밀번호로 로그인하여 실제 세션 생성
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: supabaseSession.email,
+      password: supabaseSession.password,
+    });
 
-      localStorage.setItem(sessionKey, JSON.stringify(sessionData));
-      console.log('[handleOAuthCallback] Supabase session stored:', sessionKey);
+    if (authError) {
+      console.error('[handleOAuthCallback] Supabase Auth login error:', authError);
+    } else {
+      console.log('[handleOAuthCallback] Supabase Auth session created successfully');
     }
   }
 
