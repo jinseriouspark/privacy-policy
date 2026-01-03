@@ -71,7 +71,7 @@ export async function signInWithGoogle() {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: 'code',
-    scope: 'openid email profile',
+    scope: 'openid email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
     state: state,
     nonce: nonce,
     access_type: 'offline',
