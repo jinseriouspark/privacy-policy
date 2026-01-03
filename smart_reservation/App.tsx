@@ -139,11 +139,12 @@ const App: React.FC = () => {
         ROUTES.STUDENT_HOME, ROUTES.STUDENT_CALENDAR, ROUTES.STUDENT_RESERVATIONS, ROUTES.STUDENT_PROFILE
       ];
 
+      // Get booking URL params (needed for both instructor loading and guest user handling)
+      const coachingSlug = getCurrentProjectSlug();
+      const { coachId, classSlug, studioSlug } = getBookingUrlParams();
+
       // Only load instructor data for booking routes (not app routes)
       if (!appRoutes.includes(path)) {
-        const coachingSlug = getCurrentProjectSlug();
-        const { coachId, classSlug, studioSlug } = getBookingUrlParams();
-
         // Fetch instructor data for booking pages
         await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
       }
