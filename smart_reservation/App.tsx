@@ -233,7 +233,18 @@ const App: React.FC = () => {
   };
 
   const handleAuthenticatedUser = async (email: string, route: any) => {
-    console.log('[handleAuthenticatedUser] START', { email });
+    console.log('[handleAuthenticatedUser] START', { email, currentPath: window.location.pathname });
+
+    // 🆕 이미 currentUser가 설정되어 있고 onboarding이나 setup 페이지에 있다면 스킵
+    // (handleSelectUserType에서 방금 역할을 선택한 직후)
+    if (currentUser && currentUser.email === email) {
+      const path = window.location.pathname;
+      if (path === ROUTES.ONBOARDING || path === ROUTES.SETUP ||
+          path === ROUTES.SUMMARY || path === ROUTES.STUDENT_HOME) {
+        console.log('[handleAuthenticatedUser] User already set, skipping re-check on:', path);
+        return;
+      }
+    }
 
     let existingUser = await getUserByEmail(email);
     console.log('[handleAuthenticatedUser] existingUser:', existingUser);
@@ -291,6 +302,7 @@ const App: React.FC = () => {
 
     // If user hasn't selected type, redirect to onboarding
     if (!hasRole && window.location.pathname !== ROUTES.ONBOARDING) {
+      console.log('[handleAuthenticatedUser] No role, redirecting to ONBOARDING');
       navigateTo(ROUTES.ONBOARDING);
       return;
     }
@@ -316,6 +328,7 @@ const App: React.FC = () => {
     // If on login page or landing, redirect to appropriate page
     if (window.location.pathname === ROUTES.LOGIN || window.location.pathname === ROUTES.LANDING) {
       const postLoginRoute = getPostLoginRoute(user);
+      console.log('[handleAuthenticatedUser] On login/landing, redirecting to:', postLoginRoute);
       navigateTo(postLoginRoute);
     }
   };
@@ -410,11 +423,21 @@ const App: React.FC = () => {
       setCurrentUser(user);
       analytics.selectAccountType(userType);
 
-      // ⭐ Navigate 제거: handleAuthenticatedUser가 알아서 처리하게 함
-      // URL을 바꾸면 useEffect가 checkSessionAndRoute를 호출하고
-      // handleAuthenticatedUser가 적절한 페이지로 보내줌
-      console.log('[handleSelectUserType] Triggering re-route by navigating to DASHBOARD');
-      navigateTo(ROUTES.DASHBOARD);
+      // 직접 적절한 페이지로 이동 (무한 루프 방지)
+      if (userType === 'instructor') {
+        // 강사: studio_name이 없으면 setup, 있으면 summary
+        if (!updatedUser.studio_name) {
+          console.log('[handleSelectUserType] Instructor without studio, navigating to SETUP');
+          navigateTo(ROUTES.SETUP);
+        } else {
+          console.log('[handleSelectUserType] Instructor with studio, navigating to SUMMARY');
+          navigateTo(ROUTES.SUMMARY);
+        }
+      } else {
+        // 학생: 홈으로
+        console.log('[handleSelectUserType] Student, navigating to STUDENT_HOME');
+        navigateTo(ROUTES.STUDENT_HOME);
+      }
       console.log('[handleSelectUserType] END');
     } catch (error) {
       console.error('[handleSelectUserType] ERROR:', error);
