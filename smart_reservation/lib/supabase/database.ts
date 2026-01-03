@@ -190,21 +190,26 @@ export async function deleteUser(userId: string) {
 
 /**
  * 사용자 계정 유형 선택 (강사 또는 수강생)
- * 🆕 역할 기반 시스템 사용
+ * 🆕 역할 기반 시스템 사용 - 서버 API 호출
  */
 export async function selectUserType(userId: string, userType: 'instructor' | 'student') {
-  // user_roles 테이블에 역할 추가
-  await setInitialRole(userId, userType);
+  // 서버 API를 통해 역할 설정 (Service Role Key 사용)
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const response = await fetch(`${apiUrl}/api/users/select-role`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId, userType }),
+  });
 
-  // Return user data
-  const { data, error } = await supabase
-    .from('users')
-    .select()
-    .eq('id', userId)
-    .single();
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to select user type');
+  }
 
-  if (error) throw error;
-  return data;
+  const result = await response.json();
+  return result.user;
 }
 
 /**
