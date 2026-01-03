@@ -121,20 +121,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[Login] User role:', primaryRole);
 
-    // JWT 토큰 생성
+    // JWT 토큰 생성 (우리 시스템용)
     const token = await generateJWT({
       userId: user.id,
       email: user.email,
       name: user.name,
     });
 
-    // 성공 응답 (primaryRole과 studio_name 포함)
+    // Supabase Auth 세션 생성 (RLS용)
+    // Google OAuth 사용자를 Supabase Auth에도 등록
+    let authUserId: string | undefined;
+    let supabaseSession: any = null;
+
+    // 1. Supabase Auth에 사용자 생성 또는 조회
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: user.email,
+      email_confirm: true,
+      user_metadata: {
+        name: user.name,
+        picture: user.picture,
+        google_id: googleId,
+      },
+    });
+
+    if (authError) {
+      if (authError.message === 'User already registered') {
+        // 이미 등록된 사용자 - UUID 조회
+        console.log('[Login] User already exists in Supabase Auth');
+        const { data: existingUser } = await supabase.auth.admin.listUsers();
+        const matchingUser = existingUser?.users?.find(u => u.email === user.email);
+        authUserId = matchingUser?.id;
+      } else {
+        console.error('[Login] Supabase Auth error:', authError);
+      }
+    } else {
+      authUserId = authData?.user?.id;
+    }
+
+    console.log('[Login] Supabase Auth user ID:', authUserId);
+
+    // 2. 클라이언트 세션을 위한 액세스 토큰 생성
+    if (authUserId) {
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+          type: 'magiclink',
+          email: user.email,
+        });
+
+        if (sessionError) {
+          console.error('[Login] Session generation error:', sessionError);
+        } else {
+          supabaseSession = sessionData;
+          console.log('[Login] Supabase session generated');
+        }
+      } catch (err) {
+        console.error('[Login] Failed to generate session:', err);
+      }
+    }
+
+    // 성공 응답 (primaryRole, authUserId, supabaseSession 포함)
     return res.status(200).json({
       user: {
         ...user,
         primaryRole,
+        authUserId, // Supabase Auth의 UUID
       },
       token,
+      supabaseSession, // 클라이언트가 사용할 Supabase 세션
     });
   } catch (error: any) {
     console.error('[Login] Error:', error);
