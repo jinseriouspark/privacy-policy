@@ -1,10 +1,26 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// 환경변수 헬퍼 함수 (인라인)
+function getEnv(key: string): string {
+  return process.env[key] || process.env[`VITE_${key}`] || '';
+}
+
+// 환경변수 디버깅
+const supabaseUrl = getEnv('SUPABASE_URL');
+const supabaseKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+
+console.log('[Login] Environment:', {
+  SUPABASE_URL: supabaseUrl ? 'SET' : 'MISSING',
+  SUPABASE_SERVICE_ROLE_KEY: supabaseKey ? 'SET' : 'MISSING',
+  allEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
+});
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(`Missing Supabase config: URL=${!!supabaseUrl}, KEY=${!!supabaseKey}`);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // JWT 생성 함수 (서버용)
 async function generateJWT(payload: any): Promise<string> {
@@ -28,7 +44,7 @@ async function generateJWT(payload: any): Promise<string> {
 
   const crypto = await import('crypto');
   const signature = crypto
-    .createHmac('sha256', process.env.JWT_SECRET || 'your-secret-key')
+    .createHmac('sha256', getEnv('JWT_SECRET'))
     .update(`${encodedHeader}.${encodedPayload}`)
     .digest('base64')
     .replace(/\+/g, '-')

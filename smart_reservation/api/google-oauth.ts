@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// 환경변수 헬퍼 함수 (인라인)
+function getEnv(key: string): string {
+  return process.env[key] || process.env[`VITE_${key}`] || '';
+}
+
 /**
  * Google OAuth Token Exchange (서버 전용)
  * - Client Secret을 서버에서만 사용
@@ -27,25 +32,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 환경변수에서 Google OAuth 설정 가져오기 (클라이언트에 노출 안 됨)
-    const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET; // ⚠️ 서버 전용!
-
-    console.log('[Google OAuth] Environment check:');
-    console.log('  - VITE_GOOGLE_CLIENT_ID:', clientId ? 'SET' : 'MISSING');
-    console.log('  - GOOGLE_CLIENT_SECRET:', clientSecret ? 'SET' : 'MISSING');
+    const clientId = getEnv('GOOGLE_CLIENT_ID');
+    const clientSecret = getEnv('GOOGLE_CLIENT_SECRET');
 
     if (!clientId || !clientSecret) {
-      console.error('[Google OAuth] Missing Google credentials');
-      return res.status(500).json({
-        error: 'Google OAuth not configured',
-        details: {
-          clientId: clientId ? 'present' : 'missing',
-          clientSecret: clientSecret ? 'present' : 'missing'
-        }
-      });
+      console.error('[Google OAuth] Missing credentials');
+      return res.status(500).json({ error: 'OAuth not configured' });
     }
-
-    console.log('[Google OAuth] Exchanging code for tokens...');
 
     // Google OAuth 토큰 엔드포인트로 토큰 교환
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -72,8 +65,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const tokenData = await tokenResponse.json();
-
-    console.log('[Google OAuth] Token exchange successful');
 
     // 성공 응답
     return res.status(200).json({

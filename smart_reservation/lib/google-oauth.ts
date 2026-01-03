@@ -129,6 +129,7 @@ async function exchangeCodeForTokens(code: string): Promise<{
 
   if (!response.ok) {
     const error = await response.json();
+    console.error('[exchangeCodeForTokens] Token exchange failed:', error);
     throw new Error(error.error || 'Token exchange failed');
   }
 

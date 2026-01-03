@@ -14,48 +14,47 @@ export default function OAuthCallback() {
   useEffect(() => {
     async function processCallback() {
       try {
-        console.log('[OAuthCallback] Processing OAuth callback...');
-        console.log('[OAuthCallback] Current URL:', window.location.href);
-
         // OAuth callback 처리
         const { user, token } = await handleOAuthCallback();
-
-        console.log('[OAuthCallback] Login successful');
-        console.log('[OAuthCallback] User object:', JSON.stringify(user, null, 2));
-        console.log('[OAuthCallback] Token saved:', !!token);
-        console.log('[OAuthCallback] primaryRole:', user.primaryRole);
-        console.log('[OAuthCallback] studio_name:', user.studio_name);
 
         setStatus('success');
 
         // 사용자 역할에 따라 리디렉션
         setTimeout(() => {
-          // 역할이 없으면 온보딩으로
           if (!user.primaryRole) {
-            console.log('[OAuthCallback] No role → Redirecting to /onboarding');
             window.location.href = '/onboarding';
             return;
           }
 
-          // 강사이고 스튜디오 정보가 없으면 setup으로
           if (user.primaryRole === 'instructor' && !user.studio_name) {
-            console.log('[OAuthCallback] Instructor without studio → Redirecting to /setup');
             window.location.href = '/setup';
             return;
           }
 
-          // 그 외는 summary로
-          console.log('[OAuthCallback] Has role → Redirecting to /summary');
           window.location.href = '/summary';
         }, 1000);
       } catch (err: any) {
         console.error('[OAuthCallback] Error:', err);
-        setError(err.message || 'Login failed');
+
+        // 사용자 친화적인 에러 메시지
+        let friendlyMessage = '로그인 중 문제가 발생했습니다';
+
+        if (err.message?.includes('invalid_client')) {
+          friendlyMessage = 'Google 로그인 설정에 문제가 있습니다. 관리자에게 문의해주세요';
+        } else if (err.message?.includes('redirect_uri_mismatch')) {
+          friendlyMessage = '로그인 경로 설정에 문제가 있습니다. 관리자에게 문의해주세요';
+        } else if (err.message?.includes('State verification failed')) {
+          friendlyMessage = '보안 검증에 실패했습니다. 다시 시도해주세요';
+        } else if (err.message?.includes('Token exchange failed')) {
+          friendlyMessage = '인증 토큰 교환에 실패했습니다. 다시 시도해주세요';
+        }
+
+        setError(friendlyMessage);
         setStatus('error');
 
-        // 3초 후 로그인 페이지로 리디렉션
+        // 무한 루프 방지: 홈으로 리디렉션
         setTimeout(() => {
-          window.location.href = '/login';
+          window.location.href = '/?error=oauth_failed';
         }, 3000);
       }
     }
