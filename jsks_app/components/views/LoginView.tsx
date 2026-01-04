@@ -67,15 +67,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, appConfig }) => {
         
         <div className="space-y-3">
           {/* Easter Egg Trigger: Click 5 times to reveal admin button */}
-          <h1 
+          <h1
             onClick={handleTitleClick}
             className="text-3xl font-bold text-dark select-none cursor-pointer active:scale-95 transition-transform whitespace-pre-line"
           >
-            {appConfig?.loginTitle || '정수결사'}
+            {appConfig?.loginSubtitle || '마음을 닦는 수행의 길'}
           </h1>
-          <p className="text-gray-600 text-lg whitespace-pre-line">
-            {appConfig?.loginSubtitle || '매일의 수행을 기록하고\n마음의 평화를 찾으세요'}
-          </p>
         </div>
 
         <div className="w-full space-y-4">
