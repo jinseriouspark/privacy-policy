@@ -8,6 +8,7 @@ interface PracticeItem {
   category: string;
   question: string;
   order: number;
+  section?: string;
 }
 
 interface OnboardingViewProps {
@@ -80,43 +81,65 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete, initialSele
         </p>
       </div>
 
-      <div className="space-y-3">
-        {practiceItems.map(item => {
-          const isSelected = selectedIds.includes(item.id);
-          const isRequired = item.category === '필수';
-          return (
-            <button
-              key={item.id}
-              onClick={() => toggleSelection(item.id)}
-              className={`
-                w-full p-5 rounded-[20px] text-left transition-all duration-300 flex items-center gap-4 border-2 group
-                ${isRequired
-                  ? 'border-secondary bg-secondary/5 cursor-default'
-                  : isSelected
-                    ? 'border-dark bg-white shadow-card'
-                    : 'border-transparent bg-gray-50 hover:bg-gray-100'}
-              `}
-            >
-              <div className="flex-1 min-w-0">
-                <div className={`text-sm font-bold uppercase tracking-wide mb-1 ${isRequired ? 'text-secondary' : isSelected ? 'text-secondary' : 'text-gray-400'}`}>
-                  {item.category}
-                </div>
-                <div className={`text-[17px] font-medium leading-snug transition-colors ${isSelected || isRequired ? 'text-dark font-bold' : 'text-gray-700'}`}>
-                  {item.question}
-                </div>
-              </div>
+      <div className="space-y-6">
+        {/* Group items by section */}
+        {(() => {
+          const groupedItems: { [key: string]: PracticeItem[] } = {};
+          practiceItems.forEach(item => {
+            const section = item.section || '기타';
+            if (!groupedItems[section]) {
+              groupedItems[section] = [];
+            }
+            groupedItems[section].push(item);
+          });
 
-              <div className={`
-                w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300
-                ${isRequired || isSelected
-                  ? 'bg-secondary text-white shadow-md scale-110'
-                  : 'bg-white border-2 border-gray-200 text-transparent group-hover:border-gray-300'}
-              `}>
-                <Check size={18} strokeWidth={3} className={isRequired || isSelected ? 'opacity-100' : 'opacity-0'} />
-              </div>
-            </button>
-          );
-        })}
+          return Object.entries(groupedItems).map(([section, items]) => (
+            <div key={section} className="space-y-3">
+              {/* Section Header */}
+              <h3 className="text-[15px] font-bold text-dark px-1">
+                {section}
+              </h3>
+
+              {/* Items in this section */}
+              {items.map(item => {
+                const isSelected = selectedIds.includes(item.id);
+                const isRequired = item.category === '필수';
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => toggleSelection(item.id)}
+                    className={`
+                      w-full p-5 rounded-[20px] text-left transition-all duration-300 flex items-center gap-4 border-2 group
+                      ${isRequired
+                        ? 'border-secondary bg-secondary/5 cursor-default'
+                        : isSelected
+                          ? 'border-dark bg-white shadow-card'
+                          : 'border-transparent bg-gray-50 hover:bg-gray-100'}
+                    `}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-bold uppercase tracking-wide mb-1 ${isRequired ? 'text-secondary' : isSelected ? 'text-secondary' : 'text-gray-400'}`}>
+                        {item.category}
+                      </div>
+                      <div className={`text-[17px] font-medium leading-snug transition-colors ${isSelected || isRequired ? 'text-dark font-bold' : 'text-gray-700'}`}>
+                        {item.question}
+                      </div>
+                    </div>
+
+                    <div className={`
+                      w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300
+                      ${isRequired || isSelected
+                        ? 'bg-secondary text-white shadow-md scale-110'
+                        : 'bg-white border-2 border-gray-200 text-transparent group-hover:border-gray-300'}
+                    `}>
+                      <Check size={18} strokeWidth={3} className={isRequired || isSelected ? 'opacity-100' : 'opacity-0'} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ));
+        })()}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white/95 to-transparent z-20 pb-8 pt-12">

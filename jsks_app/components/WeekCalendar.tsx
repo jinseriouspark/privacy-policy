@@ -94,11 +94,12 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
   const filteredSchedules = useMemo(() => {
     if (!selectedDateStr) return [];
 
-    // 일정 필터링 (특별한 날 포함)
+    // 일정 필터링 (절기 제외)
     return schedules.filter(item => {
       if (item.date !== selectedDateStr) return false;
       if (item.id?.startsWith('practice_')) return false;
       if (item.meta === '수행 완료') return false;
+      if (item.meta === '절기') return false; // 절기 제외
       return true;
     });
   }, [selectedDateStr, schedules]);
