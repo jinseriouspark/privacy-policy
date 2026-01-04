@@ -177,8 +177,14 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ days: _externalDays, practi
           {filteredSchedules.map(item => (
             <div
               key={item.id}
-              onClick={() => onScheduleClick?.(item)}
-              className="bg-white p-3 rounded-lg shadow-sm border-l-4 border-l-primary cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => {
+                // 절기는 클릭해도 상세 모달 열지 않음
+                if (item.meta === '절기') return;
+                onScheduleClick?.(item);
+              }}
+              className={`bg-white p-3 rounded-lg shadow-sm border-l-4 border-l-primary transition-shadow ${
+                item.meta === '절기' ? '' : 'cursor-pointer hover:shadow-md'
+              }`}
             >
               <div className="flex flex-col gap-1">
                 <div className="text-[10px] text-gray-500 font-medium">

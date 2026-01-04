@@ -64,7 +64,7 @@ const App: React.FC = () => {
     initApp();
 
     // 앱 버전 체크 - 버전이 다르면 강제 로그아웃
-    const APP_VERSION = '1.0.2'; // 버전을 올리면 모든 사용자 강제 로그아웃
+    const APP_VERSION = '1.0.5'; // 버전을 올리면 모든 사용자 강제 로그아웃
     const savedVersion = localStorage.getItem('app_version');
 
     if (savedVersion !== APP_VERSION) {
@@ -112,17 +112,16 @@ const App: React.FC = () => {
     try {
       const data = await dbService.getSchedules(email, useCache);
 
-      // Add special dates as schedule items (24절기 제외)
+      // Add special dates as schedule items
       const specialDates = getAllSpecialDates();
       const specialSchedules: ScheduleItem[] = Object.entries(specialDates)
-        .filter(([_, title]) => !isSolarTerm(title)) // 24절기 제외
         .map(([dateKey, title]) => ({
           id: `special_${dateKey}`,
           type: 'temple' as const,
           time: '종일',
           title: title,
           date: dateKey,
-          meta: '절기/행사'
+          meta: '절기' // 24절기와 행사 모두 '절기'로 통일
         }));
 
       setSchedules([...specialSchedules, ...data]);
@@ -146,7 +145,7 @@ const App: React.FC = () => {
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
-    localStorage.setItem('app_version', '1.0.2'); // 로그인 시 버전 저장
+    localStorage.setItem('app_version', '1.0.5'); // 로그인 시 버전 저장
     loadSchedules(loggedInUser.email);
     loadPracticeLogs(loggedInUser.email);
 
@@ -332,9 +331,11 @@ const App: React.FC = () => {
         return (
           <div className="px-6 pt-14 flex flex-col gap-8 animate-fade-in pb-32">
             <section className="flex flex-col gap-0.5">
-              <h1 className="text-[20px] text-dark font-bold leading-[1.3] tracking-tight">
-                {appConfig?.homeGreeting || APP_STRINGS.greeting}
-              </h1>
+              {appConfig?.homeGreeting && (
+                <h1 className="text-[20px] text-dark font-bold leading-[1.3] tracking-tight">
+                  {appConfig.homeGreeting}
+                </h1>
+              )}
               <h2 className="text-[20px] text-dark font-bold leading-[1.3] tracking-tight">
                 {user?.dharmaName
                   ? `${user.dharmaName}님`
@@ -373,15 +374,19 @@ const App: React.FC = () => {
                       if (s.id.startsWith('practice_')) return false;
                       if (s.meta === '수행 완료') return false;
 
+                      // 절기 제외 (절기는 홈 화면 일정 목록에서 제외)
+                      if (s.meta === '절기') return false;
+
                       // 절 공식 일정(temple) 및 개인 일정(personal) 표시
                       if (s.type !== 'temple' && s.type !== 'personal') return false;
 
-                      // 오늘 이후의 일정만 표시
+                      // 오늘 일정만 표시
                       if (!s.date) return false;
                       const scheduleDate = new Date(s.date);
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
-                      return scheduleDate >= today;
+                      scheduleDate.setHours(0, 0, 0, 0);
+                      return scheduleDate.getTime() === today.getTime();
                     })
                     .sort((a, b) => {
                       // 날짜순 정렬

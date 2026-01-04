@@ -1,308 +1,134 @@
 # Current Task
 
 ## 진행 중인 작업
-없음
+
+### 2026-01-04: **홈 화면 '오늘의 일정' 필터 수정 및 절기 클릭 비활성화 ✅**
+
+#### 1. 오늘의 일정 필터링
+- 홈 화면의 '오늘의 일정' 섹션에서 이번주 일정이 모두 표시되는 문제 수정
+- `오늘 이후의 일정` → `오늘 일정만` 필터링으로 변경
+- 수정 파일: `App.tsx` (line 381-386)
+
+#### 2. 24절기 클릭 비활성화
+- 캘린더에서 절기(대한, 소한 등)를 클릭해도 상세 모달이 열리지 않도록 수정
+- 절기는 캘린더 내에만 표시되고 클릭 불가능하게 처리
+- 수정 파일: `WeekCalendar.tsx` (line 177-186)
+
+#### 3. 홈 화면 인사말 번갈아 나타나는 문제 수정
+- Supabase에서 설정한 최신 값만 표시되도록 수정
+- appConfig가 로드되기 전까지는 인사말을 표시하지 않음
+- 기본값(constants.ts)과 DB값이 번갈아 나타나는 현상 해결
+- 수정 파일: `App.tsx` (line 333-343)
+
+---
+
+## 이전 작업
+
+### 2025-12-31: **법문 텍스트 자동화 시스템 구축 🤖**
+
+#### 1단계: 부족한 텍스트 수집 (진행 중)
+**목표:** dhamma.kr에서 빠진 법문 텍스트 파일 모두 수집
+
+**현재 상태:**
+- 📂 수집된 텍스트: 1,995개 파일
+- 📡 현재 페이지: 1,000 / 3,368 (30% 완료)
+- 🔄 백그라운드에서 계속 수집 중...
+
+---
+
+#### 2단계: ElevenLabs TTS 음성 변환 (진행 중)
+**목표:** 수집한 텍스트를 음성 파일(MP3)로 변환
+
+**테스트 완료:**
+- ✅ 짧은 법문 테스트: 송구영신.txt → 72KB MP3
+- ✅ 긴 법문 테스트: 잡아함 110 살차경.txt (9,532글자) → 21.39 MB MP3
+- ✅ 변환 품질 확인 완료
+
+**생성된 스크립트:**
+- ✅ `/scripts/txt_to_mp3.py` - 단일 파일 변환
+- ✅ `/scripts/batch_convert_all.py` - 일괄 변환 (NEW!)
+
+**일괄 변환 기능:**
+- 이미 변환된 파일 자동 건너뛰기
+- 진행 상황 실시간 표시
+- 에러 처리 및 재시도
+- 중단 후 재개 가능
+
+**예상 소요:**
+- 파일 수: 약 1,300개
+- 예상 시간: 약 21시간 (파일당 1분)
+- ElevenLabs 크레딧 보유 확인됨
+
+**실행 명령:**
+```bash
+export ELEVENLABS_API_KEY='sk_c4731a145399a454e1f988028b3b3a5e8f7abb65e948dcf9'
+python3 /Users/jinseulpark/Desktop/github/jsks_app/scripts/batch_convert_all.py
+```
+
+---
+
+#### 3단계: Google Drive 업로드 (대기 중)
+**목표:** 변환된 MP3를 Google Drive에 자동 업로드
+
+**필요한 작업:**
+1. Google Drive API 설정
+2. 업로드 스크립트 작성
+3. Supabase DB에 Drive URL 저장
+
+---
+
+#### 4단계: GitHub Actions 자동화 (대기 중)
+**목표:** 매일 자동으로 새 법문 수집 및 음성 변환
+
+**계획:**
+- GitHub Actions 워크플로우 생성
+- 매일 정해진 시간에 자동 실행
+- 새 txt → MP3 변환 → Google Drive 업로드
+- DB 자동 업데이트
+
+---
+
+## 상세 보고
+
+### 텍스트 수집 현황
+```
+📊 통계:
+- 전체 페이지: 3,368 페이지
+- 현재 진행: 1,000 페이지 (30%)
+- 수집 완료: 1,995개 파일
+- 실패: 1개만
+- 저장 위치: /scraper/texts/
+- 진행 상황: /scraper/progress.json
+```
+
+### 음성 변환 테스트 결과
+```
+📊 테스트 파일:
+1. 송구영신.txt (38글자)
+   → 송구영신.mp3 (72KB)
+
+2. 잡아함 110 살차경.txt (9,532글자)
+   → 잡아함 110 살차경.mp3 (21.39MB)
+
+✅ 한국어 발음: 정상
+✅ 전처리: 한자/괄호 제거 작동
+✅ 음질: 양호
+```
+
+### 다음 작업
+1. ⏳ **텍스트 수집 완료 대기** (백그라운드 진행 중)
+2. 🚀 **일괄 음성 변환 시작 가능** (준비 완료)
+3. ⏳ **Google Drive 업로드 준비**
+
+---
 
 ## 완료된 작업
-- 2025-12-28: **캘린더 특별한 날 일정 표시 및 절 행사 이름 변경 ✅**
-  - ✅ '정수결사67' 등 특별한 날을 캘린더 하위 일정으로 표시
-    - 날짜 클릭 시 일정 목록에 특별한 날도 함께 표시
-    - 시간: 종일, 메타: 절기/행사로 표시
-  - ✅ '절 행사' → '정수사 일정'으로 이름 변경
-    - 일정 상세 모달
-    - 일정 등록 화면
-    - 스님 모드 일정 관리
+- 2025-12-31: **절기 팝업 제거 및 통일 ✅**
+  - ✅ 홈 화면에서 절기/행사 일정 목록 제외
+  - ✅ '절기/행사'와 '절기' 태그를 '절기'로 통일
+  - ✅ 홈 화면에는 정수사의 실제 행사만 표시
+  - ✅ 앱 버전 1.0.5로 업데이트 및 배포
   - ✅ 업데이트된 파일:
-    - `components/WeekCalendar.tsx` - 특별한 날 일정 표시
-    - `components/ScheduleDetailModal.tsx` - 절 행사 → 정수사 일정
-    - `components/views/AddView.tsx` - 절 행사 → 정수사 일정
-    - `components/views/MonkModeView.tsx` - 절 행사 → 정수사 일정
-
-  **변경 내용:**
-  - 캘린더 날짜 클릭 시 특별한 날(정수결사67 등)이 일정으로 표시됨
-  - 모든 화면에서 '절 행사'가 '정수사 일정'으로 변경됨
-
-- 2025-12-28: **오늘의 법문 카테고리 태그 변경 ✅**
-  - ✅ 태그 이름 변경:
-    - '경전공부' → '발원/회향'
-    - '참선법회' → '참선자료'
-    - '공부자료' → '경전공부'
-  - ✅ 업데이트된 파일:
-    - `types.ts` - DharmaCategory 타입 정의
-    - `components/views/DharmaView.tsx` - 필터 버튼
-    - `components/views/MonkModeView.tsx` - 법문 등록 카테고리
-
-  **변경 내용:**
-  - 최종 카테고리: 발원/회향, 참선자료, 경전공부
-
-- 2025-12-28: **드라이브 파일 선택 401 에러 수정 ✅**
-  - ✅ 401 에러 시 자동 토큰 재발급 로직 추가
-  - ✅ 토큰 만료 시 자동 재시도 기능 구현
-  - ✅ 에러 메시지 개선 (권한 취소, 토큰 만료 등)
-  - ✅ 콘솔 로깅 강화 (디버깅 편의성)
-  - ✅ 업데이트된 파일:
-    - `services/googleDrive.ts` - 401 에러 처리 및 재시도 로직
-    - `components/DriveFilePicker.tsx` - 에러 메시지 개선
-
-  **주요 개선사항:**
-  - 토큰 없을 시 자동 요청
-  - 401 에러 발생 시 자동으로 새 토큰 요청 후 재시도
-  - 사용자 친화적인 에러 메시지
-
-## 완료된 작업
-- 2025-12-22: **스님 모드 일정 관리 삭제 버튼 추가 ✅**
-  - ✅ 등록된 행사 목록에 각 행사별 삭제 버튼 추가
-  - ✅ 제목 옆에 휴지통 아이콘 버튼 배치
-  - ✅ 삭제 확인 메시지에 참석자 수 표시
-  - ✅ 참석자가 있는 경우 경고 메시지 추가
-  - ✅ 삭제 후 목록 자동 새로고침
-  - ✅ 업데이트된 파일:
-    - `MonkModeView.tsx:789-805` - 삭제 버튼 및 로직
-  - ✅ Git 커밋 및 Vercel 배포 완료
-
-  **사용 방법:**
-  1. 스님 모드 → 일정 관리
-  2. 각 행사 카드의 우측 상단 휴지통 아이콘 클릭
-  3. 확인 메시지에서 "확인" 클릭
-
-## 완료된 작업
-- 2025-12-22: **스님 관리자용 일정 관리 기능 추가 ✅**
-  - ✅ 참석자 명단 확인 기능 (절 행사)
-    - "명단 보기" 버튼으로 참석 신청자 이메일 목록 확인
-    - 펼침/접기 토글 UI
-  - ✅ 참석 정원 변경 기능
-    - 인라인 편집으로 정원 수정
-    - 현재 참석자보다 적게 설정 불가 검증
-    - 0 입력 시 무제한으로 변경
-  - ✅ 일정 취소 기능
-    - 모든 참석 신청 일괄 취소
-    - 참석자 수 표시 및 확인 메시지
-  - ✅ 절기/특별한 날 삭제 기능
-    - 달력에서 절기 표시를 길게 누르면 숨김 처리
-    - localStorage 기반으로 숨김 상태 저장
-    - 숨긴 날짜는 달력에 더 이상 표시되지 않음
-  - ✅ 업데이트된 파일:
-    - `ScheduleDetailModal.tsx` - 참석자 관리 UI 및 기능
-    - `services/db.ts` - cancelAllRSVP, updateEventCapacity 함수 추가
-    - `utils/specialDates.ts` - hideSpecialDate, showSpecialDate 함수
-    - `ScheduleView.tsx` - 절기 길게 누르기 이벤트
-    - `App.tsx` - ScheduleView에 currentUser 전달
-  - ✅ Git 커밋 및 Vercel 배포 완료
-
-  **사용 방법:**
-  1. 스님 계정으로 로그인
-  2. 절 행사 클릭 시 관리 기능 표시
-  3. 참석자 명단 보기, 정원 변경, 일정 취소 가능
-  4. 달력에서 절기 표시를 길게 누르면 숨김
-
-## 완료된 작업
-- 2025-12-21: **주간 캘린더 날짜 클릭 시 일정 목록 표시 기능 ✅**
-  - ✅ WeekCalendar 컴포넌트에 날짜 클릭 기능 추가
-  - ✅ 선택된 날짜의 일정 필터링 및 표시
-  - ✅ 선택된 날짜에 링 테두리 표시 (시각적 피드백)
-  - ✅ 수행 로그 및 완료 기록은 목록에서 제외
-  - ✅ 일정 클릭 시 상세 모달 연결 준비
-  - ✅ 업데이트된 파일:
-    - `components/WeekCalendar.tsx` - 날짜 클릭 및 일정 목록 기능
-    - `types.ts` - DayData에 dateStr 필드 추가
-  - ✅ Git 커밋 완료 (배포 준비)
-
-  **다음 작업:**
-  - 스님 관리자 모드에서 절 일정 삭제 기능 추가
-
-- 2025-12-21: **모바일 관리자 로그인 개선 및 PWA 아이콘 설정 ✅**
-  - ✅ 스님 관리자 로그인 모달 모바일 최적화
-    - 네이티브 `prompt()` → 커스텀 모달 변경
-    - 숫자 키보드 자동 활성화 (`inputMode="numeric"`)
-    - 모바일 친화적인 UI (큰 터치 영역, 하드웨어 가속)
-  - ✅ 앱 로고 업데이트
-    - `logo_gyung.jpeg` → `logo.jpeg` (613KB)
-    - 브라우저 캐시 무효화를 위해 파일명 변경
-  - ✅ PWA 아이콘 설정 (안드로이드 홈 화면)
-    - 6개 크기 PNG 아이콘 생성 (48x48 ~ 512x512)
-    - `manifest.json` 업데이트 with `purpose: "any maskable"`
-    - 갤럭시 크롬 바로가기에서 로고 정상 표시
-  - ✅ 업데이트된 파일:
-    - `components/views/LoginView.tsx` - 모달 구현
-    - `index.html` - favicon 업데이트
-    - `public/logo.jpeg` - 새 로고
-    - `public/icons/` - 6개 크기별 아이콘
-    - `public/manifest.json` - PWA 설정
-    - `public/firebase-messaging-sw.js` - 알림 아이콘 경로
-  - ✅ Vercel 배포 완료
-
-  **테스트 방법:**
-  1. 모바일에서 제목("정수결사") 5번 탭
-  2. "스님(관리자) 로그인" 버튼 클릭
-  3. 숫자 키보드로 108 입력
-  4. 홈 화면 추가 시 새 로고 표시 확인
-
-- 2025-12-19: **Firebase Cloud Messaging (FCM) 푸시 알림 구현 진행 중 🔔**
-  - ✅ Firebase SDK 설치 (`npm install firebase`)
-  - ✅ Service Worker 생성 (`/public/firebase-messaging-sw.js`)
-  - ✅ FCM 서비스 생성 (`/services/messaging.ts`)
-  - ✅ DB 함수 추가 (`services/db.ts` - saveFCMToken, deleteFCMToken)
-  - ✅ 알림 설정 UI 구현 (`NotificationSettingsView.tsx`)
-  - ✅ FCM_SETUP.md 가이드 문서 작성
-  - ✅ Firebase 환경변수 설정 (.env 및 Vercel)
-  - ✅ Supabase fcm_tokens 테이블 생성
-  - ✅ React 보안 업데이트 (19.2.1 → 19.2.3, CVE-2025-55182)
-  - ✅ Vercel 배포 완료
-
-  **현재 상태:**
-  - FCM 토큰 발급까지 코드 작성 완료
-  - 브라우저 알림 권한이 "거부됨" 상태로 설정되어 있음
-  - 알림 권한을 "허용"으로 변경하면 정상 작동할 것으로 예상
-
-  **다음 단계:**
-  1. 브라우저 설정에서 알림 권한 허용 (주소창 왼쪽 자물쇠 아이콘 클릭)
-  2. FCM 토큰 발급 확인 (콘솔: `📱 FCM 토큰:` 로그)
-  3. Supabase fcm_tokens 테이블에 토큰 저장 확인
-  4. Firebase Console에서 테스트 알림 발송
-  5. 알림 수신 확인 (포그라운드 및 백그라운드)
-
-  **환경변수 설정 완료:**
-  - `.env` 파일:
-    - VITE_FIREBASE_API_KEY
-    - VITE_FIREBASE_AUTH_DOMAIN
-    - VITE_FIREBASE_PROJECT_ID
-    - VITE_FIREBASE_STORAGE_BUCKET
-    - VITE_FIREBASE_MESSAGING_SENDER_ID
-    - VITE_FIREBASE_APP_ID
-    - VITE_FIREBASE_MEASUREMENT_ID
-    - VITE_FIREBASE_VAPID_KEY
-  - Vercel Production 환경변수: 위 8개 모두 추가됨
-
-  **Firebase 프로젝트:**
-  - 프로젝트 ID: `jungsukyulsa`
-  - Console URL: https://console.firebase.google.com/project/jungsukyulsa
-  - VAPID Key: `BFvOnCUZZ7uFAn11l-dmpbG2cIIdNreH9FRJ_bliGIO84buHcSL5qpUgkl_gkBJsuam7nzfVB-eEHtiStHlx_D4`
-
-  **생성된 파일:**
-  - `/public/firebase-messaging-sw.js` - Service Worker (백그라운드 알림)
-  - `/services/messaging.ts` - FCM 초기화 및 토큰 관리
-  - `FCM_SETUP.md` - Firebase Console 설정 가이드
-
-  **수정된 파일:**
-  - `/services/db.ts` - FCM 토큰 저장/삭제 함수 추가 (lines 695-727)
-  - `/components/views/NotificationSettingsView.tsx` - 권한 요청 UI 추가
-  - `.env` - Firebase 설정 추가
-  - `package.json` - React 19.2.3 업데이트
-
-## 완료된 작업
-- 2025-12-14: **Supabase 마이그레이션 완료 ✅**
-  - ✅ DB 스키마 생성 (7개 테이블)
-  - ✅ Supabase 클라이언트 설치 및 설정
-  - ✅ API 코드 완전 교체 (Google Sheets → Supabase)
-  - ✅ 관리자 계정 SQL 작성
-    - iddhi1@gmail.com (스님)
-    - jseul45@gmail.com (개발자)
-
-  **다음 단계:**
-  1. Supabase SQL Editor에서 `supabase_init_admins.sql` 실행
-  2. 앱 테스트 (로그인, 온보딩, 수행 기록)
-
-- 2025-12-14: **Supabase DB 스키마 설계 완료 ✅**
-  - ✅ `supabase_schema.sql` 생성
-  - ✅ 7개 테이블 설계:
-    - users (사용자)
-    - practice_items (수행 항목 - 25개 데이터 포함)
-    - practice_logs (수행 기록)
-    - schedules (일정)
-    - event_rsvp (이벤트 참석)
-    - videos (법문 영상)
-    - app_settings (앱 설정)
-  - ✅ Foreign Keys, Indexes, Triggers 설정
-  - ✅ Row Level Security (RLS) 정책
-  - ✅ `SUPABASE_MIGRATION_GUIDE.md` 가이드 작성
-
-  **다음 단계:**
-  1. Supabase 프로젝트 생성 (5분)
-  2. SQL 스키마 실행 (5분)
-  3. API 코드 작성 (서비스 레이어 교체)
-
-- 2025-12-14: **CORS 에러 수정 ✅**
-  - ✅ 문제: Apps Script CORS 헤더 누락
-  - ✅ 에러: "No 'Access-Control-Allow-Origin' header"
-  - ✅ 수정: FINAL_COMPLETE_CODE.gs
-    - createJSON 함수에 CORS 헤더 추가
-    - doOptions 함수 추가 (preflight 요청 처리)
-  - ⚠️ **Apps Script 재배포 필요**
-
-- 2025-12-14: **온보딩 저장 버그 수정 ✅**
-  - ✅ 문제: handleOnboardingComplete에서 await 누락
-  - ✅ 수정: async/await 추가 + 에러 처리
-  - ✅ 로깅 추가: 저장 시작/성공/실패 메시지
-  - ✅ 사용자 피드백: 실패 시 alert 표시
-
-- 2025-12-14: **일정 조회 성능 개선 ✅**
-  - ✅ 캐시 우선 로딩 구현 (빠른 초기 표시)
-  - ✅ services/db.ts:
-    - getSchedules에 useCache 옵션 추가
-    - 캐시가 있으면 즉시 반환 + 백그라운드에서 서버 업데이트
-    - 캐시 없으면 서버에서 가져오기
-  - ✅ App.tsx:
-    - 앱 시작 시: 캐시 사용 (빠른 표시)
-    - 일정 추가/수정/삭제 후: 서버에서 최신 데이터 가져오기 (useCache=false)
-  - ✅ 각 폰의 localStorage에 일정 캐싱
-
-  **성능 개선:**
-  - 앱 시작 시 즉시 일정 표시 (캐시)
-  - 백그라운드에서 자동 업데이트
-  - 일정 변경 시 최신 데이터 보장
-
-- 2025-12-14: **수행목표 구조 개선 ✅**
-  - ✅ 필수 항목 2개 + 선택 항목 23개 = 총 25개 구조로 변경
-  - ✅ services/db.ts fallback 데이터 업데이트
-    - 필수: 경전읽기, 염불/참선 (자동 선택, 해제 불가)
-    - 선택: 정견·공관, 보리심, 육바라밀, 방편·자비, 두 진리, 무주열반, 자기 성찰 (23개)
-  - ✅ FINAL_COMPLETE_CODE.gs 업데이트:
-    - setupDatabase()에 25개 항목 추가
-    - PracticeItems 헤더: id, category, question, order (아이콘 제거)
-  - ✅ OnboardingView.tsx 수정:
-    - 필수 항목 자동 선택 및 선택 해제 방지
-    - 필수 항목 시각적 구분 (secondary 색상 테두리)
-    - 안내 문구 업데이트
-
-  **다음 단계:**
-  1. Google Sheets에서 PracticeItems 시트 삭제
-  2. Apps Script에서 setupDatabase() 실행
-  3. 25개 항목 자동 생성 확인
-
-- 2025-12-14: `헬로 claude.md` 및 `current_task.md` 파일 생성
-- 2025-12-14: **일정 첨부파일 기능 - Drive API 연동 버전 ✅**
-  - ✅ Google Drive API 서비스 생성 (`/services/googleDrive.ts`)
-  - ✅ OAuth scope에 Drive 읽기 권한 추가 (스님만)
-  - ✅ DriveFilePicker 컴포넌트 생성 (파일 탐색, 검색, 선택)
-  - ✅ AddView에 Drive 파일 선택 기능 통합
-  - ✅ 스님 드라이브 폴더 ID 연동: `1671a0FUCAr_V0w8zPNDheclN9fF-Loho`
-
-  **사용 방법:**
-  1. 스님 계정으로 로그인 (Drive API 권한 자동 연동)
-  2. 일정 등록 시 "드라이브에서 파일 선택" 버튼 클릭
-  3. 모달에서 파일 검색 및 선택
-  4. 선택된 파일이 자동으로 첨부됨
-  5. 또는 수동으로 URL 직접 입력 가능 (폴백 옵션)
-
-  **기술 사항:**
-  - Drive API는 스님 계정만 연동 (일반 신도 불필요)
-  - 스님 폴더의 파일 목록을 실시간으로 불러옴
-  - 파일 검색, 썸네일, 파일 크기 표시 지원
-  - 신도들은 첨부된 링크만 확인
-
-- 2025-12-14: **구글 시트 저장 문제 해결 ✅**
-  - ✅ GET 방식 → POST 방식 변경 (CORS 문제 해결)
-  - ✅ URL 길이 제한 문제 해결
-  - ✅ 하드코딩된 Apps Script URL 제거
-
-- 2025-12-14: **수행 기록 간소화 ✅**
-  - ✅ 수행 항목을 2개로 축소 (간경 읽기, 염불/참선)
-  - ✅ services/db.ts fallback 데이터 업데이트
-  - ✅ FINAL_COMPLETE_CODE.gs 초기 데이터 업데이트
-
-  **다음 단계:**
-  1. Apps Script 재배포 필요
-  2. setupDatabase() 함수 실행으로 PracticeItems 시트 초기화
-
-## 대기 중인 작업
-없음
+    - `App.tsx` - 절기 필터링 및 태그 통일
+    - `ScheduleList.tsx` - 절기 삭제 불가 처리
+  - ✅ Vercel 프로덕션 배포 완료
