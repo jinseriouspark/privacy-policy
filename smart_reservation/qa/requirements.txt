@@ -22,7 +22,7 @@ pytest-playwright==0.4.3
 python-dateutil==2.8.2
 
 # HTTP Testing
-requests==2.31.0
+requests==2.32.4
 httpx==0.25.2
 
 # Data Validation
