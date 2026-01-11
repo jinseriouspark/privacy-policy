@@ -27,16 +27,19 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('login');
   const [user, setUser] = useState<User | null>(null);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  
+
   // App Dynamic Data
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [latestVideo, setLatestVideo] = useState<VideoContent | null>(null);
-  
+
   // Practice Data
   const [practiceLogs, setPracticeLogs] = useState<any[]>([]);
 
   // Schedule Detail Modal State
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
+
+  // Selected date for adding schedule
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Helper to get today's date in Korean timezone YYYY-MM-DD
   const getLocalTodayStr = () => {
@@ -63,36 +66,30 @@ const App: React.FC = () => {
 
     initApp();
 
-    // 앱 버전 체크 - 버전이 다르면 강제 로그아웃
-    const APP_VERSION = '1.0.5'; // 버전을 올리면 모든 사용자 강제 로그아웃
-    const savedVersion = localStorage.getItem('app_version');
-
-    if (savedVersion !== APP_VERSION) {
-      // 버전이 다르면 로그아웃 처리
-      localStorage.clear();
-      localStorage.setItem('app_version', APP_VERSION);
-      setUser(null);
-      setCurrentView('login');
-      return;
-    }
+    // 버전은 index.html에서 관리됨
 
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
 
-      // Refresh user data from DB to get latest dharmaName
+      // DB에서 최신 프로필 가져오기 (비동기이지만 기다리지 않음)
       dbService.getUserProfile(parsedUser.email).then(freshUser => {
         if (freshUser) {
-          const updatedUser = { ...parsedUser, ...freshUser };
-          setUser(updatedUser);
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-        } else {
-          setUser(parsedUser);
-        }
-      }).catch(() => {
-        setUser(parsedUser);
-      });
+          const updatedUser = {
+            ...parsedUser,
+            trackingIds: freshUser.tracking_ids || [],
+            dharmaName: freshUser.dharma_name,
+            streak: freshUser.streak || 0,
+            role: freshUser.role
+          };
 
+          // localStorage만 업데이트 (setUser 호출 안 함 - 깜빡임 방지)
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+      }).catch(e => console.warn('Profile refresh failed:', e));
+
+      // 한 번만 setUser 호출
+      setUser(parsedUser);
       loadSchedules(parsedUser.email);
       loadPracticeLogs(parsedUser.email);
 
@@ -114,15 +111,28 @@ const App: React.FC = () => {
 
       // Add special dates as schedule items
       const specialDates = getAllSpecialDates();
+      const solarTerms = ['입춘', '우수', '경칩', '춘분', '청명', '곡우', '입하', '소만', '망종', '하지', '소서', '대서', '입추', '처서', '백로', '추분', '한로', '상강', '입동', '소설', '대설', '동지', '소한', '대한'];
+      const holidays = ['삼일절', '어린이날', '현충일', '광복절', '개천절', '한글날', '설날', '추석', '부처님오신날', '식목일', '대체휴일'];
+
       const specialSchedules: ScheduleItem[] = Object.entries(specialDates)
-        .map(([dateKey, title]) => ({
-          id: `special_${dateKey}`,
-          type: 'temple' as const,
-          time: '종일',
-          title: title,
-          date: dateKey,
-          meta: '절기' // 24절기와 행사 모두 '절기'로 통일
-        }));
+        .map(([dateKey, title]) => {
+          // 메타 태그 결정: 절기, 공휴일, 정수사일정
+          let meta = '정수사일정';
+          if (solarTerms.some(term => title.includes(term))) {
+            meta = '절기';
+          } else if (holidays.some(holiday => title.includes(holiday))) {
+            meta = '공휴일';
+          }
+
+          return {
+            id: `special_${dateKey}`,
+            type: 'temple' as const,
+            time: '종일',
+            title: title,
+            date: dateKey,
+            meta: meta
+          };
+        });
 
       setSchedules([...specialSchedules, ...data]);
     } catch (e) { console.warn("Schedules load failed", e); }
@@ -145,7 +155,6 @@ const App: React.FC = () => {
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
-    localStorage.setItem('app_version', '1.0.5'); // 로그인 시 버전 저장
     loadSchedules(loggedInUser.email);
     loadPracticeLogs(loggedInUser.email);
 
@@ -374,8 +383,8 @@ const App: React.FC = () => {
                       if (s.id.startsWith('practice_')) return false;
                       if (s.meta === '수행 완료') return false;
 
-                      // 절기 제외 (절기는 홈 화면 일정 목록에서 제외)
-                      if (s.meta === '절기') return false;
+                      // 절기 제외 (절기는 홈 화면 일정 목록에서 제외) - special_ ID로 필터링
+                      if (s.id.startsWith('special_')) return false;
 
                       // 절 공식 일정(temple) 및 개인 일정(personal) 표시
                       if (s.type !== 'temple' && s.type !== 'personal') return false;
@@ -417,7 +426,10 @@ const App: React.FC = () => {
             schedules={schedules}
             currentUser={user}
             onScheduleClick={setSelectedSchedule}
-            onAddSchedule={() => setCurrentView('add')}
+            onAddSchedule={(date) => {
+              setSelectedDate(date);
+              setCurrentView('add');
+            }}
             onRefresh={async () => {
               if (user) {
                 await loadSchedules(user.email, false);
@@ -427,7 +439,7 @@ const App: React.FC = () => {
         );
 
       case 'add':
-        return <AddView onComplete={() => { setCurrentView('home'); if(user) loadSchedules(user.email, false); }} currentUser={user} appConfig={appConfig} />;
+        return <AddView onComplete={() => { setCurrentView('home'); if(user) loadSchedules(user.email, false); }} currentUser={user} appConfig={appConfig} initialDate={selectedDate} />;
 
       case 'dharma':
         return <DharmaView appConfig={appConfig} />;

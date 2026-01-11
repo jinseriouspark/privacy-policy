@@ -11,18 +11,20 @@ interface AddViewProps {
   onComplete: () => void;
   currentUser: User | null;
   appConfig: AppConfig | null;
+  initialDate?: string | null;
 }
 
-const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig }) => {
+const AddView: React.FC<AddViewProps> = ({ onComplete, currentUser, appConfig, initialDate }) => {
   const isMonk = currentUser?.role === 'monk';
   const defaultType = isMonk ? 'temple' : 'personal';
+  const defaultDate = initialDate || getKoreanToday();
 
   const [formData, setFormData] = useState({
     title: '',
     type: defaultType,
-    date: getKoreanToday(),
+    date: defaultDate,
     time: '03:00',
-    endDate: getKoreanToday(),
+    endDate: defaultDate,
     endTime: '04:00',
     maxParticipants: 0,
     memo: '',

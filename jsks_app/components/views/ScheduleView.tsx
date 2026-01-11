@@ -10,7 +10,7 @@ interface ScheduleViewProps {
   currentUser?: User | null;
   onBack?: () => void;
   onScheduleClick?: (schedule: ScheduleItem) => void;
-  onAddSchedule?: () => void;
+  onAddSchedule?: (date: string) => void;
   onRefresh?: () => Promise<void>;
 }
 
@@ -171,15 +171,16 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     const isSelected = isSameDay(dateObj, selectedDate);
     const isToday = isSameDay(dateObj, new Date());
 
-    // Find events for this day (temple and personal events)
+    // Find events for this day (temple and personal events, excluding special dates)
     const dayEvents = schedules.filter(s => {
       if (s.date !== dateKey) return false;
       if (s.id.startsWith('practice_')) return false; // Exclude practice logs
       if (s.meta === '수행 완료') return false; // Exclude practice completion records
+      if (s.id.startsWith('special_')) return false; // Exclude special dates (절기)
       if (s.type !== 'temple' && s.type !== 'personal') return false; // Temple and personal events
       return true;
     });
-    const hasEvents = dayEvents.length > 0;
+    const hasEvents = dayEvents.length >= 2; // Only show count if 2 or more events
 
     // Get lunar date (only for Monday - day of week = 1)
     const isMonday = dateObj.getDay() === 1;
@@ -211,9 +212,12 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     );
     const isRedDay = isSunday || isHoliday;
 
-    // 스님 전용: 절기 삭제 핸들러
+    // 스님 전용: 절기 삭제 핸들러 (국경일 제외)
     const handleSpecialEventLongPress = (e: React.TouchEvent | React.MouseEvent, dateKey: string) => {
       if (currentUser?.role !== 'monk' || !specialInfo.event) return;
+
+      // 국경일은 삭제 불가
+      if (isHoliday) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -226,6 +230,9 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
 
     const handleTouchStart = (e: React.TouchEvent, dateKey: string) => {
       if (currentUser?.role !== 'monk' || !specialInfo.event) return;
+
+      // 국경일은 삭제 불가
+      if (isHoliday) return;
 
       const timer = setTimeout(() => {
         handleSpecialEventLongPress(e, dateKey);
@@ -306,6 +313,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
     if (item.date !== selectedDateKey) return false;
     if (item.id.startsWith('practice_')) return false; // Exclude practice logs
     if (item.meta === '수행 완료') return false; // Exclude practice completion records
+    if (item.id.startsWith('special_')) return false; // Exclude special dates (절기)
     return true;
   });
 
@@ -429,7 +437,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ schedules, currentUser, onB
       {/* Add Schedule Button - Always Visible at Bottom */}
       {onAddSchedule && (
         <button
-          onClick={onAddSchedule}
+          onClick={() => onAddSchedule(selectedDateKey)}
           className="w-full py-4 bg-primary text-white rounded-xl font-bold text-[14px] hover:bg-primary/90 transition-all active:scale-[0.98] shadow-lg"
         >
           일정 추가하기
