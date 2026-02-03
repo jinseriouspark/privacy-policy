@@ -271,3 +271,35 @@ npx tsx scripts/seed-demo-data.ts
 - **배포**: Vercel (https://yeyak-mania.vercel.app)
 - **인증**: Google OAuth 2.0 Client ID 설정 필요
 - **스타일**: Tailwind CSS 사용, 커스텀 컴포넌트 스타일 없음
+
+---
+
+## 🚧 다음 작업 (TODO)
+
+### 우선순위 1: Google OAuth 프로덕션 승인
+**상태**: ⏳ 대기 중
+
+현재 테스트 모드에서 운영 중. 모든 사용자가 사용하려면 프로덕션 승인 필요.
+
+**필요 작업**:
+1. [ ] 데모 영상 촬영 (OAuth 동의 화면 → 권한 승인 → 캘린더 이벤트 생성)
+2. [ ] YouTube에 Unlisted로 업로드
+3. [ ] Google Cloud Console에서 OAuth 승인 제출
+4. [ ] 승인 완료 후 테스트 모드 → 프로덕션 모드 전환
+
+**필요한 OAuth Scopes**:
+- `calendar.events` - 이벤트 생성/참석자 초대
+- `calendar.readonly` - 빈 시간 확인
+
+**Scope 사용 이유**: CURRENT_TASK.md에 이메일 템플릿 준비됨
+
+### 우선순위 2: 기능 개선 (승인 후)
+- [ ] 토큰 자동 갱신 로직 추가 (refresh_token 사용)
+- [ ] 에러 메시지 개선 (재인증 버튼 추가)
+- [ ] `/debug` 진단 페이지 추가
+
+### 참고: Google OAuth 테스트 모드 운영
+승인 대기 중에도 테스트 사용자를 추가하여 정상 운영 가능:
+1. Google Cloud Console → OAuth 동의 화면 → 테스트 사용자
+2. 사용자 이메일 추가
+3. 해당 사용자만 로그인 가능

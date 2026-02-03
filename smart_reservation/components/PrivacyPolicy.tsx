@@ -34,9 +34,9 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             트래픽엔진(이하 "회사")은 이용자의 개인정보를 소중히 여기며, 「개인정보 보호법」 등 관련 법령을 준수하고 있습니다.
           </p>
           <div className="mt-6 flex items-center gap-4 text-sm text-slate-500">
-            <span>시행일자: 2026년 1월 1일</span>
+            <span>시행일자: 2026년 2월 3일</span>
             <span>•</span>
-            <span>최종 수정: 2025년 12월 31일</span>
+            <span>최종 수정: 2026년 2월 3일</span>
           </div>
         </div>
 
@@ -48,10 +48,11 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             <li><a href="#section2" className="hover:text-orange-500">2. 수집하는 개인정보의 항목</a></li>
             <li><a href="#section3" className="hover:text-orange-500">3. 개인정보의 보유 및 이용 기간</a></li>
             <li><a href="#section4" className="hover:text-orange-500">4. Google API 서비스 사용자 데이터 정책 준수</a></li>
-            <li><a href="#section5" className="hover:text-orange-500">5. 개인정보의 파기 절차 및 방법</a></li>
-            <li><a href="#section6" className="hover:text-orange-500">6. 이용자의 권리와 행사 방법</a></li>
-            <li><a href="#section7" className="hover:text-orange-500">7. 개인정보 보호책임자</a></li>
-            <li><a href="#section8" className="hover:text-orange-500">8. 개인정보처리방침의 변경</a></li>
+            <li><a href="#section5" className="hover:text-orange-500">5. 개인정보의 안전성 확보 조치</a></li>
+            <li><a href="#section6" className="hover:text-orange-500">6. 개인정보의 파기 절차 및 방법</a></li>
+            <li><a href="#section7" className="hover:text-orange-500">7. 이용자의 권리와 행사 방법</a></li>
+            <li><a href="#section8" className="hover:text-orange-500">8. 개인정보 보호책임자</a></li>
+            <li><a href="#section9" className="hover:text-orange-500">9. 개인정보처리방침의 변경</a></li>
           </ol>
         </div>
 
@@ -284,10 +285,91 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             </div>
           </section>
 
-          {/* Section 5 */}
+          {/* Section 5 - Data Protection Mechanisms */}
           <section id="section5" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">
-              5. 개인정보의 파기 절차 및 방법
+              5. 개인정보의 안전성 확보 조치
+            </h2>
+            <div className="space-y-6 text-slate-700">
+              <p>회사는 개인정보의 안전성 확보를 위해 다음과 같은 기술적, 관리적, 물리적 조치를 취하고 있습니다.</p>
+
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">가. 기술적 보호 조치</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-semibold text-green-900 mb-2">1) 데이터 암호화</h4>
+                    <ul className="list-disc list-inside space-y-1 pl-4 text-green-800">
+                      <li><strong>전송 구간 암호화</strong>: 모든 데이터는 TLS 1.2 이상의 보안 프로토콜을 통해 암호화되어 전송됩니다.</li>
+                      <li><strong>저장 데이터 암호화</strong>: 민감한 개인정보(OAuth 토큰 등)는 AES-256 암호화를 적용하여 저장합니다.</li>
+                      <li><strong>비밀번호 해싱</strong>: 사용자 비밀번호는 단방향 해시 함수(bcrypt)를 사용하여 안전하게 저장됩니다.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-semibold text-green-900 mb-2">2) 접근 통제</h4>
+                    <ul className="list-disc list-inside space-y-1 pl-4 text-green-800">
+                      <li><strong>인증 및 권한 관리</strong>: JWT 기반 인증 시스템과 Row-Level Security(RLS)를 통해 사용자별 데이터 접근을 엄격히 통제합니다.</li>
+                      <li><strong>OAuth 토큰 관리</strong>: Google OAuth 토큰은 사용자별로 분리 저장되며, 최소 권한 원칙에 따라 필요한 scope만 요청합니다.</li>
+                      <li><strong>세션 관리</strong>: 자동 로그아웃 및 세션 만료 정책을 적용하여 무단 접근을 방지합니다.</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-semibold text-green-900 mb-2">3) 보안 시스템</h4>
+                    <ul className="list-disc list-inside space-y-1 pl-4 text-green-800">
+                      <li><strong>보안 업데이트</strong>: 정기적인 보안 패치 및 취약점 점검을 실시합니다.</li>
+                      <li><strong>접속 로그 관리</strong>: 모든 접속 기록을 로깅하여 이상 징후를 모니터링합니다.</li>
+                      <li><strong>SQL Injection 방지</strong>: 매개변수화된 쿼리를 사용하여 SQL 인젝션 공격을 방지합니다.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">나. 관리적 보호 조치</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <ul className="list-disc list-inside space-y-1 pl-4 text-blue-800">
+                      <li><strong>접근 권한 최소화</strong>: 개인정보를 처리하는 직원을 최소한으로 제한하고, 업무 수행에 필요한 최소한의 권한만 부여합니다.</li>
+                      <li><strong>내부 관리 계획</strong>: 개인정보 보호를 위한 내부 관리 계획을 수립하고 시행합니다.</li>
+                      <li><strong>보안 서약</strong>: 개인정보를 취급하는 직원에게 보안 서약서를 받고 보안 교육을 실시합니다.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">다. 물리적 보호 조치</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <ul className="list-disc list-inside space-y-1 pl-4 text-purple-800">
+                      <li><strong>클라우드 인프라 보안</strong>: AWS, Supabase 등 SOC 2 Type II 인증을 받은 클라우드 서비스를 사용합니다.</li>
+                      <li><strong>데이터 센터 보안</strong>: 물리적 보안이 갖춰진 데이터 센터에서 서버를 운영합니다.</li>
+                      <li><strong>재해 복구</strong>: 정기적인 데이터 백업 및 재해 복구 계획을 수립하여 운영합니다.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <h3 className="font-semibold text-amber-900 mb-2">라. Google 사용자 데이터 보호</h3>
+                <p className="text-sm text-amber-800 mb-2">
+                  Google Calendar 및 OAuth 데이터에 대해 다음과 같은 추가 보호 조치를 적용합니다:
+                </p>
+                <ul className="list-disc list-inside space-y-1 pl-4 text-sm text-amber-800">
+                  <li>Google OAuth 토큰은 암호화되어 안전하게 저장되며, 서비스 제공 목적으로만 사용됩니다.</li>
+                  <li>캘린더 데이터는 예약 생성/조회 시에만 접근하며, 불필요한 데이터는 저장하지 않습니다.</li>
+                  <li>사용자가 연동을 해제하면 관련 토큰 및 데이터를 즉시 삭제합니다.</li>
+                  <li>Google API 서비스 사용자 데이터 정책의 제한된 사용 요구사항을 엄격히 준수합니다.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 6 */}
+          <section id="section6" className="scroll-mt-20">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">
+              6. 개인정보의 파기 절차 및 방법
             </h2>
             <div className="space-y-4 text-slate-700">
               <div>
@@ -304,10 +386,10 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             </div>
           </section>
 
-          {/* Section 6 */}
-          <section id="section6" className="scroll-mt-20">
+          {/* Section 7 */}
+          <section id="section7" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">
-              6. 이용자의 권리와 행사 방법
+              7. 이용자의 권리와 행사 방법
             </h2>
             <div className="space-y-4 text-slate-700">
               <p>이용자는 언제든지 다음 각 호의 개인정보 보호 관련 권리를 행사할 수 있습니다.</p>
@@ -336,10 +418,10 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             </div>
           </section>
 
-          {/* Section 7 */}
-          <section id="section7" className="scroll-mt-20">
+          {/* Section 8 */}
+          <section id="section8" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">
-              7. 개인정보 보호책임자
+              8. 개인정보 보호책임자
             </h2>
             <div className="space-y-4 text-slate-700">
               <p>회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 이용자의 불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보 보호책임자를 지정하고 있습니다.</p>
@@ -366,16 +448,16 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onBack }) => {
             </div>
           </section>
 
-          {/* Section 8 */}
-          <section id="section8" className="scroll-mt-20">
+          {/* Section 9 */}
+          <section id="section9" className="scroll-mt-20">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-3 border-b border-slate-200">
-              8. 개인정보처리방침의 변경
+              9. 개인정보처리방침의 변경
             </h2>
             <div className="space-y-4 text-slate-700">
               <p>이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.</p>
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm mt-4">
-                <p className="font-semibold text-slate-900 mb-1">공고 일자: 2024년 12월 31일</p>
-                <p className="text-slate-600">시행 일자: 2025년 1월 1일</p>
+                <p className="font-semibold text-slate-900 mb-1">공고 일자: 2026년 2월 3일</p>
+                <p className="text-slate-600">시행 일자: 2026년 2월 3일</p>
               </div>
             </div>
           </section>
