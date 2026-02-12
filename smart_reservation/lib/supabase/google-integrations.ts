@@ -249,7 +249,7 @@ export async function connectNotion(userId: string) {
       `response_type=code&` +
       `owner=user&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `state=${encodeURIComponent(String(userId))}`;
+      `state=${encodeURIComponent(`notion_${userId}`)}`;
 
     console.log('[connectNotion] authUrl:', authUrl);
 

@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { User } from '../types';
-import { signInWithGoogle } from '../lib/google-oauth';
+import { signInWithGoogle as signInWithGoogleLegacy } from '../lib/google-oauth';
+import { signInWithGoogle as signInWithGoogleSupabase } from '../lib/supabase-auth';
 import { Loader2, AlertCircle } from 'lucide-react';
 import Signup from './Signup';
 import TermsOfService from './TermsOfService';
 import PrivacyPolicy from './PrivacyPolicy';
+
+// 커스텀 OAuth 사용 (Calendar scope 포함)
+const USE_SUPABASE_OAUTH = false;
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -38,8 +42,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
 
     try {
-      // 새로운 OAuth 시스템 사용 (Google 페이지로 리디렉션)
-      await signInWithGoogle();
+      if (USE_SUPABASE_OAUTH) {
+        // Supabase OAuth 사용 (Google 페이지로 리디렉션)
+        console.log('[Login] Using Supabase OAuth');
+        await signInWithGoogleSupabase();
+      } else {
+        // 기존 커스텀 OAuth 사용
+        console.log('[Login] Using legacy OAuth');
+        await signInWithGoogleLegacy();
+      }
     } catch (err: any) {
       console.error('Google login error:', err);
       setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');

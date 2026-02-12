@@ -35,11 +35,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 환경변수에서 Notion OAuth 설정 가져오기 (클라이언트에 노출 안 됨)
     const clientId = process.env.VITE_NOTION_CLIENT_ID;
     const clientSecret = process.env.NOTION_CLIENT_SECRET;
-    const redirectUri = `${process.env.NOTION_REDIRECT_URI || 'https://yeyak-mania.co.kr'}/notion-callback`;
+    // NOTION_REDIRECT_URI는 전체 콜백 URL 또는 도메인만 가능
+    const rawRedirectUri = (process.env.NOTION_REDIRECT_URI || 'https://yeyak-mania.co.kr').trim();
+    const redirectUri = rawRedirectUri.includes('/notion-callback')
+      ? rawRedirectUri
+      : `${rawRedirectUri}/notion-callback`;
+
+    console.log('[Notion OAuth] redirectUri:', redirectUri);
+    console.log('[Notion OAuth] clientId present:', !!clientId);
+    console.log('[Notion OAuth] clientSecret present:', !!clientSecret);
 
     if (!clientId || !clientSecret) {
       console.error('[Notion OAuth] Missing Notion credentials');
-      return res.status(500).json({ error: 'Notion OAuth not configured' });
+      return res.status(500).json({
+        error: 'Notion OAuth not configured',
+        debug: { hasClientId: !!clientId, hasClientSecret: !!clientSecret }
+      });
     }
 
     // Notion OAuth 토큰 교환
@@ -62,6 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(tokenResponse.status).json({
         error: 'Failed to exchange authorization code',
         details: error,
+        debug: {
+          redirectUri,
+          clientIdPrefix: clientId?.substring(0, 8),
+          secretPrefix: clientSecret?.substring(0, 12),
+        }
       });
     }
 

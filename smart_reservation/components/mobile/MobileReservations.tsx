@@ -74,8 +74,9 @@ export const MobileReservations: React.FC<MobileReservationsProps> = ({ user }) 
   const handleCancelReservation = async (reservationId: string) => {
     if (!confirm('정말 이 예약을 취소하시겠습니까?')) return;
 
+    const isInstructor = user.user_type === 'instructor';
     try {
-      const result = await cancelReservation(reservationId);
+      const result = await cancelReservation(reservationId, isInstructor);
       await loadReservations();
 
       if (result.refunded) {

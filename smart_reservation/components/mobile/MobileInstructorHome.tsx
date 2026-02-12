@@ -307,7 +307,8 @@ export const MobileInstructorHome: React.FC<MobileInstructorHomeProps> = ({ user
                 endTime: endTime.toLocaleTimeString('ko-KR', {
                   hour: '2-digit',
                   minute: '2-digit',
-                  hour12: false
+                  hour12: false,
+                  timeZoneName: 'short'
                 }),
                 studentName: r.student?.name || '수강생',
                 isGroup: r.coaching?.type === 'group',

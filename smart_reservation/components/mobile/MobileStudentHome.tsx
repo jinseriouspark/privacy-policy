@@ -174,6 +174,23 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
           }
         }}
       >
+        {/* Empty State - No packages and no reservations */}
+        {packages.filter(pkg => {
+          const expiresAt = new Date(pkg.expires_at);
+          return expiresAt > new Date() && (pkg.remaining_sessions || 0) > 0;
+        }).length === 0 && todayReservations.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <CalendarIcon size={32} className="text-slate-400" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-700 mb-2">아직 수강 정보가 없어요</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              강사에게 수강권을 받으면<br />
+              여기에 수업 일정이 표시됩니다.
+            </p>
+          </div>
+        )}
+
         {/* My Packages - Horizontal Scroll with Selection */}
         {packages.filter(pkg => {
           const expiresAt = new Date(pkg.expires_at);
@@ -215,7 +232,10 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
                   return (
                     <button
                       key={pkg.id}
-                      onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
+                      onClick={() => {
+                        setSelectedPackageId(pkg.id);
+                        setIsPackageDetailOpen(true);
+                      }}
                       className={`flex-shrink-0 w-48 p-5 rounded-2xl transition-all ${
                         isSelected
                           ? 'bg-orange-500 shadow-lg scale-105'
@@ -305,7 +325,8 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
                   endTime: endTime.toLocaleTimeString('ko-KR', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    hour12: false
+                    hour12: false,
+                    timeZoneName: 'short'
                   }),
                   studentName: r.instructor?.name || '강사님',
                   isGroup: r.coaching?.type === 'group',
@@ -359,7 +380,7 @@ export const MobileStudentHome: React.FC<MobileStudentHomeProps> = ({ user }) =>
       <PackageDetailBottomSheet
         isOpen={isPackageDetailOpen}
         onClose={() => setIsPackageDetailOpen(false)}
-        packages={packages}
+        selectedPackage={packages.find(p => p.id === selectedPackageId) || null}
       />
     </div>
   );

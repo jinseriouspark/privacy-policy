@@ -163,7 +163,7 @@ export const CoachingManagementModal: React.FC<CoachingManagementModalProps> = (
                 <Calendar size={20} className="text-slate-500 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="font-bold text-sm text-slate-900 mb-1">캘린더 연동이 필요합니다</p>
-                  <p className="text-xs text-slate-600">예약을 받으려면 Google 캘린더를 연동해주세요. 각 코칭마다 별도 캘린더를 생성할 수 있습니다.</p>
+                  <p className="text-xs text-slate-600">예약을 받으려면 Google 캘린더를 연동해주세요. 기존 캘린더 중 하나를 선택할 수 있습니다.</p>
                 </div>
               </div>
             </div>

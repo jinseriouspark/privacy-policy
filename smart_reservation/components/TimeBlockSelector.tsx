@@ -161,9 +161,7 @@ export const TimeBlockSelector: React.FC<TimeBlockSelectorProps> = ({
     <div className="space-y-4">
       {/* 헤더 및 전체 컨트롤 */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-orange-800 flex-1 min-w-[200px]">
-          각 요일별로 시간대를 추가하고 시작/종료 시간을 설정하세요
-        </div>
+        <div className="flex-1 min-w-[200px]" />
         <div className="flex gap-2">
           <button
             onClick={() => toggleAllDays(true)}

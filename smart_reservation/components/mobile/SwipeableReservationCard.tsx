@@ -149,7 +149,8 @@ export const SwipeableReservationCard: React.FC<SwipeableReservationCardProps> =
               {endTime.toLocaleTimeString('ko-KR', {
                 hour: '2-digit',
                 minute: '2-digit',
-                hour12: false
+                hour12: false,
+                timeZoneName: 'short'
               })}
             </span>
           </div>

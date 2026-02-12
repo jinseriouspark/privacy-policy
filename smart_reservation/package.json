@@ -6,10 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test --config=e2e/playwright.config.ts --project=desktop-chrome",
+    "test:e2e:mobile": "npx playwright test --config=e2e/playwright.config.ts --project=mobile-chrome",
+    "test:e2e:all": "npx playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:smoke": "npx playwright test --config=e2e/playwright.config.ts e2e/tests/smoke.spec.ts",
+    "test:e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed --project=desktop-chrome",
+    "test:e2e:report": "npx playwright show-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
+    "driver.js": "^1.4.0",
     "lucide-react": "^0.561.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
@@ -21,7 +28,9 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^22.14.0",
+    "@vercel/node": "^5.5.16",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",

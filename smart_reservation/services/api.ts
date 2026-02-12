@@ -11,7 +11,7 @@ const parseBookingUrl = () => {
   const systemRoutes = [
     'summary', 'all-reservation', 'group', 'attend', 'student', 'membership', 'class',
     'onboarding', 'privacy-policy', 'terms-of-service', 'login', 'setup', 'dashboard',
-    'reservations', 'students', 'attendance', 'packages', 'profile'
+    'reservations', 'students', 'attendance', 'packages', 'profile', 'embed'
   ];
 
   // New format: /book/{studio_slug}/{coaching_id}

@@ -18,6 +18,7 @@ export function initiateNotionOAuth(instructorId: string) {
   authUrl.searchParams.append('response_type', 'code');
   authUrl.searchParams.append('owner', 'user');
   authUrl.searchParams.append('redirect_uri', NOTION_REDIRECT_URI);
+  authUrl.searchParams.append('state', `notion_${instructorId}`);
 
   // Redirect to Notion OAuth page
   window.location.href = authUrl.toString();
@@ -27,9 +28,14 @@ export function initiateNotionOAuth(instructorId: string) {
  * Step 2: Exchange authorization code for access token
  * ⚠️ 보안: 서버리스 함수 사용 (Client Secret 노출 방지)
  */
-export async function handleNotionCallback(code: string) {
+export async function handleNotionCallback(code: string, state?: string) {
   try {
-    const instructorId = sessionStorage.getItem('notion_oauth_instructor_id');
+    // Try to get instructor ID from state parameter (popup flow) or sessionStorage (redirect flow)
+    let instructorId = sessionStorage.getItem('notion_oauth_instructor_id');
+    if (!instructorId && state) {
+      // State format: "notion_<instructorId>"
+      instructorId = state.startsWith('notion_') ? state.replace('notion_', '') : state;
+    }
     if (!instructorId) {
       throw new Error('Instructor ID not found in session');
     }
@@ -48,7 +54,8 @@ export async function handleNotionCallback(code: string) {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to exchange authorization code');
+      console.error('[Notion OAuth] Server response:', response.status, JSON.stringify(error));
+      throw new Error(`[${response.status}] ${error.error || 'Failed to exchange authorization code'} - ${JSON.stringify(error.details || {})}`);
     }
 
     const data = await response.json();

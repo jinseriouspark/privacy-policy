@@ -3,7 +3,7 @@
   <!-- Main Landing Page -->
   <url>
     <loc>https://yeyak-mania.co.kr/</loc>
-    <lastmod>2025-12-24</lastmod>
+    <lastmod>2024-12-31</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -11,7 +11,7 @@
   <!-- Login Page -->
   <url>
     <loc>https://yeyak-mania.co.kr/login</loc>
-    <lastmod>2025-12-24</lastmod>
+    <lastmod>2024-12-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -19,7 +19,7 @@
   <!-- Privacy Policy -->
   <url>
     <loc>https://yeyak-mania.co.kr/privacy-policy</loc>
-    <lastmod>2025-12-24</lastmod>
+    <lastmod>2024-12-31</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -27,7 +27,7 @@
   <!-- Terms of Service -->
   <url>
     <loc>https://yeyak-mania.co.kr/terms-of-service</loc>
-    <lastmod>2025-12-24</lastmod>
+    <lastmod>2024-12-31</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>

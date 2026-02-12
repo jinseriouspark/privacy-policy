@@ -1,24 +1,62 @@
 import { supabase } from './supabase/client';
 
+// 커스텀 OAuth 사용 (Calendar scope 포함)
+const USE_SUPABASE_OAUTH = false;
+
+/**
+ * Google Access Token 가져오기 (공통 함수)
+ * - provider_token 유효성 검증 후 사용
+ * - 만료 시 DB 토큰 + 자동 갱신 시도
+ */
+async function getAccessToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session?.user?.email) {
+    throw new Error('로그인이 필요합니다.');
+  }
+
+  // 1. 세션에 provider_token이 있으면 유효성 검증 후 사용
+  if (session.provider_token) {
+    const isValid = await validateGoogleToken(session.provider_token);
+    if (isValid) {
+      console.log('[getAccessToken] Using valid provider_token from session');
+      return session.provider_token;
+    }
+    console.warn('[getAccessToken] provider_token expired, trying DB token...');
+  }
+
+  // 2. DB에서 google_access_token 조회 (만료 시 refresh_token으로 자동 갱신)
+  console.log('[getAccessToken] Checking database for valid token...');
+  const { ensureValidToken } = await import('./token-manager');
+  const validToken = await ensureValidToken(session.user.email);
+
+  if (validToken) {
+    console.log('[getAccessToken] Using DB token (auto-refreshed if needed)');
+    return validToken;
+  }
+
+  throw new Error('캘린더 권한이 만료되었습니다. 로그아웃 후 다시 로그인해주세요.');
+}
+
+/**
+ * Google 토큰 유효성 빠른 검증
+ */
+async function validateGoogleToken(token: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(token)}`);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Google Calendar API를 사용하여 새 캘린더 생성
  */
 export async function createCoachingCalendar(calendarName: string = '코칭 예약') {
   try {
-    // 현재 세션에서 Google access token 가져오기
-    const { data: { session } } = await supabase.auth.getSession();
-
-    console.log('[createCoachingCalendar] Session check:', {
-      hasSession: !!session,
-      hasProviderToken: !!session?.provider_token,
-      provider: session?.user?.app_metadata?.provider
-    });
-
-    if (!session?.provider_token) {
-      throw new Error('캘린더 권한이 필요합니다. 우측 상단에서 로그아웃 후 다시 로그인해주세요.');
-    }
-
-    const accessToken = session.provider_token;
+    const accessToken = await getAccessToken();
+    console.log('[createCoachingCalendar] Got access token');
 
     // Google Calendar API로 새 캘린더 생성
     const response = await fetch('https://www.googleapis.com/calendar/v3/calendars', {
@@ -30,7 +68,7 @@ export async function createCoachingCalendar(calendarName: string = '코칭 예�
       body: JSON.stringify({
         summary: calendarName,
         description: '예약매니아를 통한 코칭 예약 전용 캘린더',
-        timeZone: 'Asia/Seoul'
+        timeZone: 'Europe/Berlin'
       })
     });
 
@@ -61,10 +99,7 @@ export async function createCoachingCalendar(calendarName: string = '코칭 예�
  */
 export async function upgradeCalendarToWriter(calendarId: string) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.provider_token) {
-      throw new Error('Google 인증이 필요합니다.');
-    }
+    const accessToken = await getAccessToken();
 
     console.log('[upgradeCalendarToWriter] Updating calendar ACL to writer:', calendarId);
 
@@ -73,7 +108,7 @@ export async function upgradeCalendarToWriter(calendarId: string) {
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/acl`,
       {
         headers: {
-          'Authorization': `Bearer ${session.provider_token}`,
+          'Authorization': `Bearer ${accessToken}`,
         }
       }
     );
@@ -92,7 +127,7 @@ export async function upgradeCalendarToWriter(calendarId: string) {
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${session.provider_token}`,
+            'Authorization': `Bearer ${accessToken}`,
           }
         }
       );
@@ -105,7 +140,7 @@ export async function upgradeCalendarToWriter(calendarId: string) {
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.provider_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -138,17 +173,14 @@ export async function upgradeCalendarToWriter(calendarId: string) {
  */
 export async function addCalendarWriter(calendarId: string, userEmail: string) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.provider_token) {
-      throw new Error('Google 인증이 필요합니다.');
-    }
+    const accessToken = await getAccessToken();
 
     console.log('[addCalendarWriter] Adding writer:', { calendarId, userEmail });
 
     const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/acl`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.provider_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -210,15 +242,9 @@ export async function addEventToCalendar(params: {
       accessToken = tokens.google_access_token;
       console.log('[addEventToCalendar] Using instructor token for instructor:', params.instructorId);
     } else {
-      // Use current logged-in user's token (fallback for backward compatibility)
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.provider_token) {
-        throw new Error('Google 인증 토큰이 없습니다.');
-      }
-
-      accessToken = session.provider_token;
-      console.log('[addEventToCalendar] Using current user token');
+      // Use current logged-in user's token (with validation + auto-refresh)
+      accessToken = await getAccessToken();
+      console.log('[addEventToCalendar] Using current user token (validated)');
     }
 
     const requestBody = {
@@ -226,11 +252,11 @@ export async function addEventToCalendar(params: {
       description: params.description,
       start: {
         dateTime: params.start,
-        timeZone: 'Asia/Seoul'
+        timeZone: 'Europe/Berlin'
       },
       end: {
         dateTime: params.end,
-        timeZone: 'Asia/Seoul'
+        timeZone: 'Europe/Berlin'
       },
       attendees: params.attendees?.map(email => ({
         email,
@@ -296,25 +322,24 @@ export async function addEventToStudentCalendar(params: {
   instructorName: string;
 }) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.provider_token) {
-      console.warn('[addEventToStudentCalendar] No provider token, skipping');
+    let accessToken: string;
+    try {
+      accessToken = await getAccessToken();
+    } catch {
+      console.warn('[addEventToStudentCalendar] No access token, skipping');
       return null; // Don't throw - student calendar is optional
     }
-
-    const accessToken = session.provider_token;
 
     const requestBody = {
       summary: params.title,
       description: `강사: ${params.instructorName}\n\nGoogle Meet 링크: ${params.meetLink}`,
       start: {
         dateTime: params.start,
-        timeZone: 'Asia/Seoul'
+        timeZone: 'Europe/Berlin'
       },
       end: {
         dateTime: params.end,
-        timeZone: 'Asia/Seoul'
+        timeZone: 'Europe/Berlin'
       },
       reminders: {
         useDefault: false,
@@ -365,14 +390,13 @@ export async function addEventToStudentCalendar(params: {
  */
 export async function ensureCalendarInList(calendarId: string) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.provider_token) {
-      console.warn('[ensureCalendarInList] No provider token, skipping');
+    let accessToken: string;
+    try {
+      accessToken = await getAccessToken();
+    } catch {
+      console.warn('[ensureCalendarInList] No access token, skipping');
       return false;
     }
-
-    const accessToken = session.provider_token;
 
     console.log('[ensureCalendarInList] Adding calendar to list:', calendarId);
 
@@ -409,13 +433,7 @@ export function getCalendarSubscribeUrl(calendarId: string): string {
  */
 export async function getUserCalendars() {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.provider_token) {
-      throw new Error('캘린더 권한이 필요합니다. 우측 상단에서 로그아웃 후 다시 로그인해주세요.');
-    }
-
-    const accessToken = session.provider_token;
+    const accessToken = await getAccessToken();
 
     const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
       method: 'GET',
@@ -455,13 +473,7 @@ export async function getCalendarBusyTimes(params: {
   timeMax: string;        // ISO 8601 format
 }) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.provider_token) {
-      throw new Error('캘린더 권한이 필요합니다. 우측 상단에서 로그아웃 후 다시 로그인해주세요.');
-    }
-
-    const accessToken = session.provider_token;
+    const accessToken = await getAccessToken();
 
     const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
       method: 'POST',

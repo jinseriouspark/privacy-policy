@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Mail, Calendar, LogOut, Settings, Bell, HelpCircle, Shield, X, RefreshCw } from 'lucide-react';
+import { User, Mail, Calendar, LogOut, Settings, HelpCircle, Shield, X, RefreshCw, Download } from 'lucide-react';
 import { User as UserType } from '../../types';
 import { navigateTo, ROUTES } from '../../utils/router';
 
@@ -10,7 +10,6 @@ interface MobileProfileProps {
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) => {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
-  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -25,7 +24,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
   };
 
   const handlePrivacyPolicy = () => {
-    window.location.href = '/privacy-policy';
+    window.location.href = '/privacy';
   };
 
   const handleChangeRole = () => {
@@ -34,10 +33,18 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
     }
   };
 
+  const getCalendarDownloadUrl = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(userAgent)) {
+      return 'https://apps.apple.com/app/google-calendar/id909319292';
+    }
+    return 'https://play.google.com/store/apps/details?id=com.google.android.calendar';
+  };
+
   return (
     <div className="pb-20 bg-slate-50 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-br bg-orange-500 px-6 pt-8 pb-12">
+      <div className="bg-gradient-to-br from-orange-600 to-orange-500 px-6 pt-8 pb-12">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
             {user.picture ? (
@@ -100,7 +107,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
 
           <button
             onClick={() => setShowProfileEdit(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
           >
             <User size={20} className="text-slate-400" />
             <span className="flex-1 text-left text-slate-700">프로필 수정</span>
@@ -108,17 +115,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
           </button>
 
           <button
-            onClick={() => setShowNotificationSettings(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
-          >
-            <Bell size={20} className="text-slate-400" />
-            <span className="flex-1 text-left text-slate-700">알림 설정</span>
-            <span className="text-slate-400">›</span>
-          </button>
-
-          <button
             onClick={() => setShowAppSettings(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
           >
             <Settings size={20} className="text-slate-400" />
             <span className="flex-1 text-left text-slate-700">환경 설정</span>
@@ -138,6 +136,27 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
           </button>
         </div>
 
+        {/* Google Calendar */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h2 className="font-bold text-slate-900 text-sm">캘린더 연동</h2>
+          </div>
+
+          <a
+            href={getCalendarDownloadUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+          >
+            <Calendar size={20} className="text-slate-400" />
+            <div className="flex-1 text-left">
+              <span className="text-slate-700">Google Calendar 앱 다운로드</span>
+              <p className="text-xs text-slate-400 mt-0.5">예약 일정을 캘린더에서 확인하세요</p>
+            </div>
+            <Download size={16} className="text-slate-400" />
+          </a>
+        </div>
+
         {/* Support */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100">
@@ -146,7 +165,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
 
           <button
             onClick={() => setShowHelp(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
           >
             <HelpCircle size={20} className="text-slate-400" />
             <span className="flex-1 text-left text-slate-700">도움말</span>
@@ -155,7 +174,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
 
           <button
             onClick={handleContactUs}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
           >
             <Mail size={20} className="text-slate-400" />
             <span className="flex-1 text-left text-slate-700">문의하기</span>
@@ -189,7 +208,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
             예약매니아 v1.0.0
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            © 2025 All rights reserved
+            © 2026 All rights reserved
           </p>
         </div>
       </div>
@@ -204,54 +223,55 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
                 <X size={24} className="text-slate-400" />
               </button>
             </div>
-            <div className="p-6">
-              <p className="text-slate-600">프로필 수정 기능은 곧 제공될 예정입니다.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Settings Modal */}
-      {showNotificationSettings && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">알림 설정</h2>
-              <button onClick={() => setShowNotificationSettings(false)}>
-                <X size={24} className="text-slate-400" />
-              </button>
-            </div>
             <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-slate-100">
-                <div>
-                  <p className="font-medium text-slate-900">예약 알림</p>
-                  <p className="text-sm text-slate-500">새로운 예약이 있을 때 알림</p>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  {user.picture ? (
+                    <img src={user.picture} alt={user.name} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="text-orange-600 font-bold text-2xl">{user.name.charAt(0)}</span>
+                  )}
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                </label>
-              </div>
-              <div className="flex items-center justify-between py-3 border-b border-slate-100">
                 <div>
-                  <p className="font-medium text-slate-900">취소 알림</p>
-                  <p className="text-sm text-slate-500">예약 취소 시 알림</p>
+                  <p className="font-bold text-slate-900">{user.name}</p>
+                  <p className="text-sm text-slate-500">{user.email}</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                </label>
               </div>
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-slate-900">이메일 알림</p>
-                  <p className="text-sm text-slate-500">중요한 알림을 이메일로 받기</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                </label>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">이름</label>
+                <input
+                  type="text"
+                  defaultValue={user.name}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-900"
+                  readOnly
+                />
               </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">이메일</label>
+                <input
+                  type="email"
+                  defaultValue={user.email}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500"
+                  readOnly
+                />
+                <p className="text-xs text-slate-400 mt-1">Google 계정으로 연결되어 변경할 수 없습니다</p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">역할</label>
+                <input
+                  type="text"
+                  value={user.user_type === 'instructor' ? '강사' : '수강생'}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-500"
+                  readOnly
+                />
+              </div>
+
+              <p className="text-xs text-slate-400 text-center pt-2">
+                프로필 정보는 Google 계정과 연동됩니다
+              </p>
             </div>
           </div>
         </div>
@@ -282,16 +302,6 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({ user, onLogout }) 
                   <option>미국 동부 (GMT-5)</option>
                   <option>일본 (GMT+9)</option>
                 </select>
-              </div>
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-slate-900">다크 모드</p>
-                  <p className="text-sm text-slate-500">어두운 테마 사용</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-                </label>
               </div>
             </div>
           </div>

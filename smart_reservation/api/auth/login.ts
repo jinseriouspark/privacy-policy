@@ -88,17 +88,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Login] Processing login for:', email);
 
     // 사용자 조회 또는 생성 (upsert)
+    // refresh_token은 Google이 첫 인증 시에만 제공하므로, 있을 때만 업데이트
+    const upsertData: any = {
+      email,
+      name,
+      picture,
+      google_id: googleId,
+      google_access_token: accessToken,
+      google_token_expires_at: expiresAt,
+    };
+
+    // refresh_token이 있을 때만 저장 (기존 값 보존)
+    if (refreshToken) {
+      upsertData.google_refresh_token = refreshToken;
+      console.log('[Login] Saving refresh_token to database');
+    }
+
     const { data: user, error: upsertError } = await supabase
       .from('users')
-      .upsert({
-        email,
-        name,
-        picture,
-        google_id: googleId,
-        google_access_token: accessToken,
-        google_refresh_token: refreshToken,
-        google_token_expires_at: expiresAt,
-      }, {
+      .upsert(upsertData, {
         onConflict: 'email',
       })
       .select()

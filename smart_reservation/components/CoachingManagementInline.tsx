@@ -28,14 +28,14 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
   const [creating, setCreating] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // 🆕 새로운 블록 기반 working_hours 기본값
+  // 🆕 새로운 블록 기반 working_hours 기본값 (모두 비활성화 - 나중에 설정 가능)
   const defaultWorkingHours = {
-    monday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    tuesday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    wednesday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    thursday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    friday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
-    saturday: { enabled: true, blocks: [{ start: '09:00', end: '18:00' }] },
+    monday: { enabled: false, blocks: [] },
+    tuesday: { enabled: false, blocks: [] },
+    wednesday: { enabled: false, blocks: [] },
+    thursday: { enabled: false, blocks: [] },
+    friday: { enabled: false, blocks: [] },
+    saturday: { enabled: false, blocks: [] },
     sunday: { enabled: false, blocks: [] }
   };
 
@@ -218,7 +218,7 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
             <Calendar size={20} className="text-slate-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-bold text-sm text-slate-900 mb-1">코칭별 캘린더 관리</p>
-              <p className="text-xs text-slate-600">각 코칭마다 별도의 Google 캘린더를 생성하여 예약을 관리할 수 있습니다.</p>
+              <p className="text-xs text-slate-600">각 코칭마다 기존 Google 캘린더를 연동하여 예약을 관리할 수 있습니다.</p>
             </div>
           </div>
         </div>
@@ -272,20 +272,25 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
               </div>
             </div>
 
-            {/* Working Hours - 🆕 Time Block Selector */}
-            <div className="bg-white p-4 rounded-xl border-2 border-orange-200">
-              <h4 className="text-sm font-bold text-slate-900 mb-3">예약 가능 시간 설정</h4>
-              <p className="text-xs text-slate-600 mb-4">
-                {isMobile
-                  ? '요일을 선택하고 시간대를 탭하여 예약 가능 시간을 설정하세요 (30분 단위)'
-                  : '드래그로 시간대를 선택하고, 더블클릭으로 요일을 활성화/비활성화하세요 (30분 단위)'}
-              </p>
-              <TimeBlockSelector
-                workingHours={newWorkingHours}
-                onChange={setNewWorkingHours}
-                isMobile={isMobile}
-              />
-            </div>
+            {/* Working Hours - 🆕 Time Block Selector (접이식) */}
+            <details className="bg-white rounded-xl border-2 border-orange-200">
+              <summary className="p-4 cursor-pointer text-sm font-bold text-slate-900 flex items-center justify-between">
+                <span>예약 가능 시간 설정 (선택사항)</span>
+                <span className="text-xs font-normal text-slate-500">나중에 설정 가능</span>
+              </summary>
+              <div className="px-4 pb-4">
+                <p className="text-xs text-slate-600 mb-4">
+                  {isMobile
+                    ? '요일을 선택하고 시간대를 탭하여 예약 가능 시간을 설정하세요 (30분 단위)'
+                    : '드래그로 시간대를 선택하고, 더블클릭으로 요일을 활성화/비활성화하세요 (30분 단위)'}
+                </p>
+                <TimeBlockSelector
+                  workingHours={newWorkingHours}
+                  onChange={setNewWorkingHours}
+                  isMobile={isMobile}
+                />
+              </div>
+            </details>
 
             <div className="flex gap-2">
               <button
@@ -418,11 +423,6 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                       >
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-slate-900">{coaching.title}</h3>
-                          {currentCoaching?.id === coaching.id && (
-                            <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded-full font-bold">
-                              사용중
-                            </span>
-                          )}
                           <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
                             coaching.type === ClassType.GROUP
                               ? 'bg-orange-100 text-orange-600'
@@ -437,9 +437,9 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                             }
                           </span>
                           {coaching.google_calendar_id ? (
-                            <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full font-medium flex items-center gap-1">
+                            <span className="px-2 py-0.5 bg-green-100 text-green-600 text-xs rounded-full font-medium flex items-center gap-1">
                               <CheckCircle2 size={10} />
-                              캘린더 연동됨
+                              연동완료
                             </span>
                           ) : (
                             <button
@@ -448,10 +448,10 @@ export const CoachingManagementInline: React.FC<CoachingManagementInlineProps> =
                                 setSelectedCoachingForSetup(coaching);
                                 setShowSetupModal(true);
                               }}
-                              className="px-2 py-0.5 bg-orange-100 text-orange-600 hover:bg-orange-200 text-xs rounded-full font-medium flex items-center gap-1 transition-colors"
+                              className="px-2 py-0.5 bg-red-100 text-red-600 hover:bg-red-200 text-xs rounded-full font-medium flex items-center gap-1 transition-colors"
                             >
                               <Calendar size={10} />
-                              캘린더 연동 필요
+                              연동미완료
                             </button>
                           )}
                         </div>

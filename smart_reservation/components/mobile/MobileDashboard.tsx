@@ -21,8 +21,7 @@ interface MobileDashboardProps {
 
 export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialTab }) => {
   const isInstructor = user.user_type === 'instructor';
-  // 학생은 'reservations'를 홈으로, 강사는 'home'을 홈으로
-  const defaultTab = isInstructor ? 'home' : 'reservations';
+  const defaultTab: TabId = 'home';
   const [activeTab, setActiveTab] = useState<TabId>(initialTab || defaultTab);
 
   // Update URL when tab changes (students only)
@@ -59,7 +58,9 @@ export const MobileDashboard: React.FC<MobileDashboardProps> = ({ user, initialT
       case 'home':
         return isInstructor ? (
           <MobileInstructorHome user={user} onTabChange={setActiveTab} />
-        ) : null;
+        ) : (
+          <MobileStudentHome user={user} />
+        );
 
       case 'calendar':
         return <MobileCalendar user={user} />;

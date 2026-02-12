@@ -75,7 +75,7 @@ export async function signInWithGoogle() {
     state: state,
     nonce: nonce,
     access_type: 'offline',
-    prompt: 'select_account', // 계정 선택 화면 강제
+    prompt: 'consent', // 권한 동의 화면 강제 (새 scope 적용)
   });
 
   const authUrl = `${authorizationEndpoint}?${params.toString()}`;

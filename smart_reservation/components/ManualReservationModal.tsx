@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, FileText, CreditCard, Loader2 } from 'lucide-react';
-import { createReservation } from '../lib/supabase/database';
+import { createReservation, deductPackageCredit } from '../lib/supabase/database';
 
 interface Student {
   id: string;
@@ -96,6 +96,11 @@ const ManualReservationModal: React.FC<ManualReservationModalProps> = ({
         notes: notes || undefined,
         status: 'confirmed'
       });
+
+      // 수강권 1회 차감
+      if (deductCredit && selectedPackage) {
+        await deductPackageCredit(selectedPackage);
+      }
 
       // TODO: 학생에게 알림 발송
       // await sendNotificationToStudent(selectedStudent, startDateTime, endDateTime);

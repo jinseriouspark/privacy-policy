@@ -17,6 +17,7 @@ import StatsDashboard from './StatsDashboard';
 import ConsultationHistory from './ConsultationHistory';
 import ManualReservationModal from './ManualReservationModal';
 import CalendarSyncModal from './CalendarSyncModal';
+import EmbedSettings from './EmbedSettings';
 import { logActivity, type TabName } from '../lib/supabase/database';
 import { getAllStudents, getInstructorStudents, getInstructorSettings, upsertInstructorSettings, getReservationsByDateRange, getReservations, cancelReservation, getStudentPackages, createPackage, updatePackage, deletePackage, getPackages, getInstructorCoachings, getAllStudentPackages, removeStudentFromInstructor, getStudentMemos, deleteUser } from '../lib/supabase/database';
 import { signOut } from '../lib/supabase/auth';
@@ -83,6 +84,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
   // Notion Integration
   const [showNotionSettings, setShowNotionSettings] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
+  const [showEmbedSettings, setShowEmbedSettings] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
 
   // Manual Reservation
@@ -303,9 +305,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       window.history.pushState({}, '', url);
     }
 
-    // 예약 탭으로 전환 시 데이터 새로고침
+    // 탭 전환 시 데이터 새로고침
     if (tab === 'reservations') {
       fetchDashboard();
+    }
+    if (tab === 'users') {
+      fetchUsers();
     }
   };
 
@@ -318,8 +323,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
 
     setCancelingId(reservationId);
     try {
-      await cancelReservation(reservationId);
-      alert('예약이 정상적으로 취소되었습니다.');
+      const result = await cancelReservation(reservationId, isCoach);
+      if (result.refunded) {
+        alert('예약이 취소되었습니다. 수강권이 복귀되었습니다.');
+      } else {
+        alert('예약이 취소되었습니다.');
+      }
       fetchDashboard();
     } catch (error: any) {
       console.error('Failed to cancel reservation:', error);
@@ -580,7 +589,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               메모 CSV
             </button>
 
-            {/* 학생 초대 버튼 */}
+            {/* 학생 추가 버튼 */}
             <button
               onClick={() => {
                 if (!currentCoaching) {
@@ -592,7 +601,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm transition-all shadow-lg whitespace-nowrap"
             >
               <Users size={18} />
-              학생 초대하기
+              학생 추가
             </button>
           </div>
 
@@ -759,7 +768,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
     const calendarName = prompt('생성할 캘린더 이름을 입력하세요:', '코칭 예약');
     if (!calendarName) return;
 
-    setSettingsLoading(true);
     try {
       const calendar = await createCoachingCalendar(calendarName);
 
@@ -769,14 +777,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
       });
 
       alert(`✅ 캘린더가 생성되었습니다!\n\n캘린더 이름: ${calendar.name}\n캘린더 ID: ${calendar.id}\n\n이제 예약 시 자동으로 이 캘린더에 일정이 추가됩니다.`);
-
-      // Refresh settings
-      await fetchSettings();
     } catch (error: any) {
       console.error('캘린더 생성 오류:', error);
       alert(`캘린더 생성 실패: ${error.message}\n\n다시 로그인이 필요할 수 있습니다.`);
-    } finally {
-      setSettingsLoading(false);
     }
   };
 
@@ -859,6 +862,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
                   data-tour="welcome"
                 >
                     <HelpCircle size={18} />
+                </button>
+            )}
+            {isCoach && (
+                <button
+                  onClick={() => setShowEmbedSettings(true)}
+                  className="p-2 text-slate-400 hover:text-orange-500 transition-colors bg-white border border-slate-200 rounded-full"
+                  title="내 사이트에 삽입"
+                >
+                    <Link2 size={18} />
                 </button>
             )}
             {isCoach && onNavigateToProfile && (
@@ -962,7 +974,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               packages={packages}
               onClose={() => setShowManualReservation(false)}
               onSuccess={() => {
-                fetchReservations();
+                fetchDashboard();
                 setShowManualReservation(false);
               }}
             />
@@ -984,6 +996,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigateToReservat
               onClose={() => setShowNotionOAuth(false)}
             />
           )}
+
+          {/* Embed Settings Modal */}
+          <EmbedSettings
+            user={user}
+            isOpen={showEmbedSettings}
+            onClose={() => setShowEmbedSettings(false)}
+          />
 
           <div className="min-h-screen bg-slate-50">
             <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 py-6 space-y-6">

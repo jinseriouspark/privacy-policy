@@ -427,20 +427,50 @@ COMMENT ON TABLE student_instructors IS 'Tracks student-instructor relationships
 CREATE TABLE settings (
   id BIGSERIAL PRIMARY KEY,
   instructor_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+
+  -- Calendar settings
   google_calendar_id TEXT,
   timezone TEXT DEFAULT 'Asia/Seoul',
   business_hours JSONB,
   buffer_time INTEGER DEFAULT 0,
+
+  -- Google Calendar sync (for busy times)
+  linked_calendars TEXT[] DEFAULT ARRAY[]::TEXT[],
+  busy_times_cache JSONB DEFAULT '[]'::jsonb,
+  last_synced_at TIMESTAMPTZ,
+
+  -- Notion integration
+  notion_access_token TEXT,
+  notion_workspace_name TEXT,
+  notion_workspace_icon TEXT,
+  notion_bot_id TEXT,
+  notion_database_id TEXT,
+  notion_connected_at TIMESTAMPTZ,
+
+  -- Make.com webhook
+  webhook_url TEXT,
+  webhook_secret TEXT,
+
+  -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
 CREATE INDEX idx_settings_instructor ON settings(instructor_id);
+CREATE INDEX IF NOT EXISTS idx_settings_notion_connected
+ON settings(instructor_id, notion_access_token)
+WHERE notion_access_token IS NOT NULL;
 
 -- Comments
-COMMENT ON TABLE settings IS 'Instructor settings for calendar and working hours';
+COMMENT ON TABLE settings IS 'Instructor settings for calendar, working hours, integrations (Notion, Make.com)';
 COMMENT ON COLUMN settings.business_hours IS 'JSON object with day index (0-6) mapping to start/end times and isWorking flag';
+COMMENT ON COLUMN settings.linked_calendars IS 'Array of Google Calendar IDs for busy time sync';
+COMMENT ON COLUMN settings.busy_times_cache IS 'Cached busy times from linked calendars (1 hour expiry)';
+COMMENT ON COLUMN settings.notion_access_token IS 'Notion OAuth access token (TODO: Should be encrypted)';
+COMMENT ON COLUMN settings.notion_workspace_name IS 'Connected Notion workspace name';
+COMMENT ON COLUMN settings.notion_database_id IS 'Notion database ID for lesson notes';
+COMMENT ON COLUMN settings.webhook_url IS 'Make.com webhook URL for automation triggers';
 
 -- ============================================================================
 -- TABLE 12: group_classes

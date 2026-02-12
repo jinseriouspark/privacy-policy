@@ -126,6 +126,16 @@ export const ROUTES = {
   STUDENT_RESERVATIONS: '/my-reservations',
   STUDENT_PROFILE: '/my-profile',
 
+  // Guide routes
+  EMBED_GUIDE: '/guide/embed',
+
+  // Debug routes
+  DEBUG_RLS: '/debug/rls',
+  DEBUG_OAUTH: '/debug/oauth',
+
+  // Embed routes
+  EMBED: '/embed/:shortId',
+
   // Dynamic routes
   BOOKING: '/:coachId/:classSlug',
   BOOKING_LEGACY: '/:classSlug',

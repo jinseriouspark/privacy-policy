@@ -7,6 +7,13 @@
   "background_color": "#ffffff",
   "theme_color": "#f97316",
   "orientation": "portrait",
-  "icons": [],
+  "icons": [
+    {
+      "src": "/yak-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
   "categories": ["productivity", "education"]
 }

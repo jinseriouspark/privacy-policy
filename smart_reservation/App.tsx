@@ -14,11 +14,19 @@ import AccountTypeSelection from './components/AccountTypeSelection';
 import ErrorBoundary from './components/ErrorBoundary';
 import PublicBooking from './components/PublicBooking';
 import OAuthCallback from './components/OAuthCallback';
+import DebugRLS from './components/DebugRLS';
+import DebugOAuth from './components/DebugOAuth';
+import EmbedBooking from './components/EmbedBooking';
+import EmbedGuide from './components/EmbedGuide';
 import { getCurrentProjectSlug, getBookingUrlParams, getStudioSlug } from './services/api';
 import { supabase } from './lib/supabase/client';
-import { getUserByEmail, upsertUser, acceptInvitation, getCoachingBySlug, getCoachingByCoachAndSlug, selectUserType, getInstructorCoachings } from './lib/supabase/database';
+import { getUserByEmail, upsertUser, getCoachingBySlug, getCoachingByCoachAndSlug, selectUserType, getInstructorCoachings } from './lib/supabase/database';
 import { verifyToken } from './lib/jwt';
 import { navigateTo, replaceTo, getCurrentRoute, getPostLoginRoute, ROUTES } from './utils/router';
+import { getSession, syncUserToDatabase, onAuthStateChange } from './lib/supabase-auth';
+
+// 커스텀 OAuth 사용 (Calendar scope 포함)
+const USE_SUPABASE_OAUTH = false;
 import { initGA, trackPageView, analytics } from './lib/analytics';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Toaster } from 'react-hot-toast';
@@ -71,7 +79,7 @@ const App: React.FC = () => {
     const notionState = params.get('state');
 
     if (notionCode && window.location.pathname === '/notion-callback') {
-      handleNotionCallback(notionCode);
+      handleNotionCallback(notionCode, notionState || undefined);
       return;
     }
 
@@ -120,7 +128,7 @@ const App: React.FC = () => {
 
   const checkSessionAndRoute = async () => {
     try {
-      setChecking(true); // 🆕 체크 시작
+      setChecking(true);
       const path = window.location.pathname;
       const route = getCurrentRoute();
 
@@ -133,7 +141,7 @@ const App: React.FC = () => {
 
       // App routes (skip instructor data loading)
       const appRoutes = [
-        ROUTES.LANDING, ROUTES.LOGIN, ROUTES.ONBOARDING, ROUTES.SETUP,
+        ROUTES.LANDING, ROUTES.LOGIN, ROUTES.AUTH_CALLBACK, ROUTES.ONBOARDING, ROUTES.SETUP,
         ROUTES.DASHBOARD, ROUTES.SUMMARY, ROUTES.RESERVATIONS, ROUTES.STUDENTS,
         ROUTES.ATTENDANCE, ROUTES.PACKAGES, ROUTES.PROFILE,
         ROUTES.STUDENT_HOME, ROUTES.STUDENT_CALENDAR, ROUTES.STUDENT_RESERVATIONS, ROUTES.STUDENT_PROFILE
@@ -149,26 +157,38 @@ const App: React.FC = () => {
         await loadInstructorData(coachingSlug, coachId, classSlug, studioSlug, route.params.coach);
       }
 
-      // Check JWT token
-      const token = localStorage.getItem('auth_token');
+      // 🆕 Supabase OAuth 모드
+      if (USE_SUPABASE_OAUTH) {
+        const session = await getSession();
 
-      if (token) {
-        const payload = await verifyToken(token);
-        if (payload) {
-          await handleAuthenticatedUser(payload.email, route);
+        if (session?.user?.email) {
+          // 사용자 DB 동기화 (기존 사용자 마이그레이션 포함)
+          await syncUserToDatabase(session);
+          await handleAuthenticatedUser(session.user.email, route);
         } else {
-          // Invalid token, clear it
-          localStorage.removeItem('auth_token');
-          await handleGuestUser(path, coachingSlug, coachId, classSlug, route.params.invite);
+          await handleGuestUser(path, coachingSlug, coachId, classSlug);
         }
       } else {
-        await handleGuestUser(path, coachingSlug, coachId, classSlug, route.params.invite);
+        // 기존 JWT 토큰 방식
+        const token = localStorage.getItem('auth_token');
+
+        if (token) {
+          const payload = await verifyToken(token);
+          if (payload) {
+            await handleAuthenticatedUser(payload.email, route);
+          } else {
+            localStorage.removeItem('auth_token');
+            await handleGuestUser(path, coachingSlug, coachId, classSlug);
+          }
+        } else {
+          await handleGuestUser(path, coachingSlug, coachId, classSlug);
+        }
       }
     } catch (error) {
       console.error('Session check error:', error);
     } finally {
       setLoading(false);
-      setChecking(false); // 🆕 체크 완료
+      setChecking(false);
     }
   };
 
@@ -186,7 +206,7 @@ const App: React.FC = () => {
           .from('users')
           .select('*')
           .eq('username', studioSlug)
-          .single();
+          .maybeSingle();
 
         if (users) {
           setCurrentInstructor({
@@ -258,18 +278,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Handle invitation acceptance
-    if (route.params.invite) {
-      try {
-        await acceptInvitation(route.params.invite, existingUser.id, email);
-        alert('강사와 연결되었습니다! 이제 예약이 가능합니다.');
-        replaceTo(window.location.pathname);
-      } catch (e: any) {
-        console.error('Failed to accept invitation:', e);
-        if (e.message) alert(e.message);
-      }
-    }
-
     // Get user role from user_roles table
     const primaryRole = existingUser.primaryRole; // 'instructor' or 'student'
     const hasRole = !!primaryRole;
@@ -285,6 +293,7 @@ const App: React.FC = () => {
       username: existingUser.username,
       bio: existingUser.bio,
       isProfileComplete: hasRole && (primaryRole === 'student' || !!existingUser.studio_name),
+      created_at: existingUser.created_at,
       remaining: 0
     };
 
@@ -381,8 +390,7 @@ const App: React.FC = () => {
     path: string,
     coachingSlug: string | null,
     coachId: string | null,
-    classSlug: string | null,
-    inviteCode: string | undefined
+    classSlug: string | null
   ) => {
     // Guest can access booking pages and public routes
     const isBookingPage = coachingSlug || (coachId && classSlug);
@@ -461,6 +469,7 @@ const App: React.FC = () => {
         username: updatedUser.username,
         bio: updatedUser.bio,
         isProfileComplete,
+        created_at: updatedUser.created_at,
         remaining: 0
       };
 
@@ -495,7 +504,13 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       analytics.logout();
-      // Clear JWT token
+
+      if (USE_SUPABASE_OAUTH) {
+        // Supabase OAuth 로그아웃
+        await supabase.auth.signOut();
+      }
+
+      // Clear JWT token (both modes)
       localStorage.removeItem('auth_token');
       setCurrentUser(null);
       navigateTo(ROUTES.LANDING);
@@ -504,11 +519,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleNotionCallback = async (code: string) => {
+  const handleNotionCallback = async (code: string, state?: string) => {
     try {
       setLoading(true);
       const { handleNotionCallback: processCallback } = await import('./lib/notion-oauth');
-      const result = await processCallback(code);
+      const result = await processCallback(code, state);
 
       if (result.success) {
         // Redirect to dashboard with success message
@@ -555,6 +570,7 @@ const App: React.FC = () => {
         username: demoUser.username,
         bio: demoUser.bio,
         isProfileComplete: true,
+        created_at: demoUser.created_at,
         remaining: 0
       };
 
@@ -623,6 +639,16 @@ const App: React.FC = () => {
           <TermsOfService
             onBack={() => {
               const backRoute = currentUser ? ROUTES.DASHBOARD : ROUTES.LANDING;
+              navigateTo(backRoute);
+            }}
+          />
+        );
+
+      case ROUTES.EMBED_GUIDE:
+        return (
+          <EmbedGuide
+            onBack={() => {
+              const backRoute = currentUser ? ROUTES.SUMMARY : ROUTES.LANDING;
               navigateTo(backRoute);
             }}
           />
@@ -708,7 +734,22 @@ const App: React.FC = () => {
           />
         );
 
+      case ROUTES.DEBUG_RLS:
+        // Debug page - accessible to all logged-in users
+        return <DebugRLS />;
+
+      case ROUTES.DEBUG_OAUTH:
+        // OAuth debug page - accessible to all logged-in users
+        return <DebugOAuth />;
+
       default:
+        // Check for embed route: /embed/:shortId
+        if (path.startsWith('/embed/')) {
+          const shortId = path.replace('/embed/', '');
+          return <EmbedBooking shortId={shortId} />;
+        }
+
+        // Dynamic routes: /{coach_id}/{class_slug} or /{class_slug}
         // Dynamic routes: /{coach_id}/{class_slug} or /{class_slug}
         const coachingSlug = getCurrentProjectSlug();
         const { coachId, classSlug } = getBookingUrlParams();
@@ -772,10 +813,11 @@ const App: React.FC = () => {
     ROUTES.STUDENT_PROFILE,
     ROUTES.PRIVACY,
     ROUTES.TERMS,
+    ROUTES.EMBED_GUIDE,
     ROUTES.ONBOARDING
   ];
 
-  const isFullScreen = fullScreenPaths.includes(currentPath);
+  const isFullScreen = fullScreenPaths.includes(currentPath) || currentPath.startsWith('/embed/');
 
   if (isFullScreen) {
     return (

@@ -56,7 +56,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ onClose }) => {
                 <CheckCircle2 size={20} className="text-orange-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">Google Calendar 연동</p>
-                  <p className="text-sm text-slate-500">캘린더 이름 입력 → "생성하기" 클릭하면 자동 생성됩니다</p>
+                  <p className="text-sm text-slate-500">기존 캘린더 선택 → "연동하기" 클릭하면 연동됩니다</p>
                 </div>
               </div>
             </div>
