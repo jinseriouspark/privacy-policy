@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { code, userId } = req.body;
+    const { code, userId, redirectUri: clientRedirectUri } = req.body;
 
     if (!code || !userId) {
       return res.status(400).json({ error: 'Code and userId are required' });
@@ -35,11 +35,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 환경변수에서 Notion OAuth 설정 가져오기 (클라이언트에 노출 안 됨)
     const clientId = process.env.VITE_NOTION_CLIENT_ID;
     const clientSecret = process.env.NOTION_CLIENT_SECRET;
-    // NOTION_REDIRECT_URI는 전체 콜백 URL 또는 도메인만 가능
-    const rawRedirectUri = (process.env.NOTION_REDIRECT_URI || 'https://yeyak-mania.co.kr').trim();
-    const redirectUri = rawRedirectUri.includes('/notion-callback')
-      ? rawRedirectUri
-      : `${rawRedirectUri}/notion-callback`;
+    // 클라이언트가 보낸 redirect_uri 우선 사용 (OAuth 인가 요청과 동일해야 함)
+    // 없으면 환경변수 fallback
+    const redirectUri = clientRedirectUri
+      || (() => {
+        const raw = (process.env.NOTION_REDIRECT_URI || 'https://yeyak-mania.co.kr').trim();
+        return raw.includes('/notion-callback') ? raw : `${raw}/notion-callback`;
+      })();
 
     console.log('[Notion OAuth] redirectUri:', redirectUri);
     console.log('[Notion OAuth] clientId present:', !!clientId);
@@ -83,17 +85,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const tokenData = await tokenResponse.json();
 
-    // Supabase에 Notion 토큰 저장
+    // Supabase에 Notion 토큰 저장 (upsert: settings 행이 없어도 생성)
     const { error: updateError } = await supabase
       .from('settings')
-      .update({
+      .upsert({
+        instructor_id: userId,
         notion_access_token: tokenData.access_token,
         notion_workspace_name: tokenData.workspace_name,
         notion_workspace_icon: tokenData.workspace_icon,
         notion_bot_id: tokenData.bot_id,
         notion_connected_at: new Date().toISOString(),
-      })
-      .eq('instructor_id', userId);
+      }, { onConflict: 'instructor_id' });
 
     if (updateError) {
       console.error('[Notion OAuth] Database update error:', updateError);

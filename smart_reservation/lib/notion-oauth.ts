@@ -41,6 +41,7 @@ export async function handleNotionCallback(code: string, state?: string) {
     }
 
     // 서버리스 함수로 토큰 교환 (Client Secret 보호)
+    // redirect_uri를 클라이언트에서 전달하여 OAuth 인가 요청과 동일하게 맞춤
     const response = await fetch('/api/notion-oauth', {
       method: 'POST',
       headers: {
@@ -49,6 +50,7 @@ export async function handleNotionCallback(code: string, state?: string) {
       body: JSON.stringify({
         code: code,
         userId: instructorId,
+        redirectUri: NOTION_REDIRECT_URI,
       }),
     });
 

@@ -132,6 +132,13 @@ const App: React.FC = () => {
       const path = window.location.pathname;
       const route = getCurrentRoute();
 
+      // Notion OAuth callback은 별도 useEffect에서 처리 (race condition 방지)
+      if (path === '/notion-callback') {
+        setLoading(false);
+        setChecking(false);
+        return;
+      }
+
       // Public routes (no auth required)
       if (path === ROUTES.PRIVACY || path === ROUTES.TERMS) {
         setLoading(false);
@@ -290,6 +297,7 @@ const App: React.FC = () => {
       name: existingUser.name,
       picture: existingUser.picture,
       userType: primaryRole === 'instructor' ? UserType.INSTRUCTOR : primaryRole === 'student' ? UserType.STUDENT : undefined,
+      user_type: primaryRole || undefined,
       username: existingUser.username,
       bio: existingUser.bio,
       isProfileComplete: hasRole && (primaryRole === 'student' || !!existingUser.studio_name),
@@ -466,6 +474,7 @@ const App: React.FC = () => {
         name: updatedUser.name,
         picture: updatedUser.picture,
         userType: userType === 'instructor' ? UserType.INSTRUCTOR : UserType.STUDENT,
+        user_type: userType,
         username: updatedUser.username,
         bio: updatedUser.bio,
         isProfileComplete,
@@ -532,11 +541,11 @@ const App: React.FC = () => {
           alert(`Notion 연동 완료: ${result.workspace_name}`);
         }, 500);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Notion OAuth callback error:', error);
       navigateTo(ROUTES.DASHBOARD);
       setTimeout(() => {
-        alert('Notion 연동에 실패했습니다.');
+        alert(`Notion 연동에 실패했습니다.\n${error.message || ''}`);
       }, 500);
     } finally {
       setLoading(false);
@@ -567,6 +576,7 @@ const App: React.FC = () => {
         name: demoUser.name,
         picture: demoUser.picture,
         userType: UserType.INSTRUCTOR,
+        user_type: 'instructor',
         username: demoUser.username,
         bio: demoUser.bio,
         isProfileComplete: true,
