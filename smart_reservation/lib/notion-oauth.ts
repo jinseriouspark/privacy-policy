@@ -66,34 +66,8 @@ export async function handleNotionCallback(code: string, state?: string) {
       throw new Error(data.error || 'Token exchange failed');
     }
 
-    // 서버 응답에서 access_token을 직접 사용 (RLS 차단 우회)
-    const accessToken = data.access_token;
-    if (!accessToken) {
-      throw new Error('Access token not returned from server');
-    }
-
-    // Create Base and Advanced databases automatically
-    let baseDatabaseId = '';
-    let advancedDatabaseId = '';
-
-    try {
-      // Create Base database (상담 기록)
-      const baseDb = await createNotionBaseDatabase(accessToken);
-      baseDatabaseId = baseDb.id;
-
-      // Create Advanced database (수업 노트 with AI)
-      const advancedDb = await createNotionLessonDatabase(accessToken);
-      advancedDatabaseId = advancedDb.id;
-    } catch (dbError) {
-      console.error('Failed to create Notion databases:', dbError);
-      // Continue even if database creation fails
-    }
-
-    // Save the Advanced database ID as the primary one
-    if (advancedDatabaseId) {
-      const { saveNotionDatabaseId } = await import('./supabase/database');
-      await saveNotionDatabaseId(instructorId, advancedDatabaseId);
-    }
+    // 서버에서 토큰 저장 + DB 생성 + DB ID 저장까지 전부 처리됨
+    // access_token은 서버 밖으로 나오지 않음
 
     // Clear session storage
     sessionStorage.removeItem('notion_oauth_instructor_id');
@@ -101,8 +75,6 @@ export async function handleNotionCallback(code: string, state?: string) {
     return {
       success: true,
       workspace_name: data.workspace_name,
-      baseDatabaseId,
-      advancedDatabaseId,
     };
   } catch (error: any) {
     console.error('Notion OAuth callback error:', error);

@@ -105,13 +105,149 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 성공 응답 (access_token 포함 - 클라이언트에서 DB 재조회 불필요)
+    // 서버에서 Notion DB 2개 생성 (access_token이 서버 밖으로 나가지 않음)
+    const accessToken = tokenData.access_token;
+    let baseDatabaseId = '';
+    let advancedDatabaseId = '';
+
+    try {
+      // Base DB 생성 (상담 기록)
+      const baseDbRes = await fetch('https://api.notion.com/v1/databases', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parent: { type: 'workspace', workspace: true },
+          title: [{ type: 'text', text: { content: '상담 기록 - Base (예약매니아)' } }],
+          icon: { type: 'emoji', emoji: '💬' },
+          properties: {
+            '제목': { title: {} },
+            '학생 이름': { rich_text: {} },
+            '날짜': { date: {} },
+            '내용': { rich_text: {} },
+            '태그': {
+              multi_select: {
+                options: [
+                  { name: '상담', color: 'blue' },
+                  { name: '피드백', color: 'green' },
+                  { name: '수업 계획', color: 'purple' },
+                  { name: '목표 설정', color: 'pink' },
+                  { name: '진도 체크', color: 'orange' },
+                  { name: '부상/통증', color: 'red' },
+                ],
+              },
+            },
+          },
+        }),
+      });
+
+      if (baseDbRes.ok) {
+        const baseDb = await baseDbRes.json();
+        baseDatabaseId = baseDb.id;
+        console.log('[Notion OAuth] Base DB created:', baseDatabaseId);
+      } else {
+        const baseErr = await baseDbRes.json();
+        console.error('[Notion OAuth] Base DB creation failed:', baseErr);
+      }
+
+      // Advanced DB 생성 (수업 노트)
+      const advDbRes = await fetch('https://api.notion.com/v1/databases', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parent: { type: 'workspace', workspace: true },
+          title: [{ type: 'text', text: { content: '수업 노트 - Advanced (예약매니아)' } }],
+          icon: { type: 'emoji', emoji: '📝' },
+          properties: {
+            '제목': { title: {} },
+            '학생 이름': { rich_text: {} },
+            '날짜': { date: {} },
+            '코치 업종': {
+              select: {
+                options: [
+                  { name: '필라테스', color: 'purple' },
+                  { name: '요가', color: 'pink' },
+                  { name: '피트니스', color: 'orange' },
+                  { name: '음악', color: 'blue' },
+                  { name: '언어', color: 'green' },
+                  { name: '미술', color: 'yellow' },
+                  { name: '댄스', color: 'red' },
+                  { name: '기타', color: 'gray' },
+                ],
+              },
+            },
+            '수업 내용': { rich_text: {} },
+            '학생 상태/목표': { rich_text: {} },
+            '주요 피드백': { rich_text: {} },
+            '숙제': { rich_text: {} },
+            '다음 계획': { rich_text: {} },
+            '출석 상태': {
+              select: {
+                options: [
+                  { name: '출석', color: 'green' },
+                  { name: '결석', color: 'red' },
+                  { name: '지각', color: 'yellow' },
+                ],
+              },
+            },
+            '녹화 링크': { url: {} },
+            '녹화 텍스트': { rich_text: {} },
+            'AI 분석': { rich_text: {} },
+            '진전도': {
+              select: {
+                options: [
+                  { name: '매우 우수', color: 'green' },
+                  { name: '우수', color: 'blue' },
+                  { name: '보통', color: 'yellow' },
+                  { name: '개선 필요', color: 'orange' },
+                  { name: '많은 개선 필요', color: 'red' },
+                ],
+              },
+            },
+          },
+        }),
+      });
+
+      if (advDbRes.ok) {
+        const advDb = await advDbRes.json();
+        advancedDatabaseId = advDb.id;
+        console.log('[Notion OAuth] Advanced DB created:', advancedDatabaseId);
+      } else {
+        const advErr = await advDbRes.json();
+        console.error('[Notion OAuth] Advanced DB creation failed:', advErr);
+      }
+    } catch (dbError: any) {
+      console.error('[Notion OAuth] DB creation error:', dbError.message);
+      // DB 생성 실패해도 연동 자체는 성공 처리
+    }
+
+    // DB ID 저장 (service_role이므로 RLS 무관)
+    if (advancedDatabaseId) {
+      const { error: dbIdError } = await supabase
+        .from('settings')
+        .update({
+          notion_database_id: advancedDatabaseId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('instructor_id', userId);
+
+      if (dbIdError) {
+        console.error('[Notion OAuth] DB ID save error:', dbIdError);
+      }
+    }
+
+    // 성공 응답 (access_token 제거 - 서버 밖 노출 차단)
     return res.status(200).json({
       success: true,
-      access_token: tokenData.access_token,
       workspace_name: tokenData.workspace_name,
       workspace_icon: tokenData.workspace_icon,
-      bot_id: tokenData.bot_id,
     });
   } catch (error: any) {
     console.error('[Notion OAuth] Error:', error);
