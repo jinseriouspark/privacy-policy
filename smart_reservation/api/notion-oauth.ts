@@ -105,9 +105,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 성공 응답
+    // 성공 응답 (access_token 포함 - 클라이언트에서 DB 재조회 불필요)
     return res.status(200).json({
       success: true,
+      access_token: tokenData.access_token,
       workspace_name: tokenData.workspace_name,
       workspace_icon: tokenData.workspace_icon,
       bot_id: tokenData.bot_id,

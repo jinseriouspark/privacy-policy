@@ -66,19 +66,11 @@ export async function handleNotionCallback(code: string, state?: string) {
       throw new Error(data.error || 'Token exchange failed');
     }
 
-    // 토큰은 이미 서버에서 저장되었음
-    // Supabase에서 access_token을 가져와서 데이터베이스 생성
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('notion_access_token')
-      .eq('instructor_id', instructorId)
-      .single();
-
-    if (!settings?.notion_access_token) {
-      throw new Error('Failed to retrieve Notion access token');
+    // 서버 응답에서 access_token을 직접 사용 (RLS 차단 우회)
+    const accessToken = data.access_token;
+    if (!accessToken) {
+      throw new Error('Access token not returned from server');
     }
-
-    const accessToken = settings.notion_access_token;
 
     // Create Base and Advanced databases automatically
     let baseDatabaseId = '';
