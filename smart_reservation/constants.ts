@@ -26,4 +26,5 @@ export const GOOGLE_OAUTH_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/calendar',           // 캘린더 읽기/쓰기
   'https://www.googleapis.com/auth/calendar.events',    // 이벤트 생성/수정/삭제
+  'https://www.googleapis.com/auth/drive.readonly',     // Drive 녹화 파일 읽기
 ].join(' ');

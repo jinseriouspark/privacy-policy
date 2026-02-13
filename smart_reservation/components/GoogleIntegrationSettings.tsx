@@ -157,53 +157,53 @@ const GoogleIntegrationSettings: React.FC<GoogleIntegrationSettingsProps> = ({ u
 
       {/* Integration Cards */}
       <div className="grid gap-4">
-        {/* Google Meet */}
-        <IntegrationCard
-          icon={<Video size={24} className="text-orange-600" />}
-          title="Google Meet"
-          description="녹화 파일 및 참가자 정보를 가져옵니다"
-          connected={status.meet}
-          connecting={connecting === 'meet'}
-          onConnect={() => handleConnect('meet')}
-          onDisconnect={() => handleDisconnect('meet')}
-          features={[
-            '회의 녹화 파일 자동 감지',
-            '참가자 목록 확인',
-            '회의 시간 및 길이 정보',
-          ]}
-        />
-
-        {/* Google Drive */}
+        {/* Google Drive - 활성 */}
         <IntegrationCard
           icon={<HardDrive size={24} className="text-orange-600" />}
           title="Google Drive"
-          description="녹화 파일 및 전사 파일을 다운로드합니다"
+          description="녹화 파일 및 전사 파일을 자동으로 분석합니다"
           connected={status.drive}
           connecting={connecting === 'drive'}
           onConnect={() => handleConnect('drive')}
           onDisconnect={() => handleDisconnect('drive')}
           features={[
-            '녹화 파일(.mp4) 다운로드',
+            '녹화 파일(.mp4) 자동 감지',
             '전사 파일(.vtt) 자동 파싱',
-            '파일 자동 정리 및 보관',
+            'AI 분석 후 Notion에 저장',
           ]}
           folderName={status.folderName}
         />
 
-        {/* Google Docs */}
+        {/* Google Meet - 준비 중 */}
         <IntegrationCard
-          icon={<FileText size={24} className="text-orange-600" />}
+          icon={<Video size={24} className="text-slate-400" />}
+          title="Google Meet"
+          description="참가자 정보 및 회의 메타데이터 (준비 중)"
+          connected={false}
+          connecting={false}
+          onConnect={() => {}}
+          onDisconnect={() => {}}
+          features={[
+            '참가자 목록 확인',
+            '회의 시간 및 길이 정보',
+          ]}
+          comingSoon
+        />
+
+        {/* Google Docs - 준비 중 */}
+        <IntegrationCard
+          icon={<FileText size={24} className="text-slate-400" />}
           title="Google Docs"
-          description="전사 문서의 내용을 읽어옵니다"
-          connected={status.docs}
-          connecting={connecting === 'docs'}
-          onConnect={() => handleConnect('docs')}
-          onDisconnect={() => handleDisconnect('docs')}
+          description="전사 문서 텍스트 추출 (준비 중)"
+          connected={false}
+          connecting={false}
+          onConnect={() => {}}
+          onDisconnect={() => {}}
           features={[
             '전사 문서 텍스트 추출',
-            'AI 분석용 데이터 준비',
             '타임스탬프 포함 전사',
           ]}
+          comingSoon
         />
       </div>
 
@@ -230,8 +230,7 @@ const GoogleIntegrationSettings: React.FC<GoogleIntegrationSettingsProps> = ({ u
       {/* Help Text */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <p className="text-xs text-orange-800">
-          <strong>💡 Tip:</strong> 세 가지 서비스를 모두 연동해야 자동 분석 기능이 완벽하게 작동합니다.
-          Meet은 녹화 정보를, Drive는 파일 접근을, Docs는 전사 내용을 제공합니다.
+          <strong>Tip:</strong> Google Drive를 연동하면 Meet 녹화 파일과 전사(.vtt)를 자동으로 찾아 AI가 분석합니다.
         </p>
       </div>
 
@@ -258,6 +257,7 @@ interface IntegrationCardProps {
   onDisconnect: () => void;
   features: string[];
   folderName?: string;
+  comingSoon?: boolean;
 }
 
 const IntegrationCard: React.FC<IntegrationCardProps> = ({
@@ -270,13 +270,16 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({
   onDisconnect,
   features,
   folderName,
+  comingSoon,
 }) => {
   return (
     <div
       className={`border-2 rounded-xl p-5 transition-all ${
-        connected
-          ? 'border-green-300 bg-orange-50'
-          : 'border-slate-200 bg-white hover:border-slate-300'
+        comingSoon
+          ? 'border-slate-200 bg-slate-50 opacity-60'
+          : connected
+            ? 'border-green-300 bg-orange-50'
+            : 'border-slate-200 bg-white hover:border-slate-300'
       }`}
     >
       <div className="flex items-start justify-between mb-4">
@@ -285,7 +288,12 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({
           <div>
             <h4 className="font-bold text-slate-900 flex items-center gap-2">
               {title}
-              {connected && (
+              {comingSoon && (
+                <span className="px-2 py-0.5 bg-slate-300 text-slate-600 text-xs rounded-full">
+                  준비 중
+                </span>
+              )}
+              {connected && !comingSoon && (
                 <span className="px-2 py-0.5 bg-orange-500 text-white text-xs rounded-full">
                   연동됨
                 </span>
@@ -294,7 +302,7 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({
             <p className="text-sm text-slate-600 mt-1">{description}</p>
             {folderName && connected && (
               <p className="text-xs text-slate-500 mt-1">
-                📁 폴더: {folderName}
+                폴더: {folderName}
               </p>
             )}
           </div>
@@ -305,14 +313,21 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({
       <ul className="space-y-1.5 mb-4">
         {features.map((feature, idx) => (
           <li key={idx} className="flex items-start text-sm text-slate-600">
-            <CheckCircle size={16} className="text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
+            <CheckCircle size={16} className={`${comingSoon ? 'text-slate-400' : 'text-orange-500'} mr-2 mt-0.5 flex-shrink-0`} />
             <span>{feature}</span>
           </li>
         ))}
       </ul>
 
       {/* Action Button */}
-      {connected ? (
+      {comingSoon ? (
+        <button
+          disabled
+          className="w-full py-2.5 bg-slate-200 text-slate-500 rounded-lg font-medium cursor-not-allowed"
+        >
+          준비 중
+        </button>
+      ) : connected ? (
         <button
           onClick={onDisconnect}
           className="w-full py-2.5 bg-white border-2 border-red-200 text-red-700 rounded-lg font-medium hover:bg-red-50 transition-colors"
